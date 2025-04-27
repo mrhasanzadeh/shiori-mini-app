@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAnimeStore } from "../store/animeStore";
 import { fetchAnimeList, fetchAnimeById } from "../utils/api";
+import type { AnimeListItem } from "../store/animeStore";
 
 interface Episode {
   id: number;
@@ -8,7 +9,7 @@ interface Episode {
   title: string;
 }
 
-interface Anime {
+interface AnimeDetails {
   id: number;
   title: string;
   image: string;
@@ -16,8 +17,6 @@ interface Anime {
   status: string;
   genres: string[];
   episodes: Episode[];
-  isNew?: boolean;
-  episode?: string;
 }
 
 export const useAnime = () => {
@@ -40,7 +39,7 @@ export const useAnime = () => {
     }
   };
 
-  const loadAnimeById = async (id: number) => {
+  const loadAnimeById = async (id: number): Promise<AnimeDetails | null> => {
     try {
       setLoading(true);
       setError(null);

@@ -1,32 +1,26 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-interface Episode {
-  id: number;
-  number: number;
-  title: string;
-}
-
-interface Anime {
+export interface AnimeListItem {
   id: number;
   title: string;
   image: string;
   description: string;
   status: string;
   genres: string[];
-  episodes: Episode[];
-  isNew?: boolean;
-  episode?: string;
+  episodes: number;
+  isNew: boolean;
+  episode: string;
 }
 
 interface AnimeState {
-  animeList: Anime[];
+  animeList: AnimeListItem[];
   favoriteAnime: number[];
   recentlyWatched: number[];
   addToFavorites: (animeId: number) => void;
   removeFromFavorites: (animeId: number) => void;
   addToRecentlyWatched: (animeId: number) => void;
-  setAnimeList: (animeList: Anime[]) => void;
+  setAnimeList: (animeList: AnimeListItem[]) => void;
 }
 
 export const useAnimeStore = create<AnimeState>()(
