@@ -46,7 +46,7 @@ const Layout = ({ children }: LayoutProps) => {
 
       <nav className="fixed bottom-0 left-0 right-0 bg-gray-950 border-t border-gray-700 z-50">
         <div className="container">
-          <div className="flex justify-between py-4">
+          <div className="flex justify-around py-4">
             <Link
               to="/"
               className={`flex flex-col items-center space-y-1 ${

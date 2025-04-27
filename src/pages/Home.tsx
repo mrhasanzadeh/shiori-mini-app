@@ -170,28 +170,35 @@ const Home = () => {
           freeMode={true}
         >
           {animeList.map((anime) => (
-            <SwiperSlide key={anime.id} className="w-40">
+            <SwiperSlide key={anime.id} className="!w-48">
               <Link
                 to={`/anime/${anime.id}`}
                 className="block"
                 aria-label={`مشاهده ${anime.title}`}
               >
-                  <div className="h-56 overflow-hidden relative">
+                <div className="card">
+                  <div className="relative aspect-[2/3] overflow-hidden">
                     <img
                       src={anime.image}
                       alt={anime.title}
                       className="w-full h-full object-cover absolute inset-0"
                       loading="lazy"
                     />
+                    {anime.isNew && (
+                      <span className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                        جدید
+                      </span>
+                    )}
                   </div>
                   <div className="mt-3">
                     <h3 className="font-medium line-clamp-1 text-gray-100">
                       {anime.title}
                     </h3>
-                    <p className="text-sm text-gray-400">
+                    <p className="text-sm text-gray-400 mt-1">
                       زیرنویس چسبیده | 1080p
                     </p>
                   </div>
+                </div>
               </Link>
             </SwiperSlide>
           ))}
