@@ -289,7 +289,7 @@ export const getLatestAnime = async (page: number = 1, perPage: number = 10) => 
     result.Page.media.map(async (anime) => ({
       id: anime.id,
       title: formatAnimeTitle(anime.title.english || anime.title.romaji),
-      image: anime.coverImage.extraLarge || anime.coverImage.large,
+      image: anime.coverImage.extraLarge,
       description: await translateText(anime.description || ""),
       status: anime.status,
       genres: (anime.genres || []).map(translateGenre),
