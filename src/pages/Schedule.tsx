@@ -1,43 +1,39 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { useSchedule } from '../hooks/useSchedule'
 
-// Mock data for demonstration
-const mockSchedule = {
-  'شنبه': [
-    { id: 1, title: 'وان پیس', time: '۱۸:۰۰', episode: 'قسمت ۱۰۵۰' },
-    { id: 2, title: 'اتک آن تایتان', time: '۱۹:۳۰', episode: 'قسمت ۲۵' },
-  ],
-  'یکشنبه': [
-    { id: 3, title: 'جوجوتسو کایزن', time: '۲۰:۰۰', episode: 'قسمت ۱۲' },
-  ],
-  'دوشنبه': [
-    { id: 4, title: 'دیمون اسلیر', time: '۲۱:۰۰', episode: 'قسمت ۸' },
-  ],
-  'سه‌شنبه': [
-    { id: 5, title: 'مای هیرو آکادمیا', time: '۱۹:۰۰', episode: 'قسمت ۱۵' },
-  ],
-  'چهارشنبه': [
-    { id: 6, title: 'بلک کلاور', time: '۱۸:۳۰', episode: 'قسمت ۲۰' },
-  ],
-  'پنج‌شنبه': [
-    { id: 7, title: 'دراگون بال', time: '۲۰:۳۰', episode: 'قسمت ۱۰' },
-  ],
-  'جمعه': [
-    { id: 8, title: 'ناروتو', time: '۱۹:۰۰', episode: 'قسمت ۵۰' },
-  ],
+interface ScheduleItem {
+  id: number
+  title: string
+  time: string
+  episode: string
 }
 
 const Schedule = () => {
-  const days = Object.keys(mockSchedule)
-  const [activeDay, setActiveDay] = useState(() => {
-    const today = new Date().toLocaleDateString('fa-IR', { weekday: 'long' })
-    return days.includes(today) ? today : days[0]
-  })
+  const { schedule, loading, error, activeDay, setActiveDay, getDaySchedule } = useSchedule()
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="text-center text-red-500 p-4">
+        {error}
+      </div>
+    )
+  }
+
+  const days = Object.keys(schedule)
 
   return (
     <div className="space-y-6">
       {/* Day Tabs */}
-      <div className="flex space-x-2 overflow-x-auto pb-2">
+      <div className="flex space-x-2 overflow-x-auto pb-2" role="tablist">
         {days.map((day) => (
           <button
             key={day}
@@ -45,8 +41,11 @@ const Schedule = () => {
             className={`px-4 py-2 rounded-full whitespace-nowrap ${
               activeDay === day
                 ? 'bg-primary-500 text-white'
-                : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
+                : 'bg-gray-800  text-gray-300 '
             }`}
+            role="tab"
+            aria-selected={activeDay === day}
+            aria-controls={`${day}-panel`}
           >
             {day}
           </button>
@@ -54,17 +53,22 @@ const Schedule = () => {
       </div>
 
       {/* Schedule List */}
-      <div className="space-y-4">
-        {mockSchedule[activeDay].map((anime) => (
+      <div 
+        className="space-y-4"
+        role="tabpanel"
+        id={`${activeDay}-panel`}
+      >
+        {getDaySchedule(activeDay).map((anime) => (
           <Link
             key={anime.id}
             to={`/anime/${anime.id}`}
             className="card p-4 block"
+            aria-label={`مشاهده ${anime.title}`}
           >
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-medium">{anime.title}</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-sm text-gray-400 mt-1">
                   {anime.episode}
                 </p>
               </div>

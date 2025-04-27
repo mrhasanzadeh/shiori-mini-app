@@ -1,6 +1,12 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+interface Episode {
+  id: number;
+  number: number;
+  title: string;
+}
+
 interface Anime {
   id: number;
   title: string;
@@ -8,11 +14,9 @@ interface Anime {
   description: string;
   status: string;
   genres: string[];
-  episodes: {
-    id: number;
-    number: number;
-    title: string;
-  }[];
+  episodes: Episode[];
+  isNew?: boolean;
+  episode?: string;
 }
 
 interface AnimeState {

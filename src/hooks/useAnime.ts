@@ -2,6 +2,24 @@ import { useEffect, useState } from "react";
 import { useAnimeStore } from "../store/animeStore";
 import { fetchAnimeList, fetchAnimeById } from "../utils/api";
 
+interface Episode {
+  id: number;
+  number: number;
+  title: string;
+}
+
+interface Anime {
+  id: number;
+  title: string;
+  image: string;
+  description: string;
+  status: string;
+  genres: string[];
+  episodes: Episode[];
+  isNew?: boolean;
+  episode?: string;
+}
+
 export const useAnime = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

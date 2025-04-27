@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { WebApp } from "@twa-dev/sdk";
+import WebApp from "@twa-dev/sdk";
 
 interface TelegramUser {
   id: number;
@@ -33,7 +33,7 @@ export const useTelegramApp = () => {
 
   const showConfirm = (message: string): Promise<boolean> => {
     return new Promise((resolve) => {
-      WebApp.showConfirm(message, (confirmed) => {
+      WebApp.showConfirm(message, (confirmed: boolean) => {
         resolve(confirmed);
       });
     });
@@ -49,7 +49,7 @@ export const useTelegramApp = () => {
     }>;
   }) => {
     return new Promise<string>((resolve) => {
-      WebApp.showPopup(params, (buttonId) => {
+      WebApp.showPopup(params, (buttonId: string) => {
         resolve(buttonId);
       });
     });
