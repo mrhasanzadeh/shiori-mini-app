@@ -83,12 +83,12 @@ const FeaturedSlider = ({ animeList, loading }: FeaturedSliderProps) => {
                     {anime.genres.slice(0, 3).map((genre) => (
                       <span
                         key={genre}
-                        className="px-3 py-1 bg-gray-800/80 text-white rounded-md text-sm shadow-md"
+                        className="px-3 py-1 bg-gray-800/80 text-white rounded-md text-sm"
                       >
                         {genre}
                       </span>
                     ))}
-                    <span className='px-3 py-1 bg-gray-800/80 text-white rounded-md text-sm shadow-md'>زیرنویس چسبیده</span>
+                    <span className='px-3 py-1 bg-gray-800/80 text-white rounded-md text-sm'>زیرنویس چسبیده</span>
                   </div>
                   <p className="text-gray-200 mb-6 line-clamp-2 drop-shadow">
                     {anime.description}
