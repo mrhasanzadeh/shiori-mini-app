@@ -1,13 +1,5 @@
-import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useSchedule } from '../hooks/useSchedule'
-
-interface ScheduleItem {
-  id: number
-  title: string
-  time: string
-  episode: string
-}
 
 const Schedule = () => {
   const { schedule, loading, error, activeDay, setActiveDay, getDaySchedule } = useSchedule()

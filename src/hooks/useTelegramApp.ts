@@ -9,6 +9,12 @@ interface TelegramUser {
   language_code?: string;
 }
 
+interface PopupButton {
+  type: "default" | "destructive";
+  text: string;
+  id?: string;
+}
+
 export const useTelegramApp = () => {
   const [user, setUser] = useState<TelegramUser | null>(null);
   const [isReady, setIsReady] = useState(false);
@@ -39,19 +45,20 @@ export const useTelegramApp = () => {
     });
   };
 
-  const showPopup = (params: {
-    title?: string;
-    message: string;
-    buttons?: Array<{
-      id: string;
-      type?: "default" | "ok" | "close" | "cancel" | "destructive";
-      text: string;
-    }>;
-  }) => {
+  const showPopup = (params: { title?: string; message: string; buttons?: PopupButton[] }) => {
     return new Promise<string>((resolve) => {
-      WebApp.showPopup(params, (buttonId: string) => {
-        resolve(buttonId);
-      });
+      WebApp.showPopup(
+        {
+          ...params,
+          buttons: params.buttons?.map((button) => ({
+            ...button,
+            type: button.type || "default",
+          })),
+        },
+        (buttonId: string) => {
+          resolve(buttonId);
+        }
+      );
     });
   };
 

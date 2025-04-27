@@ -10,35 +10,6 @@ import {
   getAnimeMovies,
 } from "../services/anilist";
 
-interface Episode {
-  id: number;
-  number: number;
-  title: string;
-}
-
-interface Anime {
-  id: number;
-  title: string;
-  image: string;
-  description: string;
-  status: string;
-  genres: string[];
-  episodes: Episode[];
-  isNew?: boolean;
-  episode?: string;
-}
-
-interface ScheduleItem {
-  id: number;
-  title: string;
-  time: string;
-  episode: string;
-}
-
-interface Schedule {
-  [key: string]: ScheduleItem[];
-}
-
 export const fetchAnimeList = async (section: string = "latest") => {
   switch (section) {
     case "latest":

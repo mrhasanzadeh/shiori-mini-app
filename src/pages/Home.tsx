@@ -48,8 +48,7 @@ const Home = () => {
     setLatestAnime,
     setPopularAnime,
     setNewEpisodes,
-    setMovies,
-    setMostPopular
+    setMovies
   } = useCacheStore()
 
   useEffect(() => {
