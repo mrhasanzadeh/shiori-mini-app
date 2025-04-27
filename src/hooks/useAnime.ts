@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAnimeStore } from "../store/animeStore";
 import { fetchAnimeList, fetchAnimeById } from "../utils/api";
-import type { AnimeListItem } from "../store/animeStore";
 
 interface Episode {
   id: number;

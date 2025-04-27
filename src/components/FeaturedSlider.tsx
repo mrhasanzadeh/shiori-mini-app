@@ -27,7 +27,7 @@ const FeaturedSlider = ({ animeList, loading }: FeaturedSliderProps) => {
 
   useEffect(() => {
     if (swiperInstance) {
-      swiperInstance.on('autoplayTimeLeft', (_, timeLeft, percentage) => {
+      swiperInstance.on('autoplayTimeLeft', (_, __, percentage) => {
         setProgress(1 - percentage);
       });
 

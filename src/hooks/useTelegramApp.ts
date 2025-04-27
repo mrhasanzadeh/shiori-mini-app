@@ -55,8 +55,8 @@ export const useTelegramApp = () => {
             type: button.type || "default",
           })),
         },
-        (buttonId: string) => {
-          resolve(buttonId);
+        (buttonId) => {
+          resolve(buttonId || "");
         }
       );
     });

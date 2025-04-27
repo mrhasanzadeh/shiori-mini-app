@@ -45,22 +45,6 @@ interface AniListAnime {
   };
 }
 
-interface AniListSchedule {
-  [key: string]: Array<{
-    id: number;
-    title: {
-      romaji: string;
-      english: string;
-    };
-    description: string;
-    genres: string[];
-    nextAiringEpisode?: {
-      episode: number;
-      airingAt: number;
-    };
-  }>;
-}
-
 const fetchAniList = async <T>(query: string, variables?: Record<string, any>): Promise<T> => {
   const response = await fetch(ANILIST_API_URL, {
     method: "POST",
