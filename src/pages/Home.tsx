@@ -184,11 +184,6 @@ const Home = () => {
                       className="w-full h-full object-cover absolute inset-0"
                       loading="lazy"
                     />
-                    {anime.isNew && (
-                      <span className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-                        جدید
-                      </span>
-                    )}
                   </div>
                   <div className="mt-3">
                     <h3 className="font-medium line-clamp-1 text-gray-100">
