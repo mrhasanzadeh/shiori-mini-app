@@ -26,41 +26,42 @@ interface SliderSection {
   setCache: (data: Anime[]) => void
 }
 
-interface ScheduleAnime {
-  id: number;
-  title: string;
-  image: string;
-  time: string;
-  episode: string;
-}
-
 const Home = () => {
   const [loading, setLoading] = useState<Record<string, boolean>>({})
   const [error, setError] = useState<Record<string, string | null>>({})
-  const [featuredAnime, setFeaturedAnime] = useState<Anime[]>([])
-  const [featuredLoading, setFeaturedLoading] = useState(true)
-  const [schedule, setSchedule] = useState<Record<string, ScheduleAnime[]>>({})
-  const [scheduleLoading, setScheduleLoading] = useState(true)
-  const [activeDay, setActiveDay] = useState('')
   
   const { 
     getAnimeBySection,
     setLatestAnime,
     setPopularAnime,
     setNewEpisodes,
-    setMovies
+    setMovies,
+    setFeaturedAnime
   } = useCacheStore()
+
+  const featuredAnime = getAnimeBySection('featured')
+  const featuredLoading = loading['featured'] || false
 
   useEffect(() => {
     const loadFeaturedAnime = async () => {
+      // Check if we have cached data
+      if (featuredAnime.length > 0) {
+        return
+      }
+
       try {
-        setFeaturedLoading(true)
+        setLoading(prev => ({ ...prev, featured: true }))
+        setError(prev => ({ ...prev, featured: null }))
         const data = await fetchAnimeList('latest')
         setFeaturedAnime(data)
       } catch (err) {
+        setError(prev => ({ 
+          ...prev, 
+          featured: 'خطا در بارگذاری انیمه‌های ویژه' 
+        }))
         console.error('Failed to load featured anime:', err)
       } finally {
-        setFeaturedLoading(false)
+        setLoading(prev => ({ ...prev, featured: false }))
       }
     }
 
@@ -121,25 +122,6 @@ const Home = () => {
     sections.forEach(section => loadAnime(section))
   }, [])
 
-  useEffect(() => {
-    const loadSchedule = async () => {
-      try {
-        setScheduleLoading(true)
-        const data = await fetchSchedule()
-        setSchedule(data)
-        // Set active day to current day or first available day
-        const today = new Date().toLocaleDateString('fa-IR', { weekday: 'long' })
-        setActiveDay(Object.keys(data).includes(today) ? today : Object.keys(data)[0])
-      } catch (err) {
-        console.error('Failed to load schedule:', err)
-      } finally {
-        setScheduleLoading(false)
-      }
-    }
-
-    loadSchedule()
-  }, [])
-
   const renderSlider = (section: SliderSection) => {
     const animeList = getAnimeBySection(section.id)
     const isLoading = loading[section.id]
@@ -170,7 +152,7 @@ const Home = () => {
           freeMode={true}
         >
           {animeList.map((anime) => (
-            <SwiperSlide key={anime.id} className="!w-48">
+            <SwiperSlide key={anime.id} className="!w-40">
               <Link
                 to={`/anime/${anime.id}`}
                 className="block"
@@ -186,10 +168,10 @@ const Home = () => {
                     />
                   </div>
                   <div className="mt-3">
-                    <h3 className="font-medium line-clamp-1 text-gray-100">
+                    <h3 className="text-sm font-medium line-clamp-1 text-gray-100">
                       {anime.title}
                     </h3>
-                    <p className="text-sm text-gray-400 mt-1">
+                    <p className="text-xs text-gray-400 mt-[2px]">
                       زیرنویس چسبیده | 1080p
                     </p>
                   </div>
@@ -227,77 +209,6 @@ const Home = () => {
             {renderSlider(section)}
           </div>
         ))}
-
-        {/* Weekly Schedule */}
-        <div className="card mx-4">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-medium text-gray-100">برنامه پخش هفتگی</h2>
-            <Link 
-              to="/schedule" 
-              className="text-primary-500 text-sm"
-              aria-label="مشاهده برنامه پخش هفتگی"
-            >
-              مشاهده همه
-            </Link>
-          </div>
-
-          {scheduleLoading ? (
-            <div className="flex items-center justify-center h-32">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {/* Days Tabs */}
-              <div className="flex justify-between overflow-x-auto pb-2 -mx-4 px-2">
-                {Object.keys(schedule).map((day) => (
-                  <button
-                    key={day}
-                    onClick={() => setActiveDay(day)}
-                    className={`p-2 rounded-lg text-sm whitespace-nowrap ${
-                      activeDay === day
-                        ? 'bg-primary-500 text-white'
-                        : 'text-gray-400'
-                    }`}
-                  >
-                    {day}
-                  </button>
-                ))}
-              </div>
-
-              {/* Anime List for Active Day */}
-              <div className="space-y-2">
-                {schedule[activeDay]?.map((anime) => (
-                  <Link
-                    key={anime.id}
-                    to={`/anime/${anime.id}`}
-                    className="flex bg-gray-950 gap-4 p-2 rounded-lg"
-                  >
-                    <img
-                      src={anime.image}
-                      alt={anime.title}
-                      className="w-12 h-16 object-cover rounded"
-                      loading="lazy"
-                    />
-                    <div className="flex-1 min-w-0 mt-1">
-                      <h3 className="font-medium text text-gray-100 line-clamp-1">
-                        {anime.title}
-                      </h3>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-sm text-primary-500">
-                          {anime.episode}
-                        </span>
-                        &nbsp;|&nbsp;
-                        <span className="text-sm text-gray-400">
-                          {anime.time}
-                        </span>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
       </div>
     </div>
   )

@@ -6,6 +6,7 @@ interface ScheduleItem {
   title: string;
   time: string;
   episode: string;
+  image: string;
 }
 
 interface Schedule {

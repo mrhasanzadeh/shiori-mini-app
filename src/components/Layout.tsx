@@ -1,11 +1,12 @@
 import { ReactNode } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { 
   HomeIcon, 
   CalendarIcon, 
   MagnifyingGlassIcon,
   UserIcon,
-  HeartIcon
+  HeartIcon,
+  ArrowRightIcon
 } from '@heroicons/react/24/outline'
 import logo from '../assets/images/shiori-logo.svg'
 
@@ -15,10 +16,13 @@ interface LayoutProps {
 
 const Layout = ({ children }: LayoutProps) => {
   const location = useLocation()
+  const navigate = useNavigate()
 
   const isActive = (path: string) => {
     return location.pathname === path
   }
+
+  const showBackButton = location.pathname !== '/'
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -29,12 +33,15 @@ const Layout = ({ children }: LayoutProps) => {
               <img src={logo} alt="logo" className='w-8 h-8' />
             </Link>
             <div className="flex items-center space-x-4">
-              <button 
-                className="p-2 rounded-full hover:bg-white/10 text-white transition-colors duration-200"
-                aria-label="جستجو"
-              >
-                <MagnifyingGlassIcon className="w-6 h-6" />
-              </button>
+              {showBackButton && (
+                <button 
+                  onClick={() => navigate(-1)}
+                  className="p-2 rounded-full hover:bg-white/10 text-white transition-colors duration-200"
+                  aria-label="بازگشت"
+                >
+                  <ArrowRightIcon className="w-6 h-6" />
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -44,13 +51,13 @@ const Layout = ({ children }: LayoutProps) => {
         {children}
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-gray-950 border-t border-gray-700 z-50">
+      <nav className="fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-700 z-50">
         <div className="container">
           <div className="flex justify-around py-4">
             <Link
               to="/"
               className={`flex flex-col items-center space-y-1 ${
-                isActive('/') ? 'text-primary-600' : 'text-gray-300'
+                isActive('/') ? 'text-primary-400' : 'text-gray-400'
               }`}
               aria-label="خانه"
             >
@@ -60,7 +67,7 @@ const Layout = ({ children }: LayoutProps) => {
             <Link
               to="/schedule"
               className={`flex flex-col items-center space-y-1 ${
-                isActive('/schedule') ? 'text-primary-600' : 'text-gray-300'
+                isActive('/schedule') ? 'text-primary-400' : 'text-gray-400'
               }`}
               aria-label="برنامه پخش"
             >
@@ -70,7 +77,7 @@ const Layout = ({ children }: LayoutProps) => {
             <Link
               to="/search"
               className={`flex flex-col items-center space-y-1 ${
-                isActive('/search') ? 'text-primary-600' : 'text-gray-300'
+                isActive('/search') ? 'text-primary-400' : 'text-gray-400'
               }`}
               aria-label="جستجو"
             >
@@ -80,7 +87,7 @@ const Layout = ({ children }: LayoutProps) => {
             <Link
               to="/my-list"
               className={`flex flex-col items-center space-y-1 ${
-                isActive('/my-list') ? 'text-primary-600' : 'text-gray-300'
+                isActive('/my-list') ? 'text-primary-400' : 'text-gray-400'
               }`}
               aria-label="لیست من"
             >
@@ -90,7 +97,7 @@ const Layout = ({ children }: LayoutProps) => {
             <Link
               to="/profile"
               className={`flex flex-col items-center space-y-1 ${
-                isActive('/profile') ? 'text-primary-600' : 'text-gray-300'
+                isActive('/profile') ? 'text-primary-400' : 'text-gray-400'
               }`}
               aria-label="پروفایل"
             >

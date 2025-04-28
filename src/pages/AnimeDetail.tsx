@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { PlayIcon, ArrowDownTrayIcon, HeartIcon } from '@heroicons/react/24/outline'
 import { useAnime } from '../hooks/useAnime'
 import { useTelegramApp } from '../hooks/useTelegramApp'
+import { useCacheStore } from '../store/cacheStore'
 
 interface Episode {
   id: number
@@ -21,9 +22,11 @@ interface Anime {
 }
 
 const AnimeDetail = () => {
+  const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
   const { loadAnimeById, toggleFavorite, isFavorite } = useAnime()
   const { showAlert } = useTelegramApp()
+  const { getAnimeDetails, setAnimeDetails } = useCacheStore()
   const [anime, setAnime] = useState<Anime | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -31,11 +34,22 @@ const AnimeDetail = () => {
   useEffect(() => {
     const fetchAnime = async () => {
       if (!id) return
+
+      // Check cache first
+      const cachedAnime = getAnimeDetails(parseInt(id))
+      if (cachedAnime) {
+        setAnime(cachedAnime)
+        setLoading(false)
+        return
+      }
+
       try {
         setLoading(true)
         const data = await loadAnimeById(parseInt(id))
         if (data) {
           setAnime(data)
+          // Cache the data
+          setAnimeDetails(data.id, data)
         } else {
           setError('انیمه مورد نظر یافت نشد')
         }
@@ -72,6 +86,11 @@ const AnimeDetail = () => {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-2">
+        <h1 className="text-lg font-medium text-gray-100">جزئیات انیمه</h1>
+      </div>
+
       {/* Cover Image */}
       <div className="relative h-48 md:h-64">
         <img
@@ -82,7 +101,7 @@ const AnimeDetail = () => {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
         <div className="absolute bottom-4 right-4 text-white">
-          <h1 className="text-2xl font-bold">{anime.title}</h1>
+          <h2 className="text-2xl font-bold">{anime.title}</h2>
           <p className="text-sm mt-1">{anime.status}</p>
         </div>
         <button
@@ -95,15 +114,15 @@ const AnimeDetail = () => {
       </div>
 
       {/* Description */}
-      <div className="card p-4">
-        <h2 className="text-lg font-medium mb-2">خلاصه داستان</h2>
+      <div className="card mx-4">
+        <h3 className="text-lg font-medium mb-2">خلاصه داستان</h3>
         <p className="text-sm text-gray-400">
           {anime.description}
         </p>
       </div>
 
       {/* Genres */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 px-4">
         {anime.genres.map((genre) => (
           <span
             key={genre}
@@ -115,8 +134,8 @@ const AnimeDetail = () => {
       </div>
 
       {/* Episodes */}
-      <div className="card p-4">
-        <h2 className="text-lg font-medium mb-4">قسمت‌ها</h2>
+      <div className="px-4 pb-24">
+        <h3 className="text-lg font-medium mb-4">قسمت‌ها</h3>
         <div className="space-y-3">
           {anime.episodes.map((episode) => (
             <div
@@ -124,7 +143,7 @@ const AnimeDetail = () => {
               className="flex items-center justify-between p-3 bg-gray-800 rounded-lg"
             >
               <div>
-                <h3 className="font-medium">{episode.title}</h3>
+                <h4 className="font-medium">{episode.title}</h4>
               </div>
               <div className="flex space-x-2">
                 <button 
