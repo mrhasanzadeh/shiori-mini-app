@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { fetchAnimeList, fetchSchedule } from '../utils/api'
+import { fetchAnimeList } from '../utils/api'
 import { useCacheStore } from '../store/cacheStore'
 import { Swiper, SwiperSlide } from 'swiper/react'
 import { FreeMode } from 'swiper/modules'

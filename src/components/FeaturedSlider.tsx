@@ -11,8 +11,11 @@ interface Anime {
   id: number;
   title: string;
   image: string;
-  description: string;
-  genres: string[];
+  episode: string;
+  isNew?: boolean;
+  description?: string;
+  genres?: string[];
+  time?: string;
 }
 
 interface FeaturedSliderProps {
@@ -79,7 +82,7 @@ const FeaturedSlider = ({ animeList, loading }: FeaturedSliderProps) => {
                 <div className="max-w-4xl mx-auto">
                   <h2 className="text-xl font-bold text-white mb-2 drop-shadow-lg">{anime.title}</h2>
                   <div className="flex items-center gap-1 mb-4">
-                    {anime.genres.slice(0, 3).map((genre) => (
+                    {anime.genres?.slice(0, 3).map((genre) => (
                       <span
                         key={genre}
                         className="px-3 py-1 bg-gray-800/80 text-white rounded-md text-sm"

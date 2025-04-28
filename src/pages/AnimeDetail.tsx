@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { PlayIcon, ArrowDownTrayIcon, HeartIcon } from '@heroicons/react/24/outline'
 import { useAnime } from '../hooks/useAnime'
 import { useTelegramApp } from '../hooks/useTelegramApp'
@@ -22,7 +22,6 @@ interface Anime {
 }
 
 const AnimeDetail = () => {
-  const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
   const { loadAnimeById, toggleFavorite, isFavorite } = useAnime()
   const { showAlert } = useTelegramApp()

@@ -20,7 +20,7 @@ const Schedule = () => {
   const [error, setError] = useState<string | null>(null)
   const [activeDay, setActiveDay] = useState('شنبه')
   
-  const { schedule, setSchedule, getSchedule } = useCacheStore()
+  const { setSchedule, getSchedule } = useCacheStore()
   const cachedSchedule = getSchedule()
 
   useEffect(() => {
