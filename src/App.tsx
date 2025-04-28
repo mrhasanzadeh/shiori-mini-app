@@ -5,6 +5,7 @@ import Layout from './components/Layout'
 import Home from './pages/Home'
 import AnimeDetail from './pages/AnimeDetail'
 import Schedule from './pages/Schedule'
+import Search from './pages/Search'
 import { useTheme } from './utils/theme'
 import { useTelegramApp } from './hooks/useTelegramApp'
 
@@ -34,6 +35,7 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/anime/:id" element={<AnimeDetail />} />
         <Route path="/schedule" element={<Schedule />} />
+        <Route path="/search" element={<Search />} />
       </Routes>
     </Layout>
   )

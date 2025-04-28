@@ -9,6 +9,7 @@ interface Anime {
   image: string
   episode: string
   time: string
+  airingAt: number
 }
 
 interface Schedule {
