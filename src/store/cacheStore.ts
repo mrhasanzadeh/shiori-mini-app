@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-interface Anime {
+export interface Anime {
   id: number;
   title: string;
   image: string;

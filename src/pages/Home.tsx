@@ -8,16 +8,7 @@ import 'swiper/css'
 import 'swiper/css/free-mode'
 import { ArrowLeftIcon } from '@heroicons/react/24/solid'
 import FeaturedSlider from '../components/FeaturedSlider'
-
-interface Anime {
-  id: number
-  title: string
-  image: string
-  episode: string
-  isNew: boolean
-  description: string
-  genres: string[]
-}
+import { Anime } from "../store/cacheStore"
 
 interface SliderSection {
   id: string
