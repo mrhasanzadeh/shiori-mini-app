@@ -36,7 +36,6 @@ interface CacheState {
   newEpisodes: Anime[];
   movies: Anime[];
   featuredAnime: Anime[];
-  mostPopular: Anime[];
   schedule: Schedule;
   animeDetails: Record<number, AnimeDetails>;
   setLatestAnime: (anime: Anime[]) => void;
@@ -44,7 +43,6 @@ interface CacheState {
   setNewEpisodes: (anime: Anime[]) => void;
   setMovies: (anime: Anime[]) => void;
   setFeaturedAnime: (anime: Anime[]) => void;
-  setMostPopular: (anime: Anime[]) => void;
   setSchedule: (schedule: Schedule) => void;
   setAnimeDetails: (id: number, details: AnimeDetails) => void;
   getAnimeBySection: (section: string) => Anime[];
@@ -60,7 +58,6 @@ export const useCacheStore = create<CacheState>()(
       newEpisodes: [],
       movies: [],
       featuredAnime: [],
-      mostPopular: [],
       schedule: {},
       animeDetails: {},
       setLatestAnime: (anime) => set({ latestAnime: anime }),
@@ -68,7 +65,6 @@ export const useCacheStore = create<CacheState>()(
       setNewEpisodes: (anime) => set({ newEpisodes: anime }),
       setMovies: (anime) => set({ movies: anime }),
       setFeaturedAnime: (anime) => set({ featuredAnime: anime }),
-      setMostPopular: (anime) => set({ mostPopular: anime }),
       setSchedule: (schedule) => set({ schedule }),
       setAnimeDetails: (id, details) =>
         set((state) => ({
@@ -87,8 +83,6 @@ export const useCacheStore = create<CacheState>()(
             return state.movies;
           case "featured":
             return state.featuredAnime;
-          case "most-popular":
-            return state.mostPopular;
           default:
             return [];
         }

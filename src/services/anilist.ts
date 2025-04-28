@@ -6,18 +6,6 @@ const formatAnimeTitle = (title: string): string => {
   return title.replace(/Season\s+(\d+)/gi, "S$1");
 };
 
-interface AniListResponse<T> {
-  data: T;
-  errors?: Array<{
-    message: string;
-    locations: Array<{
-      line: number;
-      column: number;
-    }>;
-    path: string[];
-  }>;
-}
-
 interface AniListAnime {
   id: number;
   title: {
@@ -45,6 +33,13 @@ interface AniListAnime {
   };
 }
 
+interface AniListResponse<T> {
+  data: T;
+  errors?: Array<{
+    message: string;
+  }>;
+}
+
 const fetchAniList = async <T>(query: string, variables?: Record<string, any>): Promise<T> => {
   const response = await fetch(ANILIST_API_URL, {
     method: "POST",
@@ -65,51 +60,6 @@ const fetchAniList = async <T>(query: string, variables?: Record<string, any>): 
   }
 
   return result.data;
-};
-
-export const getAnimeList = async (page: number = 1, perPage: number = 10) => {
-  const query = `
-    query ($page: Int, $perPage: Int) {
-      Page(page: $page, perPage: $perPage) {
-        media(type: ANIME, sort: POPULARITY_DESC) {
-          id
-          title {
-            romaji
-            english
-          }
-          coverImage {
-            large
-            extraLarge
-          }
-          description
-          status
-          genres
-          episodes
-          nextAiringEpisode {
-            episode
-            airingAt
-          }
-        }
-      }
-    }
-  `;
-
-  const result = await fetchAniList<{ Page: { media: AniListAnime[] } }>(query, { page, perPage });
-  const animeList = await Promise.all(
-    result.Page.media.map(async (anime) => ({
-      id: anime.id,
-      title: formatAnimeTitle(anime.title.english || anime.title.romaji),
-      image: anime.coverImage.extraLarge || anime.coverImage.large,
-      description: await translateText(anime.description || ""),
-      status: anime.status,
-      genres: (anime.genres || []).map(translateGenre),
-      episodes: anime.episodes,
-      isNew: anime.nextAiringEpisode?.episode === 1,
-      episode: anime.nextAiringEpisode ? `قسمت ${anime.nextAiringEpisode.episode}` : "قسمت ۱",
-    }))
-  );
-
-  return animeList;
 };
 
 export const getAnimeById = async (id: number) => {
@@ -156,88 +106,6 @@ export const getAnimeById = async (id: number) => {
         title: `قسمت ${node.episode}`,
       })) || [],
   };
-};
-
-export const getSchedule = async () => {
-  const currentDate = new Date();
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth();
-
-  // Determine current season
-  let season = "";
-  if (month >= 0 && month < 3) season = "WINTER";
-  else if (month >= 3 && month < 6) season = "SPRING";
-  else if (month >= 6 && month < 9) season = "SUMMER";
-  else season = "FALL";
-
-  const query = `
-    query ($year: Int, $season: MediaSeason) {
-      Page(page: 1, perPage: 50) {
-        media(
-          type: ANIME,
-          status: RELEASING,
-          season: $season,
-          seasonYear: $year,
-          sort: POPULARITY_DESC
-        ) {
-          id
-          title {
-            romaji
-            english
-          }
-          coverImage {
-            medium
-          }
-          nextAiringEpisode {
-            episode
-            airingAt
-          }
-        }
-      }
-    }
-  `;
-
-  const result = await fetchAniList<{ Page: { media: AniListAnime[] } }>(query, { year, season });
-  const schedule: Record<
-    string,
-    Array<{
-      id: number;
-      title: string;
-      image: string;
-      time: string;
-      episode: string;
-    }>
-  > = {
-    شنبه: [],
-    یکشنبه: [],
-    دوشنبه: [],
-    سه‌شنبه: [],
-    چهارشنبه: [],
-    پنجشنبه: [],
-    جمعه: [],
-  };
-
-  result.Page.media.forEach((anime) => {
-    if (anime.nextAiringEpisode) {
-      const date = new Date(anime.nextAiringEpisode.airingAt * 1000);
-      const day = date.toLocaleDateString("fa-IR", { weekday: "long" });
-
-      if (schedule[day]) {
-        schedule[day].push({
-          id: anime.id,
-          title: formatAnimeTitle(anime.title.english || anime.title.romaji),
-          image: anime.coverImage.medium,
-          time: date.toLocaleTimeString("fa-IR", {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-          episode: `قسمت ${anime.nextAiringEpisode.episode}`,
-        });
-      }
-    }
-  });
-
-  return schedule;
 };
 
 export const getLatestAnime = async (page: number = 1, perPage: number = 10) => {
@@ -437,11 +305,11 @@ export const getAnimeMovies = async (page: number = 1, perPage: number = 10) => 
   return animeList;
 };
 
-export const getMostPopularAnime = async (page: number = 1, perPage: number = 10) => {
+export const getSchedule = async () => {
   const query = `
-    query ($page: Int, $perPage: Int) {
-      Page(page: $page, perPage: $perPage) {
-        media(type: ANIME, sort: POPULARITY_DESC) {
+    query {
+      Page(perPage: 50) {
+        media(type: ANIME, status: RELEASING, sort: POPULARITY_DESC) {
           id
           title {
             romaji
@@ -451,10 +319,6 @@ export const getMostPopularAnime = async (page: number = 1, perPage: number = 10
             large
             extraLarge
           }
-          description
-          status
-          genres
-          episodes
           nextAiringEpisode {
             episode
             airingAt
@@ -464,20 +328,40 @@ export const getMostPopularAnime = async (page: number = 1, perPage: number = 10
     }
   `;
 
-  const result = await fetchAniList<{ Page: { media: AniListAnime[] } }>(query, { page, perPage });
+  const result = await fetchAniList<{ Page: { media: AniListAnime[] } }>(query);
   const animeList = await Promise.all(
-    result.Page.media.map(async (anime) => ({
-      id: anime.id,
-      title: formatAnimeTitle(anime.title.english || anime.title.romaji),
-      image: anime.coverImage.extraLarge || anime.coverImage.large,
-      description: await translateText(anime.description || ""),
-      status: anime.status,
-      genres: (anime.genres || []).map(translateGenre),
-      episodes: anime.episodes,
-      isNew: anime.nextAiringEpisode?.episode === 1,
-      episode: anime.nextAiringEpisode ? `قسمت ${anime.nextAiringEpisode.episode}` : "قسمت ۱",
-    }))
+    result.Page.media
+      .filter(anime => anime.nextAiringEpisode?.airingAt)
+      .map(async (anime) => ({
+        id: anime.id,
+        title: formatAnimeTitle(anime.title.english || anime.title.romaji),
+        image: anime.coverImage.extraLarge || anime.coverImage.large,
+        episode: `قسمت ${anime.nextAiringEpisode?.episode}`,
+        time: new Date(anime.nextAiringEpisode!.airingAt * 1000).toLocaleTimeString("fa-IR", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      }))
   );
 
-  return animeList;
+  // Group by day of week
+  const schedule: Record<string, typeof animeList> = {
+    شنبه: [],
+    یکشنبه: [],
+    دوشنبه: [],
+    سه‌شنبه: [],
+    چهارشنبه: [],
+    پنج‌شنبه: [],
+    جمعه: [],
+  };
+
+  animeList.forEach((anime) => {
+    const date = new Date(anime.time);
+    const day = new Intl.DateTimeFormat("fa-IR", { weekday: "long" }).format(date);
+    if (schedule[day]) {
+      schedule[day].push(anime);
+    }
+  });
+
+  return schedule;
 };
