@@ -6,6 +6,9 @@ import Home from './pages/Home'
 import AnimeDetail from './pages/AnimeDetail'
 import Schedule from './pages/Schedule'
 import Search from './pages/Search'
+import MyList from './pages/MyList'
+import ListDetail from './pages/ListDetail'
+import Profile from './pages/Profile'
 import { useTheme } from './utils/theme'
 import { useTelegramApp } from './hooks/useTelegramApp'
 
@@ -36,6 +39,9 @@ function App() {
         <Route path="/anime/:id" element={<AnimeDetail />} />
         <Route path="/schedule" element={<Schedule />} />
         <Route path="/search" element={<Search />} />
+        <Route path="/my-list" element={<MyList />} />
+        <Route path="/lists/:id" element={<ListDetail />} />
+        <Route path="/profile" element={<Profile />} />
       </Routes>
     </Layout>
   )

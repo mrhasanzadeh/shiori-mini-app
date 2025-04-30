@@ -30,23 +30,29 @@ interface Schedule {
   [key: string]: Anime[];
 }
 
+export interface ScheduleInfo {
+  schedule: Schedule;
+  currentSeason: string;
+  currentYear: number;
+}
+
 interface CacheState {
   latestAnime: Anime[];
   popularAnime: Anime[];
   newEpisodes: Anime[];
   movies: Anime[];
   featuredAnime: Anime[];
-  schedule: Schedule;
+  scheduleInfo: ScheduleInfo;
   animeDetails: Record<number, AnimeDetails>;
   setLatestAnime: (anime: Anime[]) => void;
   setPopularAnime: (anime: Anime[]) => void;
   setNewEpisodes: (anime: Anime[]) => void;
   setMovies: (anime: Anime[]) => void;
   setFeaturedAnime: (anime: Anime[]) => void;
-  setSchedule: (schedule: Schedule) => void;
+  setSchedule: (scheduleInfo: ScheduleInfo) => void;
   setAnimeDetails: (id: number, details: AnimeDetails) => void;
   getAnimeBySection: (section: string) => Anime[];
-  getSchedule: () => Schedule;
+  getSchedule: () => ScheduleInfo;
   getAnimeDetails: (id: number) => AnimeDetails | undefined;
 }
 
@@ -58,14 +64,18 @@ export const useCacheStore = create<CacheState>()(
       newEpisodes: [],
       movies: [],
       featuredAnime: [],
-      schedule: {},
+      scheduleInfo: {
+        schedule: {},
+        currentSeason: "",
+        currentYear: 0,
+      },
       animeDetails: {},
       setLatestAnime: (anime) => set({ latestAnime: anime }),
       setPopularAnime: (anime) => set({ popularAnime: anime }),
       setNewEpisodes: (anime) => set({ newEpisodes: anime }),
       setMovies: (anime) => set({ movies: anime }),
       setFeaturedAnime: (anime) => set({ featuredAnime: anime }),
-      setSchedule: (schedule) => set({ schedule }),
+      setSchedule: (scheduleInfo) => set({ scheduleInfo }),
       setAnimeDetails: (id, details) =>
         set((state) => ({
           animeDetails: { ...state.animeDetails, [id]: details },
@@ -87,7 +97,7 @@ export const useCacheStore = create<CacheState>()(
             return [];
         }
       },
-      getSchedule: () => get().schedule,
+      getSchedule: () => get().scheduleInfo,
       getAnimeDetails: (id) => get().animeDetails[id],
     }),
     {
