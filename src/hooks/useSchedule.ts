@@ -27,7 +27,7 @@ export const useSchedule = () => {
       setLoading(true);
       setError(null);
       const data = await fetchSchedule();
-      setSchedule(data);
+      setSchedule(data.schedule);
     } catch (err) {
       setError("خطا در بارگذاری برنامه پخش");
       console.error("Failed to load schedule:", err);

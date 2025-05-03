@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAnimeStore } from '../store/animeStore'
-import { useCacheStore } from '../store/cacheStore'
 import { PlusIcon, HeartIcon, ListBulletIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartIconSolid, ListBulletIcon as ListBulletIconSolid } from '@heroicons/react/24/solid'
 import { Anime } from '../store/cacheStore'
