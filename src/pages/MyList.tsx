@@ -189,8 +189,8 @@ const MyList = () => {
   return (
     <div className="pb-24">
       {/* Tabs Header */}
-      <div className="bg-gray-900 shadow">
-        <div className="container flex border-b border-gray-800">
+      <div className="bg-black shadow">
+        <div className="container flex border-b border-gray-700">
           <button
             onClick={() => setActiveTab('favorites')}
             className={`flex items-center gap-2 px-4 py-3 font-medium text-sm ${

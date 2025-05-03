@@ -23,10 +23,11 @@ const Layout = ({ children }: LayoutProps) => {
   }
 
   const showBackButton = location.pathname !== '/'
+  const isAnimeDetailPage = location.pathname.includes('/anime/')
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-b from-black/90 via-black/50 to-transparent">
+    <div className="min-h-screen flex flex-col bg-black">
+      <header className={`fixed top-0 left-0 right-0 z-50 ${isAnimeDetailPage ? 'bg-transparent' : 'bg-gradient-to-b from-black/90 via-black/50 to-transparent'}`}>
         <div className="container py-4">
           <div className="flex items-center justify-between">
             <Link to="/" className="p-2 rounded-xl shadow-lg bg-primary-500 w-10 h-10 flex items-center justify-center">
@@ -47,11 +48,11 @@ const Layout = ({ children }: LayoutProps) => {
         </div>
       </header>
 
-      <main className="flex-1 pt-16">
+      <main className={`flex-1 ${!isAnimeDetailPage ? 'pt-16' : ''}`}>
         {children}
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-700 z-50">
+      <nav className="fixed bottom-0 left-0 right-0 bg-gray-950 border-t border-gray-700 z-50">
         <div className="container">
           <div className="flex justify-around py-4">
             <Link

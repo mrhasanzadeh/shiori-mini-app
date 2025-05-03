@@ -43,7 +43,7 @@ const FeaturedSlider = ({ animeList, loading }: FeaturedSliderProps) => {
 
   if (loading) {
     return (
-      <div className="w-full h-[600px] bg-gray-900 animate-pulse -mt-16">
+      <div className="w-full h-[600px] bg-black animate-pulse -mt-16">
         <div className="w-full h-full flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
         </div>

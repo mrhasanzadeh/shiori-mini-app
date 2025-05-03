@@ -1,11 +1,10 @@
-import { useEffect, useState, useRef } from 'react'
-import { useParams } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useParams, Link } from 'react-router-dom'
 import { 
   PlayIcon, 
   ArrowDownTrayIcon, 
   HeartIcon, 
   PlusIcon,
-  ChevronDownIcon,
   StarIcon,
   ArrowPathIcon
 } from '@heroicons/react/24/outline'
@@ -31,6 +30,12 @@ interface Anime {
   episodes: Episode[]
 }
 
+interface SimilarAnime {
+  id: number;
+  title: string;
+  image: string;
+}
+
 type TabType = 'info' | 'episodes' | 'similar'
 
 const AnimeDetail = () => {
@@ -45,9 +50,8 @@ const AnimeDetail = () => {
   const [activeTab, setActiveTab] = useState<TabType>('info')
   const [showFullDescription, setShowFullDescription] = useState(false)
   const [showListSelector, setShowListSelector] = useState(false)
-  const [scrollOpacity, setScrollOpacity] = useState(0)
-  
-  const imageOverlayRef = useRef<HTMLDivElement>(null)
+  const [similarAnime, setSimilarAnime] = useState<SimilarAnime[]>([])
+  const [loadingSimilar, setLoadingSimilar] = useState(false)
 
   useEffect(() => {
     const fetchAnime = async () => {
@@ -80,31 +84,63 @@ const AnimeDetail = () => {
 
     fetchAnime()
   }, [id])
-  
-  // Handle scroll effect
+
+  // Effect for loading similar anime when tab changes to 'similar'
   useEffect(() => {
-    const handleScroll = () => {
-      const scrollY = window.scrollY;
-      const imageHeight = 300; // should match the image height in CSS
+    const fetchSimilarAnime = async () => {
+      if (activeTab !== 'similar' || !anime || similarAnime.length > 0) return
       
-      // Calculate opacity based on scroll position
-      // Start adding overlay when scroll position is at 10% of the image height
-      const startFade = imageHeight * 0.1;
-      
-      if (scrollY <= startFade) {
-        setScrollOpacity(0);
-      } else if (scrollY >= imageHeight) {
-        setScrollOpacity(0.85); // Max opacity
-      } else {
-        // Linear interpolation between start and max
-        const opacity = ((scrollY - startFade) / (imageHeight - startFade)) * 0.85;
-        setScrollOpacity(opacity);
+      try {
+        setLoadingSimilar(true)
+        // این داده‌ها به صورت موقت هستند
+        // در حالت واقعی باید از API گرفته شوند
+        const mockSimilarAnime: SimilarAnime[] = [
+          {
+            id: 1,
+            title: 'Demon Slayer',
+            image: 'https://cdn.myanimelist.net/images/anime/1286/99889l.jpg'
+          },
+          {
+            id: 2,
+            title: 'Jujutsu Kaisen',
+            image: 'https://cdn.myanimelist.net/images/anime/1171/109222l.jpg'
+          },
+          {
+            id: 3,
+            title: 'Attack on Titan',
+            image: 'https://cdn.myanimelist.net/images/anime/10/47347l.jpg'
+          },
+          {
+            id: 4,
+            title: 'My Hero Academia',
+            image: 'https://cdn.myanimelist.net/images/anime/10/78745l.jpg'
+          },
+          {
+            id: 5,
+            title: 'One Punch Man',
+            image: 'https://cdn.myanimelist.net/images/anime/12/76049l.jpg'
+          },
+          {
+            id: 6,
+            title: 'Chainsaw Man',
+            image: 'https://cdn.myanimelist.net/images/anime/1806/126216l.jpg'
+          }
+        ];
+        
+        // شبیه‌سازی تأخیر شبکه
+        setTimeout(() => {
+          setSimilarAnime(mockSimilarAnime);
+          setLoadingSimilar(false);
+        }, 800);
+        
+      } catch (err) {
+        console.error('Failed to load similar anime:', err);
+        setLoadingSimilar(false);
       }
     };
-    
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+
+    fetchSimilarAnime();
+  }, [activeTab, anime]);
 
   const handleFavorite = () => {
     if (!anime) return
@@ -119,10 +155,54 @@ const AnimeDetail = () => {
     setShowListSelector(false)
   }
 
+  // تابع رندر آثار مشابه
+  const renderSimilarTab = () => {
+    if (loadingSimilar) {
+      return (
+        <div className="flex items-center justify-center h-32 text-gray-400">
+          <div className="text-center">
+            <ArrowPathIcon className="w-6 h-6 mx-auto mb-2 animate-spin" />
+            <p className="text-sm">در حال بارگذاری آثار مشابه...</p>
+          </div>
+        </div>
+      );
+    }
+    
+    if (similarAnime.length === 0) {
+      return (
+        <div className="flex items-center justify-center h-32 text-gray-400">
+          <p className="text-sm">اثر مشابهی یافت نشد</p>
+        </div>
+      );
+    }
+    
+    return (
+      <div className="grid grid-cols-3 gap-3">
+        {similarAnime.map((anime) => (
+          <Link 
+            key={anime.id} 
+            to={`/anime/${anime.id}`}
+            className="block"
+          >
+            <div className="relative aspect-[2/3] overflow-hidden rounded-lg">
+              <img 
+                src={anime.image} 
+                alt={anime.title} 
+                className="w-full h-full object-cover"
+                loading="lazy"
+              />
+            </div>
+            <h3 className="mt-1 text-sm text-white line-clamp-1">{anime.title}</h3>
+          </Link>
+        ))}
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-500"></div>
       </div>
     )
   }
@@ -142,206 +222,206 @@ const AnimeDetail = () => {
     : anime.description
 
   return (
-    <div className="min-h-screen bg-black">
-      {/* Fixed Background Header Image */}
-      <div className="fixed top-0 left-0 w-full h-80 z-0 overflow-hidden">
-        <img 
-          src={anime.image} 
-          alt="" 
-          className="w-full h-full object-cover"
-        />
-        {/* Dynamic Overlay with opacity controlled by scroll */}
-        <div 
-          ref={imageOverlayRef}
-          className="absolute inset-0 bg-black transition-opacity duration-200" 
-          style={{ opacity: scrollOpacity }}
-        ></div>
-      </div>
-
-      {/* Scrollable Content Container */}
-      <div className="relative z-10">
-        {/* Empty Space for Header */}
-        <div className="h-80"></div>
-
-        {/* Content */}
-        <div className="bg-gradient-to-t- from-black to-transparent min-h-screen rounded-t-3xl -mt-10 pt-8 pb-24">
-          {/* Title & Actions */}
-          <div className="px-4 text-center mb-6">
-            <h1 className="text-2xl font-bold text-white mb-2">{anime.title}</h1>
-            
-            {/* Rating */}
-            <div className="flex items-center justify-center mb-6">
-              <StarIcon className="w-5 h-5 text-yellow-400 mr-1" />
-              <span className="text-lg font-medium text-white">4.8</span>
-              <span className="text-sm text-gray-400 ml-1">(88.5K)</span>
+    <div className="bg-black min-h-screen pb-20">
+      {/* Header */}
+      <div className="relative">
+        {/* Banner image */}
+        <div className="h-64 overflow-hidden absolute top-0 w-full">
+          <img 
+            src={anime.image} 
+            alt="" 
+            className="w-full h-full object-cover opacity-50"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black"></div>
+        </div>
+        
+        {/* Anime info overlay */}
+        <div className="container pt-32 mx-auto px-4">
+          <div className="flex relative z-10">
+            {/* Anime poster */}
+            <div className="w-32 h-48 rounded-xl overflow-hidden border border-gray-700">
+              <img 
+                src={anime.image} 
+                alt={anime.title} 
+                className="w-full h-full object-cover"
+              />
             </div>
-            
-            {/* Action Buttons */}
-            <div className="flex justify-center space-x-4">
-              <button 
-                onClick={handleFavorite}
-                className="flex items-center justify-center w-12 h-12 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors"
-                aria-label={isFavorite(anime.id) ? 'حذف از علاقه‌مندی‌ها' : 'افزودن به علاقه‌مندی‌ها'}
-              >
-                {isFavorite(anime.id) ? (
-                  <HeartIconSolid className="w-6 h-6 text-red-500" />
-                ) : (
-                  <HeartIcon className="w-6 h-6 text-white" />
-                )}
-              </button>
+            {/* Basic info */}
+            <div className="flex-1 ms-4">
+              <h1 className="text-xl font-bold text-white line-clamp-4">{anime.title}</h1>
               
-              <div className="relative">
-                <button 
-                  onClick={() => setShowListSelector(!showListSelector)}
-                  className="flex items-center justify-center w-12 h-12 rounded-full bg-gray-800 hover:bg-gray-700 transition-colors"
-                  aria-label="افزودن به لیست"
-                >
-                  <PlusIcon className="w-6 h-6 text-white" />
-                </button>
+              {/* Genres pills */}
+              <div className="flex flex-wrap gap-1 mt-2">
+                {anime.genres.slice(0, 3).map((genre) => (
+                  <span
+                    key={genre}
+                    className="px-2 py-0.5 bg-gray-800/80 rounded-full text-xs text-gray-300"
+                  >
+                    {genre}
+                  </span>
+                ))}
+                {anime.genres.length > 3 && (
+                  <span className="text-xs text-gray-400 px-1">+{anime.genres.length - 3}</span>
+                )}
+              </div>
+              
+              {/* Rating and action buttons in a single row */}
+              <div className="flex items-center justify-between mt-3">
+                {/* Rating with badge style */}
+                <div className="flex items-center bg-gray-800/60 rounded-full px-3 py-1">
+                  <StarIcon className="w-4 h-4 text-yellow-400" />
+                  <span className="text-sm text-white ms-1 font-medium">4.8</span>
+                  <span className="text-xs text-gray-400 ms-1">(88.5K)</span>
+                </div>
                 
-                {/* List Selector Dropdown */}
-                {showListSelector && (
-                  <div className="absolute top-full mt-2 right-0 w-48 bg-gray-800 rounded-lg shadow-lg p-2 z-20">
-                    {lists.length > 0 ? (
-                      lists.map(list => (
-                        <button 
-                          key={list.id}
-                          onClick={() => handleAddToList(list.id)}
-                          className="w-full text-right px-3 py-2 text-sm text-white hover:bg-gray-700 rounded"
-                        >
-                          {list.title}
-                        </button>
-                      ))
+                {/* Action buttons in a connected container */}
+                <div className="flex bg-gray-800/60 rounded-full">
+                  <button 
+                    onClick={handleFavorite}
+                    className="p-2 rounded-full hover:bg-gray-700/70"
+                    aria-label={isFavorite(anime.id) ? 'حذف از علاقه‌مندی‌ها' : 'افزودن به علاقه‌مندی‌ها'}
+                  >
+                    {isFavorite(anime.id) ? (
+                      <HeartIconSolid className="w-5 h-5 text-red-500" />
                     ) : (
-                      <div className="text-center text-gray-400 py-2 text-sm">
-                        لیستی موجود نیست
+                      <HeartIcon className="w-5 h-5 text-white" />
+                    )}
+                  </button>
+                  
+                  <div className="relative">
+                    <button 
+                      onClick={() => setShowListSelector(!showListSelector)}
+                      className="p-2 rounded-full hover:bg-gray-700/70"
+                      aria-label="افزودن به لیست"
+                    >
+                      <PlusIcon className="w-5 h-5 text-white" />
+                    </button>
+                    
+                    {/* List Selector Dropdown */}
+                    {showListSelector && (
+                      <div className="absolute top-full mt-2 left-0 w-48 bg-gray-800 rounded-lg shadow-lg p-2 z-20">
+                        {lists.length > 0 ? (
+                          lists.map(list => (
+                            <button 
+                              key={list.id}
+                              onClick={() => handleAddToList(list.id)}
+                              className="w-full text-right px-3 py-2 text-sm text-white hover:bg-gray-700 rounded"
+                            >
+                              {list.title}
+                            </button>
+                          ))
+                        ) : (
+                          <div className="text-center text-gray-400 py-2 text-sm">
+                            لیستی موجود نیست
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
-                )}
+                </div>
               </div>
             </div>
           </div>
-          
-          {/* Description Card */}
-          <div className="mx-4 bg-gray-800 rounded-xl p-4 mb-6">
-            <p className="text-gray-300 text-sm">
-              {truncatedDescription}
-            </p>
-            {shouldTruncate && (
-              <button 
-                onClick={() => setShowFullDescription(!showFullDescription)}
-                className="mt-2 text-primary-500 text-sm flex items-center"
-              >
-                {showFullDescription ? 'نمایش کمتر' : 'نمایش بیشتر'}
-                <ChevronDownIcon className={`w-4 h-4 mr-1 transition-transform ${showFullDescription ? 'rotate-180' : ''}`} />
-              </button>
-            )}
+        </div>
+      </div>
+      
+      {/* Description */}
+      <div className="container mx-auto px-4 mt-6">
+          <p className="text-gray-300 text-sm">
+            {truncatedDescription}
+          </p>
+          {shouldTruncate && (
+            <button 
+              onClick={() => setShowFullDescription(!showFullDescription)}
+              className="mt-1 text-primary-500 text-xs"
+            >
+              {showFullDescription ? 'نمایش کمتر' : 'نمایش بیشتر'}
+            </button>
+          )}
+      </div>
+      
+      {/* Tabs */}
+      <div className="container mx-auto px-4 mt-4">
+        <div className="border-b border-gray-700">
+          <div className="flex">
+            <button
+              className={`py-2 px-4 text-sm font-medium ${
+                activeTab === 'info' ? 'text-primary-500 border-b border-primary-500' : 'text-gray-400'
+              }`}
+              onClick={() => setActiveTab('info')}
+            >
+              اطلاعات
+            </button>
+            <button
+              className={`py-2 px-4 text-sm font-medium ${
+                activeTab === 'episodes' ? 'text-primary-500 border-b border-primary-500' : 'text-gray-400'
+              }`}
+              onClick={() => setActiveTab('episodes')}
+            >
+              قسمت‌ها
+            </button>
+            <button
+              className={`py-2 px-4 text-sm font-medium ${
+                activeTab === 'similar' ? 'text-primary-500 border-b border-primary-500' : 'text-gray-400'
+              }`}
+              onClick={() => setActiveTab('similar')}
+            >
+              آثار مشابه
+            </button>
           </div>
-          
-          {/* Tabs */}
-          <div className="px-4 mb-4">
-            <div className="flex rounded-lg bg-gray-800 p-1">
-              <button
-                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                  activeTab === 'info' ? 'bg-gray-700 text-white' : 'text-gray-400'
-                }`}
-                onClick={() => setActiveTab('info')}
-              >
-                اطلاعات
-              </button>
-              <button
-                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                  activeTab === 'episodes' ? 'bg-gray-700 text-white' : 'text-gray-400'
-                }`}
-                onClick={() => setActiveTab('episodes')}
-              >
-                قسمت‌ها
-              </button>
-              <button
-                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                  activeTab === 'similar' ? 'bg-gray-700 text-white' : 'text-gray-400'
-                }`}
-                onClick={() => setActiveTab('similar')}
-              >
-                آثار مشابه
-              </button>
+        </div>
+        
+        {/* Tab Content */}
+        <div className="mt-4">
+          {/* Info Tab */}
+          {activeTab === 'info' && (
+            <div className="space-y-4">
+              <div className="flex flex-col gap-3">
+                <div className="flex items-start">
+                  <span className="text-gray-400 text-sm w-20">وضعیت:</span>
+                  <span className="text-white text-sm">{anime.status}</span>
+                </div>
+                
+                <div className="flex items-start">
+                  <span className="text-gray-400 text-sm w-20">تعداد قسمت‌ها:</span>
+                  <span className="text-white text-sm">{anime.episodes.length} قسمت</span>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
           
-          {/* Tab Content */}
-          <div className="px-4">
-            {/* Info Tab */}
-            {activeTab === 'info' && (
-              <div className="space-y-4">
-                <div className="bg-gray-800 rounded-xl p-4">
-                  <h3 className="text-md font-medium mb-2 text-white">وضعیت</h3>
-                  <p className="text-gray-300 text-sm">{anime.status}</p>
-                </div>
-                
-                <div className="bg-gray-800 rounded-xl p-4">
-                  <h3 className="text-md font-medium mb-2 text-white">ژانرها</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {anime.genres.map((genre) => (
-                      <span
-                        key={genre}
-                        className="px-3 py-1 bg-gray-700 rounded-full text-sm text-gray-300"
-                      >
-                        {genre}
-                      </span>
-                    ))}
+          {/* Episodes Tab */}
+          {activeTab === 'episodes' && (
+            <div className="space-y-2">
+              {anime.episodes.map((episode) => (
+                <div
+                  key={episode.id}
+                  className="flex items-center justify-between p-2 bg-gray-800 rounded-md"
+                >
+                  <span className="text-sm text-white">{episode.title}</span>
+                  <div className="flex space-x-1">
+                    <button 
+                      className="p-1.5 rounded-full bg-primary-500 hover:bg-primary-600"
+                      aria-label={`پخش ${episode.title}`}
+                    >
+                      <PlayIcon className="w-4 h-4 text-white" />
+                    </button>
+                    <button 
+                      className="p-1.5 rounded-full bg-gray-700 hover:bg-gray-600"
+                      aria-label={`دانلود ${episode.title}`}
+                    >
+                      <ArrowDownTrayIcon className="w-4 h-4 text-white" />
+                    </button>
                   </div>
                 </div>
-                
-                <div className="bg-gray-800 rounded-xl p-4">
-                  <h3 className="text-md font-medium mb-2 text-white">تعداد قسمت‌ها</h3>
-                  <p className="text-gray-300 text-sm">{anime.episodes.length} قسمت</p>
-                </div>
-              </div>
-            )}
-            
-            {/* Episodes Tab */}
-            {activeTab === 'episodes' && (
-              <div className="space-y-3">
-                {anime.episodes.map((episode) => (
-                  <div
-                    key={episode.id}
-                    className="flex items-center justify-between p-3 bg-gray-800 rounded-lg"
-                  >
-                    <div>
-                      <h4 className="font-medium text-white">{episode.title}</h4>
-                    </div>
-                    <div className="flex space-x-2">
-                      <button 
-                        className="flex items-center justify-center w-10 h-10 rounded-full bg-primary-500 hover:bg-primary-600 transition-colors"
-                        aria-label={`پخش ${episode.title}`}
-                      >
-                        <PlayIcon className="w-5 h-5 text-white" />
-                      </button>
-                      <button 
-                        className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-700 hover:bg-gray-600 transition-colors"
-                        aria-label={`دانلود ${episode.title}`}
-                      >
-                        <ArrowDownTrayIcon className="w-5 h-5 text-white" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-            
-            {/* Similar Tab */}
-            {activeTab === 'similar' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-center h-40 bg-gray-800 rounded-xl">
-                  <div className="text-center text-gray-400">
-                    <ArrowPathIcon className="w-8 h-8 mx-auto mb-2" />
-                    <p>در حال بارگذاری آثار مشابه...</p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+              ))}
+            </div>
+          )}
+          
+          {/* Similar Tab */}
+          {activeTab === 'similar' && (
+            renderSimilarTab()
+          )}
         </div>
       </div>
     </div>
