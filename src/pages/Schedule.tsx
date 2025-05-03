@@ -91,7 +91,7 @@ const Schedule = () => {
             currentYear: data.currentYear
           })
         } else {
-          setSchedule(data)
+        setSchedule(data)
         }
         
         // ذخیره اطلاعات فصل و سال جاری
@@ -107,7 +107,7 @@ const Schedule = () => {
 
     // اگر داده‌های cache خالی باشد یا فصل جاری ذخیره نشده باشد
     if (!cachedScheduleInfo || !cachedScheduleInfo.currentSeason) {
-      loadSchedule()
+    loadSchedule()
     } else {
       setCurrentSeason(cachedScheduleInfo.currentSeason)
       setCurrentYear(cachedScheduleInfo.currentYear)
@@ -140,7 +140,7 @@ const Schedule = () => {
     <div className="card mx-4">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-lg font-medium text-gray-100">برنامه پخش هفتگی</h1>
+        <h1 className="text-lg font-medium text-gray-100">برنامه پخش هفتگی</h1>
           {currentSeason && (
             <p className="text-sm text-gray-400">
               فصل {translateSeason(currentSeason)} {currentYear}
@@ -171,31 +171,31 @@ const Schedule = () => {
         <div className="space-y-2">
           {fullSchedule[activeDay]?.length > 0 ? (
             fullSchedule[activeDay].map((anime) => (
-              <Link
-                key={anime.id}
-                to={`/anime/${anime.id}`}
-                className="flex bg-gray-900 gap-4 p-2 rounded-lg"
-              >
-                <img
-                  src={anime.image}
-                  alt={anime.title}
-                  className="w-12 h-16 object-cover rounded"
-                  loading="lazy"
-                />
-                <div className="flex-1 min-w-0 mt-1">
-                  <h2 className="font-medium text text-gray-100 line-clamp-1">
-                    {anime.title}
-                  </h2>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-sm text-primary-400">
-                      {anime.episode}
-                    </span>
-                    <span className="text-sm text-gray-400">
-                      ساعت: {anime.time}
-                    </span>
-                  </div>
+            <Link
+              key={anime.id}
+              to={`/anime/${anime.id}`}
+              className="flex bg-gray-900 gap-4 p-2 rounded-lg"
+            >
+              <img
+                src={anime.image}
+                alt={anime.title}
+                className="w-12 h-16 object-cover rounded"
+                loading="lazy"
+              />
+              <div className="flex-1 min-w-0 mt-1">
+                <h2 className="font-medium text text-gray-100 line-clamp-1">
+                  {anime.title}
+                </h2>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-sm text-primary-400">
+                    {anime.episode}
+                  </span>
+                  <span className="text-sm text-gray-400">
+                    ساعت: {anime.time}
+                  </span>
                 </div>
-              </Link>
+              </div>
+            </Link>
             ))
           ) : (
             <div className="text-center py-8">
