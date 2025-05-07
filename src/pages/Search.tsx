@@ -13,6 +13,23 @@ interface Top100Anime extends Anime {
 
 const ITEMS_PER_PAGE = 24
 
+// Skeleton Component for Search
+const SearchSkeleton = () => (
+  <div className="grid grid-cols-3 gap-4 p-4 min-h-[600px]">
+    {[...Array(12)].map((_, i) => (
+      <div key={i} className="card">
+        <div className="relative aspect-[2/3] overflow-hidden">
+          <div className="w-full h-full bg-slate-800 animate-pulse" />
+        </div>
+        <div className="mt-3">
+          <div className="h-4 w-3/4 bg-slate-800 rounded animate-pulse" />
+          <div className="h-3 w-1/2 bg-slate-800 rounded animate-pulse mt-2" />
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
 const Search = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [results, setResults] = useState<Anime[]>([])
@@ -285,6 +302,60 @@ const Search = () => {
         )}
       </>
     )
+  }
+
+  // Update the loading states to use the skeleton
+  if (tabsLoading[activeTab]) {
+    return (
+      <div className="pb-24">
+        {/* Search Input */}
+        <div className="sticky top-0 p-4 z-10">
+          <div className="relative w-full flex items-center gap-2 bg-slate-900 text-white rounded-lg pl-10 p-3">
+            <MagnifyingGlassIcon className="w-6 h-6 text-slate-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="جستجوی انیمه..."
+              className="bg-transparent w-full focus:outline-none"
+            />
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="mx-4 mb-2">
+          <div className="flex rounded-lg bg-slate-900 p-1">
+            <button
+              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                activeTab === 'top100' ? 'bg-slate-700 text-white' : 'text-slate-400'
+              }`}
+              onClick={() => setActiveTab('top100')}
+            >
+              ۱۰۰ اثر برتر
+            </button>
+            <button
+              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                activeTab === 'trending' ? 'bg-slate-700 text-white' : 'text-slate-400'
+              }`}
+              onClick={() => setActiveTab('trending')}
+            >
+              ترندها
+            </button>
+            <button
+              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                activeTab === 'movies' ? 'bg-slate-700 text-white' : 'text-slate-400'
+              }`}
+              onClick={() => setActiveTab('movies')}
+            >
+              فیلم‌ها
+            </button>
+          </div>
+        </div>
+
+        {/* Skeleton Cards */}
+        <SearchSkeleton />
+      </div>
+    );
   }
 
   return (

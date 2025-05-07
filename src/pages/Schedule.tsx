@@ -47,6 +47,48 @@ const translateSeason = (season: string): string => {
   }
 }
 
+// Skeleton Component for Schedule
+const ScheduleSkeleton = () => (
+  <div className="card mx-4">
+    <div className="flex items-center justify-between mb-4">
+      <div>
+        <h1 className="text-lg font-medium text-slate-100">برنامه پخش هفتگی</h1>
+        <div className="h-4 w-32 bg-slate-800 rounded animate-pulse mt-1" />
+      </div>
+    </div>
+
+    <div className="space-y-4">
+      {/* Days Tabs */}
+      <div className="flex justify-between overflow-x-auto pb-2 -mx-4 px-2">
+        {['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه', 'جمعه'].map((day) => (
+          <button
+            key={day}
+            className="p-2 rounded-lg text-sm whitespace-nowrap text-slate-400"
+          >
+            {day}
+          </button>
+        ))}
+      </div>
+
+      {/* Anime List Skeleton */}
+      <div className="space-y-2">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="flex bg-slate-900 gap-4 p-2 rounded-lg">
+            <div className="w-12 h-16 bg-slate-800 rounded animate-pulse" />
+            <div className="flex-1 min-w-0 mt-1">
+              <div className="h-5 w-3/4 bg-slate-800 rounded animate-pulse mb-2" />
+              <div className="flex items-center gap-2">
+                <div className="h-4 w-20 bg-slate-800 rounded animate-pulse" />
+                <div className="h-4 w-24 bg-slate-800 rounded animate-pulse" />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
 const Schedule = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -116,11 +158,7 @@ const Schedule = () => {
   }, [])
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
-      </div>
-    )
+    return <ScheduleSkeleton />;
   }
 
   if (error) {

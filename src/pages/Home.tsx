@@ -17,6 +17,35 @@ interface SliderSection {
   setCache: (data: Anime[]) => void
 }
 
+// Skeleton Card Component
+const SkeletonCard = () => (
+  <div className="card animate-pulse">
+    <div className="relative aspect-[2/3] overflow-hidden bg-slate-800 rounded-lg" />
+    <div className="mt-3">
+      <div className="h-4 bg-slate-800 rounded w-3/4" />
+      <div className="h-3 bg-slate-800 rounded w-1/2 mt-2" />
+    </div>
+  </div>
+)
+
+// Skeleton Slider Component
+const SkeletonSlider = () => (
+  <div className="relative">
+    <Swiper
+      modules={[FreeMode]}
+      spaceBetween={16}
+      slidesPerView="auto"
+      freeMode={true}
+    >
+      {[...Array(5)].map((_, index) => (
+        <SwiperSlide key={index} className="!w-40">
+          <SkeletonCard />
+        </SwiperSlide>
+      ))}
+    </Swiper>
+  </div>
+)
+
 const Home = () => {
   const [loading, setLoading] = useState<Record<string, boolean>>({})
   const [error, setError] = useState<Record<string, string | null>>({})
@@ -119,11 +148,7 @@ const Home = () => {
     const hasError = error[section.id]
 
     if (isLoading && animeList.length === 0) {
-      return (
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
-        </div>
-      )
+      return <SkeletonSlider />
     }
 
     if (hasError && animeList.length === 0) {
