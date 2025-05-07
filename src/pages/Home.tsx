@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { fetchAnimeList } from '../utils/api'
 import { useCacheStore } from '../store/cacheStore'
 import { Swiper, SwiperSlide } from 'swiper/react'
-import { FreeMode } from 'swiper/modules'
+import { EffectFade, FreeMode } from 'swiper/modules'
 import 'swiper/css'
 import 'swiper/css/free-mode'
 import { ArrowLeftIcon } from '@heroicons/react/24/solid'
@@ -164,8 +164,7 @@ const Home = () => {
         <Swiper
           modules={[FreeMode]}
           spaceBetween={16}
-          slidesPerView="auto"
-          freeMode={true}
+          slidesPerView={3}
         >
           {animeList.map((anime) => (
             <SwiperSlide key={anime.id} className="!w-40">
