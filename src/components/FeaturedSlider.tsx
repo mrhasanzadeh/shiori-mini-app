@@ -43,7 +43,7 @@ const FeaturedSlider = ({ animeList, loading }: FeaturedSliderProps) => {
 
   if (loading) {
     return (
-      <div className="w-full h-[600px] bg-black animate-pulse -mt-16">
+      <div className="w-full h-[600px] bg-slate-950 animate-pulse -mt-16">
         <div className="w-full h-full flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
         </div>
@@ -74,8 +74,8 @@ const FeaturedSlider = ({ animeList, loading }: FeaturedSliderProps) => {
                   src={anime.image}
                   alt={anime.title}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black from-20% via-black/80 via-40% to-transparent to-80% pointer-events-none" />
-                <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black to-transparent pointer-events-none" />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 from-20% via-slate-950/80 via-40% to-transparent to-80% pointer-events-none" />
+                <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-slate-950 to-transparent pointer-events-none" />
               </div>
               
               <div className="absolute bottom-0 left-0 right-0 p-8 z-10">
@@ -85,14 +85,14 @@ const FeaturedSlider = ({ animeList, loading }: FeaturedSliderProps) => {
                     {anime.genres?.slice(0, 3).map((genre) => (
                       <span
                         key={genre}
-                        className="px-3 py-1 bg-gray-800/80 text-white rounded-md text-sm"
+                        className="px-3 py-1 bg-slate-800/80 text-white rounded-md text-sm"
                       >
                         {genre}
                       </span>
                     ))}
-                    <span className='px-3 py-1 bg-gray-800/80 text-white rounded-md text-sm'>زیرنویس چسبیده</span>
+                    <span className='px-3 py-1 bg-slate-800/80 text-white rounded-md text-sm'>زیرنویس چسبیده</span>
                   </div>
-                  <p className="text-gray-200 mb-6 line-clamp-2 drop-shadow">
+                  <p className="text-slate-200 mb-6 line-clamp-2 drop-shadow">
                     {anime.description}
                   </p>
                   

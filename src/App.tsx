@@ -9,6 +9,7 @@ import Search from './pages/Search'
 import MyList from './pages/MyList'
 import ListDetail from './pages/ListDetail'
 import Profile from './pages/Profile'
+import Notifications from './pages/Notifications'
 import { useTheme } from './utils/theme'
 import { useTelegramApp } from './hooks/useTelegramApp'
 
@@ -42,6 +43,7 @@ function App() {
         <Route path="/my-list" element={<MyList />} />
         <Route path="/lists/:id" element={<ListDetail />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/notifications" element={<Notifications />} />
       </Routes>
     </Layout>
   )

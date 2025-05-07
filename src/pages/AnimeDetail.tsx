@@ -159,7 +159,7 @@ const AnimeDetail = () => {
   const renderSimilarTab = () => {
     if (loadingSimilar) {
       return (
-        <div className="flex items-center justify-center h-32 text-gray-400">
+        <div className="flex items-center justify-center h-32 text-slate-400">
           <div className="text-center">
             <ArrowPathIcon className="w-6 h-6 mx-auto mb-2 animate-spin" />
             <p className="text-sm">در حال بارگذاری آثار مشابه...</p>
@@ -170,7 +170,7 @@ const AnimeDetail = () => {
     
     if (similarAnime.length === 0) {
       return (
-        <div className="flex items-center justify-center h-32 text-gray-400">
+        <div className="flex items-center justify-center h-32 text-slate-400">
           <p className="text-sm">اثر مشابهی یافت نشد</p>
         </div>
       );
@@ -222,7 +222,7 @@ const AnimeDetail = () => {
     : anime.description
 
   return (
-    <div className="bg-black min-h-screen pb-20">
+    <div className="bg-slate-950 min-h-screen pb-20">
       {/* Header */}
       <div className="relative">
         {/* Banner image */}
@@ -232,14 +232,14 @@ const AnimeDetail = () => {
             alt="" 
             className="w-full h-full object-cover opacity-50"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black"></div>
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-slate-950"></div>
         </div>
         
         {/* Anime info overlay */}
         <div className="container pt-32 mx-auto px-4">
           <div className="flex relative z-10">
             {/* Anime poster */}
-            <div className="w-32 h-48 rounded-xl overflow-hidden border border-gray-700">
+            <div className="w-32 h-48 rounded-xl overflow-hidden border border-slate-700">
               <img 
                 src={anime.image} 
                 alt={anime.title} 
@@ -255,30 +255,30 @@ const AnimeDetail = () => {
                 {anime.genres.slice(0, 3).map((genre) => (
                   <span
                     key={genre}
-                    className="px-2 py-0.5 bg-gray-800/80 rounded-full text-xs text-gray-300"
+                    className="px-2 py-0.5 bg-slate-800/80 rounded-full text-xs text-slate-300"
                   >
                     {genre}
                   </span>
                 ))}
                 {anime.genres.length > 3 && (
-                  <span className="text-xs text-gray-400 px-1">+{anime.genres.length - 3}</span>
+                  <span className="text-xs text-slate-400 px-1">+{anime.genres.length - 3}</span>
                 )}
               </div>
               
               {/* Rating and action buttons in a single row */}
               <div className="flex items-center justify-between mt-3">
                 {/* Rating with badge style */}
-                <div className="flex items-center bg-gray-800/60 rounded-full px-3 py-1">
+                <div className="flex items-center bg-slate-800/60 rounded-full px-3 py-1">
                   <StarIcon className="w-4 h-4 text-yellow-400" />
                   <span className="text-sm text-white ms-1 font-medium">4.8</span>
-                  <span className="text-xs text-gray-400 ms-1">(88.5K)</span>
+                  <span className="text-xs text-slate-400 ms-1">(88.5K)</span>
                 </div>
                 
                 {/* Action buttons in a connected container */}
-                <div className="flex bg-gray-800/60 rounded-full">
+                <div className="flex bg-slate-800/60 rounded-full">
                   <button 
                     onClick={handleFavorite}
-                    className="p-2 rounded-full hover:bg-gray-700/70"
+                    className="p-2 rounded-full hover:bg-slate-700/70"
                     aria-label={isFavorite(anime.id) ? 'حذف از علاقه‌مندی‌ها' : 'افزودن به علاقه‌مندی‌ها'}
                   >
                     {isFavorite(anime.id) ? (
@@ -291,7 +291,7 @@ const AnimeDetail = () => {
                   <div className="relative">
                     <button 
                       onClick={() => setShowListSelector(!showListSelector)}
-                      className="p-2 rounded-full hover:bg-gray-700/70"
+                      className="p-2 rounded-full hover:bg-slate-700/70"
                       aria-label="افزودن به لیست"
                     >
                       <PlusIcon className="w-5 h-5 text-white" />
@@ -299,19 +299,19 @@ const AnimeDetail = () => {
                     
                     {/* List Selector Dropdown */}
                     {showListSelector && (
-                      <div className="absolute top-full mt-2 left-0 w-48 bg-gray-800 rounded-lg shadow-lg p-2 z-20">
+                      <div className="absolute top-full mt-2 left-0 w-48 bg-slate-800 rounded-lg shadow-lg p-2 z-20">
                         {lists.length > 0 ? (
                           lists.map(list => (
                             <button 
                               key={list.id}
                               onClick={() => handleAddToList(list.id)}
-                              className="w-full text-right px-3 py-2 text-sm text-white hover:bg-gray-700 rounded"
+                              className="w-full text-right px-3 py-2 text-sm text-white hover:bg-slate-700 rounded"
                             >
                               {list.title}
                             </button>
                           ))
                         ) : (
-                          <div className="text-center text-gray-400 py-2 text-sm">
+                          <div className="text-center text-slate-400 py-2 text-sm">
                             لیستی موجود نیست
                           </div>
                         )}
@@ -327,7 +327,7 @@ const AnimeDetail = () => {
       
       {/* Description */}
       <div className="container mx-auto px-4 mt-6">
-          <p className="text-gray-300 text-sm">
+          <p className="text-slate-300 text-sm">
             {truncatedDescription}
           </p>
           {shouldTruncate && (
@@ -342,11 +342,11 @@ const AnimeDetail = () => {
       
       {/* Tabs */}
       <div className="container mx-auto px-4 mt-4">
-        <div className="border-b border-gray-700">
+        <div className="border-b border-slate-700">
           <div className="flex">
             <button
               className={`py-2 px-4 text-sm font-medium ${
-                activeTab === 'info' ? 'text-primary-500 border-b border-primary-500' : 'text-gray-400'
+                activeTab === 'info' ? 'text-primary-500 border-b border-primary-500' : 'text-slate-400'
               }`}
               onClick={() => setActiveTab('info')}
             >
@@ -354,7 +354,7 @@ const AnimeDetail = () => {
             </button>
             <button
               className={`py-2 px-4 text-sm font-medium ${
-                activeTab === 'episodes' ? 'text-primary-500 border-b border-primary-500' : 'text-gray-400'
+                activeTab === 'episodes' ? 'text-primary-500 border-b border-primary-500' : 'text-slate-400'
               }`}
               onClick={() => setActiveTab('episodes')}
             >
@@ -362,7 +362,7 @@ const AnimeDetail = () => {
             </button>
             <button
               className={`py-2 px-4 text-sm font-medium ${
-                activeTab === 'similar' ? 'text-primary-500 border-b border-primary-500' : 'text-gray-400'
+                activeTab === 'similar' ? 'text-primary-500 border-b border-primary-500' : 'text-slate-400'
               }`}
               onClick={() => setActiveTab('similar')}
             >
@@ -378,12 +378,12 @@ const AnimeDetail = () => {
             <div className="space-y-4">
               <div className="flex flex-col gap-3">
                 <div className="flex items-start">
-                  <span className="text-gray-400 text-sm w-20">وضعیت:</span>
+                  <span className="text-slate-400 text-sm w-20">وضعیت:</span>
                   <span className="text-white text-sm">{anime.status}</span>
                 </div>
                 
                 <div className="flex items-start">
-                  <span className="text-gray-400 text-sm w-20">تعداد قسمت‌ها:</span>
+                  <span className="text-slate-400 text-sm w-20">تعداد قسمت‌ها:</span>
                   <span className="text-white text-sm">{anime.episodes.length} قسمت</span>
                 </div>
               </div>
@@ -396,7 +396,7 @@ const AnimeDetail = () => {
               {anime.episodes.map((episode) => (
                 <div
                   key={episode.id}
-                  className="flex items-center justify-between p-2 bg-gray-800 rounded-md"
+                  className="flex items-center justify-between p-2 bg-slate-800 rounded-md"
                 >
                   <span className="text-sm text-white">{episode.title}</span>
                   <div className="flex space-x-1">
@@ -407,7 +407,7 @@ const AnimeDetail = () => {
                       <PlayIcon className="w-4 h-4 text-white" />
                     </button>
                     <button 
-                      className="p-1.5 rounded-full bg-gray-700 hover:bg-gray-600"
+                      className="p-1.5 rounded-full bg-slate-700 hover:bg-slate-600"
                       aria-label={`دانلود ${episode.title}`}
                     >
                       <ArrowDownTrayIcon className="w-4 h-4 text-white" />

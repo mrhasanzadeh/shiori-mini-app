@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react'
-import { UserIcon, CogIcon } from '@heroicons/react/24/outline'
+import { UserIcon, CogIcon, BellIcon } from '@heroicons/react/24/outline'
+import { Link } from 'react-router-dom'
 import WebApp from '@twa-dev/sdk'
 
 const Profile = () => {
   const [userName, setUserName] = useState('کاربر')
   const [initials, setInitials] = useState('ک')
+  const [hasNewNotifications, setHasNewNotifications] = useState(true) // این مقدار باید از API گرفته شود
   
   useEffect(() => {
-    // دریافت اطلاعات کاربر از تلگرام (اگر موجود باشد)
+    // دریافت اطلاعات کاربر از تلگرام
     if (WebApp.initDataUnsafe?.user) {
       const user = WebApp.initDataUnsafe.user
       const name = user.first_name || 'کاربر'
@@ -24,10 +26,10 @@ const Profile = () => {
             {initials}
           </div>
           <div>
-            <h1 className="text-xl font-semibold text-gray-100">
+            <h1 className="text-xl font-semibold text-slate-100">
               {userName}
             </h1>
-            <p className="text-gray-400 text-sm mt-1">
+            <p className="text-slate-400 text-sm mt-1">
               خوش آمدید به شیوری
             </p>
           </div>
@@ -36,41 +38,43 @@ const Profile = () => {
       
       {/* منوی تنظیمات */}
       <div className="px-4 mt-4">
-        <div className="bg-gray-800 rounded-xl overflow-hidden">
-          <div className="p-4 border-b border-gray-700 flex items-center gap-3">
-            <CogIcon className="w-6 h-6 text-gray-400" />
-            <span className="text-gray-200">تنظیمات</span>
+        <div className="bg-slate-900 rounded-xl overflow-hidden">
+          <div className="p-4 border-b border-slate-800 flex items-center gap-3">
+            <CogIcon className="w-6 h-6 text-slate-400" />
+            <span className="text-slate-200">تنظیمات</span>
           </div>
           
-          <div className="p-4 flex justify-between items-center">
-            <span className="text-gray-300">حالت تاریک</span>
-            <label className="inline-flex items-center cursor-pointer">
-              <input type="checkbox" className="sr-only peer" defaultChecked={true} />
-              <div className="relative w-11 h-6 bg-gray-600 peer-focus:ring-2 peer-focus:ring-primary-500 rounded-full peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"></div>
-            </label>
-          </div>
-          
-          <div className="p-4 flex justify-between items-center border-t border-gray-700">
-            <span className="text-gray-300">اعلان‌ها</span>
-            <label className="inline-flex items-center cursor-pointer">
-              <input type="checkbox" className="sr-only peer" defaultChecked={true} />
-              <div className="relative w-11 h-6 bg-gray-600 peer-focus:ring-2 peer-focus:ring-primary-500 rounded-full peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"></div>
-            </label>
-          </div>
+          <Link 
+            to="/notifications" 
+            className="p-4 flex justify-between items-center hover:bg-slate-700/50 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <BellIcon className="w-5 h-5 text-slate-400" />
+              <span className="text-slate-300">اعلان‌ها</span>
+              {hasNewNotifications && (
+                <span className="px-2 py-0.5 bg-primary-500 text-white text-xs rounded-full">
+                  جدید
+                </span>
+              )}
+            </div>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+            </svg>
+          </Link>
         </div>
         
         {/* اطلاعات برنامه */}
-        <div className="bg-gray-800 rounded-xl overflow-hidden mt-4">
-          <div className="p-4 border-b border-gray-700 flex items-center gap-3">
-            <UserIcon className="w-6 h-6 text-gray-400" />
-            <span className="text-gray-200">درباره شیوری</span>
+        <div className="bg-slate-900 rounded-xl overflow-hidden mt-4">
+          <div className="p-4 border-b border-slate-800 flex items-center gap-3">
+            <UserIcon className="w-6 h-6 text-slate-400" />
+            <span className="text-slate-200">درباره شیوری</span>
           </div>
           
           <div className="p-4">
-            <p className="text-gray-400 text-sm leading-relaxed">
+            <p className="text-slate-400 text-sm leading-relaxed">
               شیوری یک مینی اپلیکیشن تلگرامی برای مدیریت و دنبال کردن انیمه‌های مورد علاقه شماست. با شیوری می‌توانید لیست انیمه‌های مورد علاقه خود را مدیریت کنید و برنامه پخش هفتگی آن‌ها را ببینید.
             </p>
-            <p className="text-gray-500 text-xs mt-4">
+            <p className="text-slate-500 text-xs mt-4">
               نسخه ۱.۰.۰
             </p>
           </div>

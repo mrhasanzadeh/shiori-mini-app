@@ -159,10 +159,10 @@ const Home = () => {
                     />
                   </div>
                   <div className="mt-3">
-                    <h3 className="text-sm font-medium line-clamp-1 text-gray-100">
+                    <h3 className="text-sm font-medium line-clamp-1 text-slate-100">
                       {anime.title}
                     </h3>
-                    <p className="text-xs text-gray-400 mt-[2px]">
+                    <p className="text-xs text-slate-400 mt-[2px]">
                       زیرنویس چسبیده | 1080p
                     </p>
                   </div>
@@ -183,7 +183,7 @@ const Home = () => {
         {sections.map((section) => (
           <div key={section.id} className="space-y-6 px-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-gray-100">
+              <h2 className="text-xl font-semibold text-slate-100">
                 {section.title}
               </h2>
               <div className="flex items-center gap-2 text-primary-500 hover:text-primary-600">

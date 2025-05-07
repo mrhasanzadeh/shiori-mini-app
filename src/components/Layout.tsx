@@ -26,8 +26,8 @@ const Layout = ({ children }: LayoutProps) => {
   const isAnimeDetailPage = location.pathname.includes('/anime/')
 
   return (
-    <div className="min-h-screen flex flex-col bg-black">
-      <header className={`fixed top-0 left-0 right-0 z-50 ${isAnimeDetailPage ? 'bg-transparent' : 'bg-gradient-to-b from-black/90 via-black/50 to-transparent'}`}>
+    <div className="min-h-screen flex flex-col bg-slate-950">
+      <header className={`fixed top-0 left-0 right-0 z-50 ${isAnimeDetailPage ? 'bg-transparent' : 'bg-gradient-to-b from-slate-950/90 via-slate-950/50 to-transparent'}`}>
         <div className="container py-4">
           <div className="flex items-center justify-between">
             <Link to="/" className="p-2 rounded-xl shadow-lg bg-primary-500 w-10 h-10 flex items-center justify-center">
@@ -52,13 +52,13 @@ const Layout = ({ children }: LayoutProps) => {
         {children}
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-gray-950 border-t border-gray-700 z-50">
+      <nav className="fixed bottom-0 left-0 right-0 bg-slate-950 border-t border-slate-700 z-50">
         <div className="container">
           <div className="flex justify-around py-4">
             <Link
               to="/"
               className={`flex flex-col items-center space-y-1 ${
-                isActive('/') ? 'text-primary-400' : 'text-gray-400'
+                isActive('/') ? 'text-primary-400' : 'text-slate-400'
               }`}
               aria-label="خانه"
             >
@@ -68,7 +68,7 @@ const Layout = ({ children }: LayoutProps) => {
             <Link
               to="/schedule"
               className={`flex flex-col items-center space-y-1 ${
-                isActive('/schedule') ? 'text-primary-400' : 'text-gray-400'
+                isActive('/schedule') ? 'text-primary-400' : 'text-slate-400'
               }`}
               aria-label="برنامه پخش"
             >
@@ -78,7 +78,7 @@ const Layout = ({ children }: LayoutProps) => {
             <Link
               to="/search"
               className={`flex flex-col items-center space-y-1 ${
-                isActive('/search') ? 'text-primary-400' : 'text-gray-400'
+                isActive('/search') ? 'text-primary-400' : 'text-slate-400'
               }`}
               aria-label="جستجو"
             >
@@ -88,7 +88,7 @@ const Layout = ({ children }: LayoutProps) => {
             <Link
               to="/my-list"
               className={`flex flex-col items-center space-y-1 ${
-                isActive('/my-list') ? 'text-primary-400' : 'text-gray-400'
+                isActive('/my-list') ? 'text-primary-400' : 'text-slate-400'
               }`}
               aria-label="لیست من"
             >
@@ -98,7 +98,7 @@ const Layout = ({ children }: LayoutProps) => {
             <Link
               to="/profile"
               className={`flex flex-col items-center space-y-1 ${
-                isActive('/profile') ? 'text-primary-400' : 'text-gray-400'
+                isActive('/profile') ? 'text-primary-400' : 'text-slate-400'
               }`}
               aria-label="پروفایل"
             >

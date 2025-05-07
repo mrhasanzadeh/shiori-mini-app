@@ -140,9 +140,9 @@ const Schedule = () => {
     <div className="card mx-4">
       <div className="flex items-center justify-between mb-4">
         <div>
-        <h1 className="text-lg font-medium text-gray-100">برنامه پخش هفتگی</h1>
+        <h1 className="text-lg font-medium text-slate-100">برنامه پخش هفتگی</h1>
           {currentSeason && (
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-slate-400">
               فصل {translateSeason(currentSeason)} {currentYear}
             </p>
           )}
@@ -159,7 +159,7 @@ const Schedule = () => {
               className={`p-2 rounded-lg text-sm whitespace-nowrap ${
                 activeDay === day
                   ? 'bg-primary-500 text-white'
-                  : 'text-gray-400'
+                  : 'text-slate-400'
               }`}
             >
               {day}
@@ -174,7 +174,7 @@ const Schedule = () => {
             <Link
               key={anime.id}
               to={`/anime/${anime.id}`}
-              className="flex bg-neutral-900 gap-4 p-2 rounded-lg"
+              className="flex bg-slate-900 gap-4 p-2 rounded-lg"
             >
               <img
                 src={anime.image}
@@ -183,14 +183,14 @@ const Schedule = () => {
                 loading="lazy"
               />
               <div className="flex-1 min-w-0 mt-1">
-                <h2 className="font-medium text text-gray-100 line-clamp-1">
+                <h2 className="font-medium text text-slate-100 line-clamp-1">
                   {anime.title}
                 </h2>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-sm text-primary-400">
                     {anime.episode}
                   </span>
-                  <span className="text-sm text-gray-400">
+                  <span className="text-sm text-slate-400">
                     ساعت: {anime.time}
                   </span>
                 </div>
@@ -199,7 +199,7 @@ const Schedule = () => {
             ))
           ) : (
             <div className="text-center py-8">
-              <p className="text-gray-500">برنامه‌ای برای این روز موجود نیست</p>
+              <p className="text-slate-500">برنامه‌ای برای این روز موجود نیست</p>
             </div>
           )}
         </div>
