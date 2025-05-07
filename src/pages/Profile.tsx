@@ -6,7 +6,7 @@ import WebApp from '@twa-dev/sdk'
 const Profile = () => {
   const [userName, setUserName] = useState('کاربر')
   const [initials, setInitials] = useState('ک')
-  const [hasNewNotifications, setHasNewNotifications] = useState(true) // این مقدار باید از API گرفته شود
+  const hasNewNotifications = true // این مقدار باید از API گرفته شود
   
   useEffect(() => {
     // دریافت اطلاعات کاربر از تلگرام

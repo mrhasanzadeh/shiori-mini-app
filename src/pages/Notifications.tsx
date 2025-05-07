@@ -10,6 +10,7 @@ interface Notification {
 }
 
 const Notifications = () => {
+  const [hasNewNotifications, setHasNewNotifications] = useState(true)
   const [notifications, setNotifications] = useState<Notification[]>([
     {
       id: 1,
@@ -41,6 +42,7 @@ const Notifications = () => {
         isRead: true
       }))
     )
+    setHasNewNotifications(false)
   }
 
   return (
@@ -48,7 +50,15 @@ const Notifications = () => {
       {/* Header */}
       <div className="sticky top-0 z-10 bg-slate-950/95 backdrop-blur-sm">
         <div className="px-4 py-4 flex items-center justify-between border-b border-slate-800">
+          <div className="flex items-center gap-2">
+            <BellIcon className="w-6 h-6 text-slate-400" />
             <h1 className="text-lg font-semibold text-white">اعلان‌ها</h1>
+            {hasNewNotifications && (
+              <span className="px-2 py-0.5 bg-primary-500 text-white text-xs rounded-full">
+                جدید
+              </span>
+            )}
+          </div>
           <button
             onClick={markAllAsRead}
             className="text-primary-500 text-sm hover:text-primary-400 transition-colors"
