@@ -164,7 +164,8 @@ const Home = () => {
         <Swiper
           modules={[FreeMode]}
           spaceBetween={16}
-          slidesPerView={3}
+          slidesPerView="auto"
+          freeMode={true}
         >
           {animeList.map((anime) => (
             <SwiperSlide key={anime.id} className="!w-40">
