@@ -64,8 +64,13 @@ const AnimeDetail = () => {
   const [activeTab, setActiveTab] = useState<TabType>('info')
   const [showFullDescription, setShowFullDescription] = useState(false)
   const [showListSelector, setShowListSelector] = useState(false)
-  const [similarAnime, setSimilarAnime] = useState<SimilarAnime[]>([])
+  const [similarAnime, setSimilarAnime] = useState<SimilarAnime[] | null>(null)
   const [loadingSimilar, setLoadingSimilar] = useState(false)
+
+  // Reset active tab when anime ID changes
+  useEffect(() => {
+    setActiveTab('info')
+  }, [id])
 
   const toPersianNumber = (num: number | string): string => {
     const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
@@ -126,6 +131,7 @@ const AnimeDetail = () => {
         setSimilarAnime(data);
       } catch (err) {
         console.error('Failed to load similar anime:', err);
+        setSimilarAnime([]);
       } finally {
         setLoadingSimilar(false)
       }
@@ -151,16 +157,13 @@ const AnimeDetail = () => {
   const renderSimilarTab = () => {
     if (loadingSimilar) {
       return (
-        <div className="flex items-center justify-center h-32 text-slate-400">
-          <div className="text-center">
-            <ArrowPathIcon className="w-6 h-6 mx-auto mb-2 animate-spin" />
-            <p className="text-sm">در حال بارگذاری آثار مشابه...</p>
-          </div>
+        <div className="flex items-center justify-center h-32">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-500"></div>
         </div>
       );
     }
     
-    if (similarAnime.length === 0) {
+    if (!similarAnime || similarAnime.length === 0) {
       return (
         <div className="flex items-center justify-center h-32 text-slate-400">
           <p className="text-sm">اثر مشابهی یافت نشد</p>
