@@ -309,7 +309,7 @@ const Search = () => {
     return (
       <div className="pb-24">
         {/* Search Input */}
-        <div className="sticky top-0 p-4 z-10">
+        <div className="p-4">
           <div className="relative w-full flex items-center gap-2 bg-slate-900 text-white rounded-lg pl-10 p-3">
             <MagnifyingGlassIcon className="w-6 h-6 text-slate-400" />
             <input
@@ -361,7 +361,7 @@ const Search = () => {
   return (
     <div className="pb-24">
       {/* Search Input */}
-      <div className="sticky top-0 p-4 z-10">
+      <div className="p-4">
         <div className="relative w-full flex items-center gap-2 bg-slate-900 text-white rounded-lg pl-10 p-3">
           <MagnifyingGlassIcon className="w-6 h-6 text-slate-400" />
           <input

@@ -16,6 +16,11 @@ interface AnimeDetails {
   status: string;
   genres: string[];
   episodes: Episode[];
+  studios: string[];
+  producers: string[];
+  season: string;
+  startDate: string;
+  endDate: string;
 }
 
 export const useAnime = () => {

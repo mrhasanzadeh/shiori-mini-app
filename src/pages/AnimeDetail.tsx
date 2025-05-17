@@ -1,18 +1,24 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { 
-  PlayIcon, 
   ArrowDownTrayIcon, 
   HeartIcon, 
   PlusIcon,
   StarIcon,
-  ArrowPathIcon
+  ArrowPathIcon,
+  ClockIcon,
+  FilmIcon,
+  BuildingOfficeIcon,
+  CalendarIcon,
+  CalendarDaysIcon,
+  CalendarIcon as CalendarEndIcon
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid'
 import { useAnime } from '../hooks/useAnime'
 import { useTelegramApp } from '../hooks/useTelegramApp'
 import { useCacheStore } from '../store/cacheStore'
 import { useListsStore } from './MyList'
+import { getSimilarAnime } from '../services/anilist'
 
 interface Episode {
   id: number
@@ -28,12 +34,20 @@ interface Anime {
   status: string
   genres: string[]
   episodes: Episode[]
+  studios: string[]
+  producers: string[]
+  season: string
+  startDate: string
+  endDate: string
 }
 
 interface SimilarAnime {
   id: number;
   title: string;
   image: string;
+  status: string;
+  genres: string[];
+  score?: number;
 }
 
 type TabType = 'info' | 'episodes' | 'similar'
@@ -52,6 +66,22 @@ const AnimeDetail = () => {
   const [showListSelector, setShowListSelector] = useState(false)
   const [similarAnime, setSimilarAnime] = useState<SimilarAnime[]>([])
   const [loadingSimilar, setLoadingSimilar] = useState(false)
+
+  const toPersianNumber = (num: number | string): string => {
+    const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+    return String(num).replace(/[0-9]/g, (w) => persianDigits[+w]);
+  };
+
+  const translateStatus = (status: string) => {
+    const statusMap: Record<string, string> = {
+      'RELEASING': 'در حال پخش',
+      'FINISHED': 'پایان یافته',
+      'NOT_YET_RELEASED': 'هنوز پخش نشده',
+      'CANCELLED': 'لغو شده',
+      'HIATUS': 'متوقف شده'
+    };
+    return statusMap[status] || status;
+  };
 
   useEffect(() => {
     const fetchAnime = async () => {
@@ -88,54 +118,16 @@ const AnimeDetail = () => {
   // Effect for loading similar anime when tab changes to 'similar'
   useEffect(() => {
     const fetchSimilarAnime = async () => {
-      if (activeTab !== 'similar' || !anime || similarAnime.length > 0) return
+      if (activeTab !== 'similar' || !anime) return
       
       try {
         setLoadingSimilar(true)
-        // این داده‌ها به صورت موقت هستند
-        // در حالت واقعی باید از API گرفته شوند
-        const mockSimilarAnime: SimilarAnime[] = [
-          {
-            id: 1,
-            title: 'Demon Slayer',
-            image: 'https://cdn.myanimelist.net/images/anime/1286/99889l.jpg'
-          },
-          {
-            id: 2,
-            title: 'Jujutsu Kaisen',
-            image: 'https://cdn.myanimelist.net/images/anime/1171/109222l.jpg'
-          },
-          {
-            id: 3,
-            title: 'Attack on Titan',
-            image: 'https://cdn.myanimelist.net/images/anime/10/47347l.jpg'
-          },
-          {
-            id: 4,
-            title: 'My Hero Academia',
-            image: 'https://cdn.myanimelist.net/images/anime/10/78745l.jpg'
-          },
-          {
-            id: 5,
-            title: 'One Punch Man',
-            image: 'https://cdn.myanimelist.net/images/anime/12/76049l.jpg'
-          },
-          {
-            id: 6,
-            title: 'Chainsaw Man',
-            image: 'https://cdn.myanimelist.net/images/anime/1806/126216l.jpg'
-          }
-        ];
-        
-        // شبیه‌سازی تأخیر شبکه
-        setTimeout(() => {
-          setSimilarAnime(mockSimilarAnime);
-          setLoadingSimilar(false);
-        }, 800);
-        
+        const data = await getSimilarAnime(anime.id);
+        setSimilarAnime(data);
       } catch (err) {
         console.error('Failed to load similar anime:', err);
-        setLoadingSimilar(false);
+      } finally {
+        setLoadingSimilar(false)
       }
     };
 
@@ -177,7 +169,7 @@ const AnimeDetail = () => {
     }
     
     return (
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         {similarAnime.map((anime) => (
           <Link 
             key={anime.id} 
@@ -191,8 +183,21 @@ const AnimeDetail = () => {
                 className="w-full h-full object-cover"
                 loading="lazy"
               />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent">
+                <div className="absolute bottom-0 left-0 right-0 p-2">
+                  <h3 className="text-sm text-white font-medium line-clamp-1">{anime.title}</h3>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-xs text-slate-300">{translateStatus(anime.status)}</span>
+                    {anime.score && (
+                      <div className="flex items-center gap-1">
+                        <StarIcon className="w-3 h-3 text-yellow-400" />
+                        <span className="text-xs text-slate-300">{toPersianNumber((anime.score / 10).toFixed(1))}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
-            <h3 className="mt-1 text-sm text-white line-clamp-1">{anime.title}</h3>
           </Link>
         ))}
       </div>
@@ -261,7 +266,7 @@ const AnimeDetail = () => {
                   </span>
                 ))}
                 {anime.genres.length > 3 && (
-                  <span className="text-xs text-slate-400 px-1">+{anime.genres.length - 3}</span>
+                  <span className="text-xs text-slate-400 px-1">+{toPersianNumber(anime.genres.length - 3)}</span>
                 )}
               </div>
               
@@ -270,8 +275,8 @@ const AnimeDetail = () => {
                 {/* Rating with badge style */}
                 <div className="flex items-center bg-slate-800/60 rounded-full px-3 py-1">
                   <StarIcon className="w-4 h-4 text-yellow-400" />
-                  <span className="text-sm text-white ms-1 font-medium">4.8</span>
-                  <span className="text-xs text-slate-400 ms-1">(88.5K)</span>
+                  <span className="text-sm text-white ms-1 font-medium">{toPersianNumber('4.8')}</span>
+                  <span className="text-xs text-slate-400 ms-1">({toPersianNumber('88.5')}K)</span>
                 </div>
                 
                 {/* Action buttons in a connected container */}
@@ -372,19 +377,64 @@ const AnimeDetail = () => {
         </div>
         
         {/* Tab Content */}
-        <div className="mt-4">
+        <div className='mt-4'>
           {/* Info Tab */}
           {activeTab === 'info' && (
             <div className="space-y-4">
-              <div className="flex flex-col gap-3">
-                <div className="flex items-start">
-                  <span className="text-slate-400 text-sm w-20">وضعیت:</span>
-                  <span className="text-white text-sm">{anime.status}</span>
+              <div className="flex flex-col">
+                <div className="flex justify-between items-center pb-4 border-b border-b-slate-800">
+                  <span className="text-slate-400 text-sm flex items-center gap-2">
+                    <ClockIcon className="w-5 h-5 text-primary-400" />
+                    وضعیت
+                  </span>
+                  <span className="text-white text-sm">{translateStatus(anime.status)}</span>
                 </div>
-                
-                <div className="flex items-start">
-                  <span className="text-slate-400 text-sm w-20">تعداد قسمت‌ها:</span>
-                  <span className="text-white text-sm">{anime.episodes.length} قسمت</span>
+                <div className="flex justify-between items-center py-4 border-b border-b-slate-800">
+                  <span className="text-slate-400 text-sm flex items-center gap-2">
+                    <FilmIcon className="w-5 h-5 text-primary-400" />
+                    تعداد قسمت‌ها
+                  </span>
+                  <span className="text-white text-sm">{toPersianNumber(anime.episodes.length)} قسمت</span>
+                </div>
+
+                <div className="flex justify-between items-center py-4 border-b border-b-slate-800">
+                  <span className="text-slate-400 text-sm flex items-center gap-2">
+                    <BuildingOfficeIcon className="w-5 h-5 text-primary-400" />
+                    استودیو
+                  </span>
+                  <div className="flex flex-wrap gap-1">
+                    {anime.studios?.map((studio, index) => (
+                      <span key={studio} className="text-white text-sm">
+                        {studio}{index < anime.studios.length - 1 ? '، ' : ''}
+                      </span>
+                    )) || <span className="text-white  text-sm">نامشخص</span>}
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-center py-4 border-b border-b-slate-800">
+                  <span className="text-slate-400 text-sm flex items-center gap-2">
+                    <CalendarIcon className="w-5 h-5 text-primary-400" />
+                    فصل پخش
+                  </span>
+                  <span className="text-white text-sm">{anime.season || 'نامشخص'}</span>
+                </div>
+
+                <div className="flex justify-between items-center py-4 border-b border-b-slate-800">
+                  <span className="text-slate-400 text-sm flex items-center gap-2">
+                    <CalendarDaysIcon className="w-5 h-5 text-primary-400" />
+                    تاریخ شروع
+                  </span>
+                  <span className="text-white text-sm">{anime.startDate || 'نامشخص'}</span>
+                </div>
+
+                <div className="flex justify-between items-center py-4">
+                  <span className="text-slate-400 text-sm flex items-center gap-2">
+                    <CalendarEndIcon className="w-5 h-5 text-primary-400" />
+                    تاریخ پایان
+                  </span>
+                  <span className="text-white text-sm">
+                    {anime.status === 'RELEASING' ? 'در حال پخش' : anime.status === 'NOT_YET_RELEASED' ? 'هنوز پخش نشده' : anime.endDate || 'نامشخص'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -396,23 +446,18 @@ const AnimeDetail = () => {
               {anime.episodes.map((episode) => (
                 <div
                   key={episode.id}
-                  className="flex items-center justify-between p-2 bg-slate-800 rounded-md"
+                  className="flex items-center justify-between p-3 bg-slate-900 rounded-md"
                 >
-                  <span className="text-sm text-white">{episode.title}</span>
-                  <div className="flex space-x-1">
-                    <button 
-                      className="p-1.5 rounded-full bg-primary-500 hover:bg-primary-600"
-                      aria-label={`پخش ${episode.title}`}
-                    >
-                      <PlayIcon className="w-4 h-4 text-white" />
-                    </button>
-                    <button 
-                      className="p-1.5 rounded-full bg-slate-700 hover:bg-slate-600"
-                      aria-label={`دانلود ${episode.title}`}
-                    >
-                      <ArrowDownTrayIcon className="w-4 h-4 text-white" />
-                    </button>
+                  <div className='flex flex-col gap-1'>
+                    <span className="text-sm text-white">قسمت {toPersianNumber(episode.number)}</span>
+                    <span className="text-xs text-slate-400">زیرنویس چسبیده | 1080p x265</span>
                   </div>
+                  <button 
+                    className="w-10 h-10 rounded-lg flex items-center justify-center bg-slate-800"
+                    aria-label={`دانلود قسمت ${toPersianNumber(episode.number)}`}
+                  >
+                    <ArrowDownTrayIcon className="w-5 h-5 text-white" />
+                  </button>
                 </div>
               ))}
             </div>

@@ -24,6 +24,11 @@ interface AnimeDetails {
     number: number;
     title: string;
   }>;
+  studios: string[];
+  producers: string[];
+  season: string;
+  startDate: string;
+  endDate: string;
 }
 
 interface Schedule {

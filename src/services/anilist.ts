@@ -1,6 +1,6 @@
 import { translateText, translateGenre } from "./translate";
 
-const ANILIST_API_URL = "https://graphql.anilist.co";
+const ANILIST_API_URL = "/api";
 
 const formatAnimeTitle = (title: string): string => {
   return title.replace(/Season\s+(\d+)/gi, "S$1");
@@ -32,6 +32,35 @@ interface AniListAnime {
       airingAt: number;
     }>;
   };
+  studios: {
+    edges: Array<{
+      node: {
+        name: string;
+      };
+      isMain: boolean;
+    }>;
+  };
+  staff: {
+    edges: Array<{
+      node: {
+        name: {
+          full: string;
+        };
+        primaryOccupations: string[];
+      };
+    }>;
+  };
+  season: string;
+  startDate: {
+    year: number;
+    month: number;
+    day: number;
+  };
+  endDate: {
+    year: number;
+    month: number;
+    day: number;
+  };
 }
 
 interface AniListResponse<T> {
@@ -47,6 +76,8 @@ const fetchAniList = async <T>(query: string, variables?: Record<string, any>): 
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",
+      "User-Agent": "Shiori Mini App",
+      "X-Requested-With": "XMLHttpRequest"
     },
     body: JSON.stringify({
       query,
@@ -86,12 +117,57 @@ export const getAnimeById = async (id: number) => {
             airingAt
           }
         }
+        studios {
+          edges {
+            node {
+              name
+            }
+            isMain
+          }
+        }
+        staff {
+          edges {
+            node {
+              name {
+                full
+              }
+              primaryOccupations
+            }
+          }
+        }
+        season
+        startDate {
+          year
+          month
+          day
+        }
+        endDate {
+          year
+          month
+          day
+        }
       }
     }
   `;
 
   const result = await fetchAniList<{ Media: AniListAnime }>(query, { id });
   const anime = result.Media;
+
+  const formatDate = (date: { year: number; month: number; day: number }) => {
+    if (!date.year) return '';
+    const persianDate = new Date(date.year, date.month - 1, date.day).toLocaleDateString('fa-IR');
+    return persianDate;
+  };
+
+  const getSeason = (season: string, year: number) => {
+    const seasons: Record<string, string> = {
+      'WINTER': 'زمستان',
+      'SPRING': 'بهار',
+      'SUMMER': 'تابستان',
+      'FALL': 'پاییز'
+    };
+    return `${seasons[season] || season} ${year.toString().replace(/[0-9]/g, (w) => ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'][+w])}`;
+  };
 
   return {
     id: anime.id,
@@ -106,7 +182,66 @@ export const getAnimeById = async (id: number) => {
         number: node.episode,
         title: `قسمت ${node.episode}`,
       })) || [],
+    studios: anime.studios?.edges
+      .filter(edge => edge.isMain)
+      .map(edge => edge.node.name) || [],
+    producers: anime.staff?.edges
+      .filter(edge => edge.node.primaryOccupations?.includes('Producer'))
+      .map(edge => edge.node.name.full) || [],
+    season: getSeason(anime.season, anime.startDate.year),
+    startDate: formatDate(anime.startDate),
+    endDate: formatDate(anime.endDate)
   };
+};
+
+export const getSimilarAnime = async (id: number) => {
+  const query = `
+    query ($id: Int) {
+      Media(id: $id, type: ANIME) {
+        recommendations(page: 1, perPage: 50) {
+          nodes {
+            mediaRecommendation {
+              id
+              title {
+                romaji
+                english
+              }
+              coverImage {
+                large
+                extraLarge
+              }
+              status
+              genres
+              averageScore
+            }
+          }
+        }
+      }
+    }
+  `;
+
+  const result = await fetchAniList<{ 
+    Media: { 
+      recommendations: { 
+        nodes: Array<{ 
+          mediaRecommendation: AniListAnime 
+        }> 
+      } 
+    } 
+  }>(query, { id });
+  
+  // Map recommended anime
+  const similarAnime = result.Media.recommendations.nodes
+    .map(node => ({
+      id: node.mediaRecommendation.id,
+      title: formatAnimeTitle(node.mediaRecommendation.title.english || node.mediaRecommendation.title.romaji),
+      image: node.mediaRecommendation.coverImage.extraLarge || node.mediaRecommendation.coverImage.large,
+      status: node.mediaRecommendation.status,
+      genres: node.mediaRecommendation.genres,
+      score: node.mediaRecommendation.averageScore
+    }));
+
+  return similarAnime;
 };
 
 export const getLatestAnime = async (page: number = 1, perPage: number = 10) => {
