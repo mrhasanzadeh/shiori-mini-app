@@ -1,6 +1,8 @@
 import { translateText, translateGenre } from "./translate";
 
-const ANILIST_API_URL = "/api";
+const ANILIST_API_URL = import.meta.env.PROD 
+  ? "https://graphql.anilist.co"
+  : "/api";
 
 const formatAnimeTitle = (title: string): string => {
   return title.replace(/Season\s+(\d+)/gi, "S$1");
@@ -77,7 +79,8 @@ const fetchAniList = async <T>(query: string, variables?: Record<string, any>): 
       "Content-Type": "application/json",
       Accept: "application/json",
       "User-Agent": "Shiori Mini App",
-      "X-Requested-With": "XMLHttpRequest"
+      "X-Requested-With": "XMLHttpRequest",
+      "Origin": window.location.origin
     },
     body: JSON.stringify({
       query,
