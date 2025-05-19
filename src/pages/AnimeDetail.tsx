@@ -5,7 +5,6 @@ import {
   HeartIcon, 
   PlusIcon,
   StarIcon,
-  ArrowPathIcon,
   ClockIcon,
   FilmIcon,
   BuildingOfficeIcon,
