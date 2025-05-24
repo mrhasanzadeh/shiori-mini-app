@@ -7,7 +7,7 @@ import { FreeMode } from 'swiper/modules'
 import 'swiper/css'
 import 'swiper/css/free-mode'
 import { ArrowLeftIcon } from '@heroicons/react/24/solid'
-import FeaturedGrid from '../components/FeaturedGrid'
+import FeaturedSlider from '../components/FeaturedSlider'
 import { Anime } from "../store/cacheStore"
 
 interface SliderSection {
@@ -202,7 +202,7 @@ const Home = () => {
 
   return (
     <div>
-      <FeaturedGrid animeList={featuredAnime} loading={featuredLoading} />
+      <FeaturedSlider animeList={featuredAnime} loading={featuredLoading} />
       
       <div className="space-y-8 mt-8 pb-24">
         {sections.map((section) => (
@@ -211,7 +211,7 @@ const Home = () => {
               <h2 className="text-xl font-semibold text-slate-100">
                 {section.title}
               </h2>
-              <div className="flex items-center gap-2 text-primary-500 hover:text-primary-600">
+              <div className="flex items-center gap-2 text-primary-400">
                 <Link
                   to={`/anime/${section.id}`}
                   className="text-sm transition-colors duration-200"

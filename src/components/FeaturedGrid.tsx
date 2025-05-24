@@ -52,7 +52,7 @@ const FeaturedGrid = ({ animeList, loading }: FeaturedGridProps) => {
               alt={anime.title}
               className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
               <div className="absolute bottom-0 left-0 right-0 p-3">
                 <div className="flex items-center gap-2 mb-2">
                   {anime.genres?.slice(0, 2).map((genre) => (

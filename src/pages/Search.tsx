@@ -19,11 +19,11 @@ const SearchSkeleton = () => (
     {[...Array(12)].map((_, i) => (
       <div key={i} className="card">
         <div className="relative aspect-[2/3] overflow-hidden">
-          <div className="w-full h-full bg-slate-800 animate-pulse" />
+          <div className="w-full h-full bg-white/15 animate-pulse" />
         </div>
         <div className="mt-3">
-          <div className="h-4 w-3/4 bg-slate-800 rounded animate-pulse" />
-          <div className="h-3 w-1/2 bg-slate-800 rounded animate-pulse mt-2" />
+          <div className="h-4 w-3/4 bg-white/15 rounded animate-pulse" />
+          <div className="h-3 w-1/2 bg-white/15 rounded animate-pulse mt-2" />
         </div>
       </div>
     ))}
@@ -310,7 +310,7 @@ const Search = () => {
       <div className="pb-24">
         {/* Search Input */}
         <div className="p-4">
-          <div className="relative w-full flex items-center gap-2 bg-slate-900 text-white rounded-lg pl-10 p-3">
+          <div className="relative w-full flex items-center gap-2 bg-white/10 text-white rounded-lg pl-10 p-3">
             <MagnifyingGlassIcon className="w-6 h-6 text-slate-400" />
             <input
               type="text"
@@ -324,7 +324,7 @@ const Search = () => {
 
         {/* Tabs */}
         <div className="mx-4 mb-2">
-          <div className="flex rounded-lg bg-slate-900 p-1">
+          <div className="flex rounded-lg bg-white/10 p-1">
             <button
               className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
                 activeTab === 'top100' ? 'bg-slate-700 text-white' : 'text-slate-400'
@@ -362,7 +362,7 @@ const Search = () => {
     <div className="pb-24">
       {/* Search Input */}
       <div className="p-4">
-        <div className="relative w-full flex items-center gap-2 bg-slate-900 text-white rounded-lg pl-10 p-3">
+        <div className="relative w-full flex items-center gap-2 bg-white/10 text-white rounded-lg pl-10 p-3">
           <MagnifyingGlassIcon className="w-6 h-6 text-slate-400" />
           <input
             type="text"
@@ -377,7 +377,7 @@ const Search = () => {
       {/* Tabs - Only show when no search is active */}
       {!debouncedSearchTerm && (
         <div className="mx-4 mb-2">
-          <div className="flex rounded-lg bg-slate-900 p-1">
+          <div className="flex rounded-lg bg-white/10 p-1">
             <button
               className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
                 activeTab === 'top100' ? 'bg-slate-700 text-white' : 'text-slate-400'

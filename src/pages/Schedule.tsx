@@ -212,7 +212,7 @@ const Schedule = () => {
             <Link
               key={anime.id}
               to={`/anime/${anime.id}`}
-              className="flex bg-slate-900 gap-4 p-2 rounded-lg"
+              className="flex bg-white/10 gap-4 p-2 rounded-lg"
             >
               <img
                 src={anime.image}

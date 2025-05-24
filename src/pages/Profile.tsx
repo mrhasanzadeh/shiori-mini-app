@@ -38,7 +38,7 @@ const Profile = () => {
       
       {/* منوی تنظیمات */}
       <div className="px-4 mt-4">
-        <div className="bg-slate-900 rounded-xl overflow-hidden">
+        <div className="bg-white/10 rounded-xl overflow-hidden">
           <div className="p-4 border-b border-slate-800 flex items-center gap-3">
             <CogIcon className="w-6 h-6 text-slate-400" />
             <span className="text-slate-200">تنظیمات</span>
@@ -64,7 +64,7 @@ const Profile = () => {
         </div>
         
         {/* اطلاعات برنامه */}
-        <div className="bg-slate-900 rounded-xl overflow-hidden mt-4">
+        <div className="bg-white/10 rounded-xl overflow-hidden mt-4">
           <div className="p-4 border-b border-slate-800 flex items-center gap-3">
             <UserIcon className="w-6 h-6 text-slate-400" />
             <span className="text-slate-200">درباره شیوری</span>

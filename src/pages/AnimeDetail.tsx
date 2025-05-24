@@ -185,7 +185,7 @@ const AnimeDetail = () => {
                 className="w-full h-full object-cover"
                 loading="lazy"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent">
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 to-transparent">
                 <div className="absolute bottom-0 left-0 right-0 p-2">
                   <h3 className="text-sm text-white font-medium line-clamp-1">{anime.title}</h3>
                   <div className="flex items-center gap-2 mt-1">
@@ -340,7 +340,7 @@ const AnimeDetail = () => {
           {shouldTruncate && (
             <button 
               onClick={() => setShowFullDescription(!showFullDescription)}
-              className="mt-1 text-primary-500 text-xs"
+              className="mt-1 text-primary-400 text-xs"
             >
               {showFullDescription ? 'نمایش کمتر' : 'نمایش بیشتر'}
             </button>
@@ -353,7 +353,7 @@ const AnimeDetail = () => {
           <div className="flex">
             <button
               className={`py-2 px-4 text-sm font-medium ${
-                activeTab === 'info' ? 'text-primary-500 border-b border-primary-500' : 'text-slate-400'
+                activeTab === 'info' ? 'text-primary-400 border-b border-primary-500' : 'text-slate-400'
               }`}
               onClick={() => setActiveTab('info')}
             >
@@ -448,7 +448,7 @@ const AnimeDetail = () => {
               {anime.episodes.map((episode) => (
                 <div
                   key={episode.id}
-                  className="flex items-center justify-between p-3 bg-slate-900 rounded-md"
+                  className="flex items-center justify-between p-3 bg-white/10 rounded-md"
                 >
                   <div className='flex flex-col gap-1'>
                     <span className="text-sm text-white">قسمت {toPersianNumber(episode.number)}</span>

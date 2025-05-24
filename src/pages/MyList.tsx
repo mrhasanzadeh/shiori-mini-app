@@ -7,6 +7,7 @@ import { Anime } from '../store/cacheStore'
 import { getAnimeById } from '../services/anilist'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import emptyListImage from '../assets/images/frieren-03.webp'
 
 // تعریف انواع داده برای لیست‌ها
 export interface ListItem {
@@ -220,14 +221,17 @@ const MyList = () => {
             {/* Empty state for favorites */}
             {favoriteAnime.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-[70vh] px-4">
-                <HeartIconSolid className="w-16 h-16 text-slate-700 mb-4" />
-                <h2 className="text-xl font-medium text-slate-300 mb-2">لیست مورد علاقه شما خالی است</h2>
-                <p className="text-slate-500 text-center mb-8">انیمه‌های مورد علاقه خود را با زدن روی دکمه قلب اضافه کنید</p>
+                <img src={emptyListImage} alt="empty-list" className="w-48 mb-4"/>
+                <h2 className="text-lg font-medium text-slate-300 mb-2">لیست مورد علاقه شما خالی است</h2>
+                <p className="text-slate-500 text-center mb-4 leading-7">
+                  با گشت‌وگذار در انیمه‌ها و زدن دکمه‌ی قلب، آثار
+                  <br />
+                مورد علاقه‌تان را به لیست خود اضافه کنید.
+                </p>
                 <Link 
-                  to="/" 
+                  to="/search" 
                   className="flex items-center justify-center gap-2 bg-primary-500 hover:bg-primary-600 text-white px-6 py-3 rounded-lg transition-colors duration-200"
                 >
-                  <PlusIcon className="w-5 h-5" />
                   مرور انیمه‌ها
                 </Link>
               </div>

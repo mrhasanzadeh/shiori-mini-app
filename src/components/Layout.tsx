@@ -83,7 +83,7 @@ const Layout = ({ children }: LayoutProps) => {
         {children}
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-slate-950 border-t border-slate-700 z-50">
+      <nav className="fixed bottom-0 left-0 right-0 bg-gray-950 border-t border-slate-700 z-50">
         <div className="container">
           <div className="flex justify-around py-4">
             <Link
