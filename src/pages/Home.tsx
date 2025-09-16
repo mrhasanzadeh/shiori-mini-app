@@ -3,11 +3,11 @@ import { Link } from 'react-router-dom'
 import { fetchAnimeList } from '../utils/api'
 import { useCacheStore } from '../store/cacheStore'
 import { Swiper, SwiperSlide } from 'swiper/react'
-import { FreeMode } from 'swiper/modules'
+import { FreeMode, Autoplay } from 'swiper/modules'
 import 'swiper/css'
 import 'swiper/css/free-mode'
 import { ArrowLeftIcon } from '@heroicons/react/24/solid'
-import FeaturedSlider from '../components/FeaturedSlider'
+// Removed full-screen FeaturedSlider in favor of compact hero card on Home
 import { Anime } from "../store/cacheStore"
 
 interface SliderSection {
@@ -49,6 +49,7 @@ const SkeletonSlider = () => (
 const Home = () => {
   const [loading, setLoading] = useState<Record<string, boolean>>({})
   const [error, setError] = useState<Record<string, string | null>>({})
+  const [selectedType, setSelectedType] = useState<'anime' | 'movie' | 'donghua'>('anime')
   
   const { 
     getAnimeBySection,
@@ -64,20 +65,18 @@ const Home = () => {
 
   useEffect(() => {
     const loadFeaturedAnime = async () => {
-      // Check if we have cached data
-      if (featuredAnime.length > 0) {
-        return
-      }
-
       try {
         setLoading(prev => ({ ...prev, featured: true }))
         setError(prev => ({ ...prev, featured: null }))
-        const data = await fetchAnimeList('latest')
+
+        // Map tabs to existing API sections. Donghua currently proxies to popular.
+        const sectionKey = selectedType === 'movie' ? 'movies' : selectedType === 'donghua' ? 'popular' : 'latest'
+        const data = await fetchAnimeList(sectionKey)
         setFeaturedAnime(data)
       } catch (err) {
         setError(prev => ({ 
           ...prev, 
-          featured: 'خطا در بارگذاری انیمه‌های ویژه' 
+          featured: 'خطا در بارگذاری پیشنهاد ویژه' 
         }))
         console.error('Failed to load featured anime:', err)
       } finally {
@@ -86,7 +85,7 @@ const Home = () => {
     }
 
     loadFeaturedAnime()
-  }, [])
+  }, [selectedType])
 
   const sections: SliderSection[] = [
     { 
@@ -202,8 +201,82 @@ const Home = () => {
 
   return (
     <div>
-      <FeaturedSlider animeList={featuredAnime} loading={featuredLoading} />
-      
+      {/* Top Tabs: Anime - Movie - Donghua */}
+      <div className="px-4 pt-4">
+        <div className="flex items-center gap-2 p-1 rounded-2xl w-full mx-auto border border-white/10 bg-slate-900/40 backdrop-blur-xl shadow-lg">
+          {[
+            { id: 'anime', label: 'انیمه' },
+            { id: 'movie', label: 'انیمه سینمایی' },
+            { id: 'donghua', label: 'دونگهوا' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setSelectedType(tab.id as 'anime' | 'movie' | 'donghua')}
+              className={`flex-1 text-center px-4 py-2.5 rounded-2xl  transition-all ${
+                selectedType === (tab.id as 'anime' | 'movie' | 'donghua')
+                  ? 'bg-primary-500/90 text-white shadow-md'
+                  : 'text-slate-200 hover:text-white hover:bg-white/5'
+              }`}
+              aria-pressed={selectedType === (tab.id as 'anime' | 'movie' | 'donghua')}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Compact Hero Carousel with peeking prev/next slides */}
+      <div className="mt-4">
+        {featuredLoading ? (
+          <div className="relative h-56 w-full rounded-2xl overflow-hidden bg-slate-800 animate-pulse" />
+        ) : featuredAnime.length > 0 ? (
+          <Swiper
+            modules={[Autoplay]}
+            centeredSlides={true}
+            loop={true}
+            autoplay={{ delay: 4500, disableOnInteraction: false }}
+            spaceBetween={12}
+            slidesPerView={1.2}
+            breakpoints={{
+              480: { slidesPerView: 1.15 },
+              640: { slidesPerView: 1.22 },
+              768: { slidesPerView: 1.3 },
+            }}
+            className="h-56"
+          >
+            {featuredAnime.slice(0, 8).map((anime) => (
+              <SwiperSlide key={anime.id} className="!h-full">
+                <Link to={`/anime/${anime.id}`} className="block group h-full">
+                  <div className="relative h-full w-full rounded-2xl overflow-hidden shadow-lg">
+                    <img
+                      src={anime.image}
+                      alt={anime.title}
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 -bottom-1 bg-gradient-to-t from-slate-950/90 via-slate-950/30 to-transparent" />
+                    <div className="absolute bottom-0 left-0 right-0 px-4 pb-2">
+                      <h2 className="text-lg font-bold text-white line-clamp-1 mb-1">{anime.title}</h2>
+                      <div className="flex items-center gap-2 mb-2">
+                        {(anime.genres || []).slice(0, 2).map((g) => (
+                          <span key={g} className="px-2 py-0.5 text-sm rounded-md bg-slate-800/80 text-slate-100">
+                            {g}
+                          </span>
+                        ))}
+                        <span className="px-2 py-0.5 text-sm rounded-md bg-slate-800/80 text-slate-100">زیرنویس چسبیده</span>
+                      </div>
+                      {/* <p className="text-slate-300 text-sm mt-1 line-clamp-2">{anime.description}</p> */}
+                    </div>
+                  </div>
+                </Link>
+              </SwiperSlide>
+            ))}
+          </Swiper>
+        ) : (
+          <div className="relative h-56 w-full rounded-2xl overflow-hidden bg-slate-800" />
+        )}
+      </div>
+
       <div className="space-y-8 mt-8 pb-24">
         {sections.map((section) => (
           <div key={section.id} className="space-y-6 px-4">
