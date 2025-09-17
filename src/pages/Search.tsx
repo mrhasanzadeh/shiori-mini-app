@@ -266,7 +266,7 @@ const Search = () => {
                       )}
                       
                       {/* Score label */}
-                      <div className="absolute bottom-0 left-0 m-1 px-2 py-1 bg-slate-950/70 text-yellow-400 text-xs font-bold rounded flex items-center">
+                      <div className="absolute bottom-0 left-0 m-1 px-2 py-1 bg-stone-950/70 text-yellow-400 text-xs font-bold rounded flex items-center">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3 mr-1">
                           <path fillRule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.007 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z" clipRule="evenodd" />
                         </svg>
@@ -278,7 +278,7 @@ const Search = () => {
                   )}
                 </div>
                 <div className="mt-3">
-                  <h3 className="text-sm font-medium line-clamp-1 text-slate-100">
+                  <h3 className="text-sm font-medium line-clamp-1 text-stone-100">
                     {anime.title}
                   </h3>
                 </div>
@@ -296,7 +296,7 @@ const Search = () => {
         
         {/* No more items indicator */}
         {!hasMore[activeTab] && currentData.length > 0 && (
-          <div className="text-center text-slate-400 py-4 text-sm">
+          <div className="text-center text-stone-400 py-4 text-sm">
             پایان نتایج
           </div>
         )}
@@ -311,7 +311,7 @@ const Search = () => {
         {/* Search Input */}
         <div className="p-4">
           <div className="relative w-full flex items-center gap-2 bg-white/10 text-white rounded-lg pl-10 p-3">
-            <MagnifyingGlassIcon className="w-6 h-6 text-slate-400" />
+            <MagnifyingGlassIcon className="w-6 h-6 text-stone-400" />
             <input
               type="text"
               value={searchTerm}
@@ -327,7 +327,7 @@ const Search = () => {
           <div className="flex rounded-lg bg-white/10 p-1">
             <button
               className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                activeTab === 'top100' ? 'bg-slate-700 text-white' : 'text-slate-400'
+                activeTab === 'top100' ? 'bg-stone-700 text-white' : 'text-stone-400'
               }`}
               onClick={() => setActiveTab('top100')}
             >
@@ -335,7 +335,7 @@ const Search = () => {
             </button>
             <button
               className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                activeTab === 'trending' ? 'bg-slate-700 text-white' : 'text-slate-400'
+                activeTab === 'trending' ? 'bg-stone-700 text-white' : 'text-stone-400'
               }`}
               onClick={() => setActiveTab('trending')}
             >
@@ -343,7 +343,7 @@ const Search = () => {
             </button>
             <button
               className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                activeTab === 'movies' ? 'bg-slate-700 text-white' : 'text-slate-400'
+                activeTab === 'movies' ? 'bg-stone-700 text-white' : 'text-stone-400'
               }`}
               onClick={() => setActiveTab('movies')}
             >
@@ -363,7 +363,7 @@ const Search = () => {
       {/* Search Input */}
       <div className="p-4">
         <div className="relative w-full flex items-center gap-2 bg-white/10 text-white rounded-lg pl-10 p-3">
-          <MagnifyingGlassIcon className="w-6 h-6 text-slate-400" />
+          <MagnifyingGlassIcon className="w-6 h-6 text-stone-400" />
           <input
             type="text"
             value={searchTerm}
@@ -380,7 +380,7 @@ const Search = () => {
           <div className="flex rounded-lg bg-white/10 p-1">
             <button
               className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                activeTab === 'top100' ? 'bg-slate-700 text-white' : 'text-slate-400'
+                activeTab === 'top100' ? 'bg-stone-700 text-white' : 'text-stone-400'
               }`}
               onClick={() => setActiveTab('top100')}
             >
@@ -388,7 +388,7 @@ const Search = () => {
             </button>
             <button
               className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                activeTab === 'trending' ? 'bg-slate-700 text-white' : 'text-slate-400'
+                activeTab === 'trending' ? 'bg-stone-700 text-white' : 'text-stone-400'
               }`}
               onClick={() => setActiveTab('trending')}
             >
@@ -396,7 +396,7 @@ const Search = () => {
             </button>
             <button
               className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                activeTab === 'movies' ? 'bg-slate-700 text-white' : 'text-slate-400'
+                activeTab === 'movies' ? 'bg-stone-700 text-white' : 'text-stone-400'
               }`}
               onClick={() => setActiveTab('movies')}
             >
@@ -440,7 +440,7 @@ const Search = () => {
                   />
                 </div>
                 <div className="mt-3">
-                  <h3 className="text-sm font-medium line-clamp-1 text-slate-100">
+                  <h3 className="text-sm font-medium line-clamp-1 text-stone-100">
                     {anime.title}
                   </h3>
                 </div>
@@ -452,7 +452,7 @@ const Search = () => {
 
       {/* No Results for Search */}
       {debouncedSearchTerm && !loading && !error && results.length === 0 && (
-        <div className="text-center text-slate-400 p-4">
+        <div className="text-center text-stone-400 p-4">
           نتیجه‌ای یافت نشد
         </div>
       )}

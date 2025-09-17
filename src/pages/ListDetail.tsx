@@ -49,23 +49,23 @@ const ListDetail = () => {
           >
             <ArrowLeftIcon className="w-5 h-5" />
           </button>
-          <h1 className="text-xl font-semibold text-slate-100">{list.title}</h1>
+          <h1 className="text-xl font-semibold text-stone-100">{list.title}</h1>
         </div>
         
-        <div className="bg-slate-800 rounded-xl p-4 mb-6">
+        <div className="bg-stone-800 rounded-xl p-4 mb-6">
           <div className="flex items-center gap-2">
             <input
               type="text"
               value={newItemText}
               onChange={(e) => setNewItemText(e.target.value)}
               placeholder="افزودن مورد جدید..."
-              className="flex-1 bg-slate-700 text-slate-100 rounded-lg px-4 py-3 border border-slate-600 focus:border-primary-500 focus:outline-none"
+              className="flex-1 bg-stone-700 text-stone-100 rounded-lg px-4 py-3 border border-stone-600 focus:border-primary-500 focus:outline-none"
               onKeyDown={(e) => e.key === 'Enter' && handleAddItem()}
             />
             <button
               onClick={handleAddItem}
               disabled={!newItemText.trim()}
-              className="bg-primary-500 hover:bg-primary-600 disabled:bg-slate-700 disabled:text-slate-500 text-white p-3 rounded-lg transition-colors"
+              className="bg-primary-500 hover:bg-primary-600 disabled:bg-stone-700 disabled:text-stone-500 text-white p-3 rounded-lg transition-colors"
             >
               <PlusIcon className="w-5 h-5" />
             </button>
@@ -74,14 +74,14 @@ const ListDetail = () => {
         
         {list.items.length === 0 ? (
           <div className="text-center py-8">
-            <p className="text-slate-500">هنوز موردی به این لیست اضافه نشده است</p>
+            <p className="text-stone-500">هنوز موردی به این لیست اضافه نشده است</p>
           </div>
         ) : (
           <div className="space-y-3">
             {list.items.map((item) => (
               <div 
                 key={item.id}
-                className="flex items-center justify-between bg-slate-800 rounded-xl p-4 border border-slate-700"
+                className="flex items-center justify-between bg-stone-800 rounded-xl p-4 border border-stone-700"
               >
                 <div className="flex items-center gap-3 flex-1">
                   <button
@@ -89,18 +89,18 @@ const ListDetail = () => {
                     className={`w-6 h-6 rounded-full flex items-center justify-center border ${
                       item.completed 
                         ? 'border-green-500 bg-green-500/20 text-green-500' 
-                        : 'border-slate-500 text-transparent'
+                        : 'border-stone-500 text-transparent'
                     }`}
                   >
                     {item.completed && <CheckCircleIcon className="w-5 h-5" />}
                   </button>
-                  <p className={`text-slate-100 ${item.completed ? 'line-through text-slate-500' : ''}`}>
+                  <p className={`text-stone-100 ${item.completed ? 'line-through text-stone-500' : ''}`}>
                     {item.text}
                   </p>
                 </div>
                 <button
                   onClick={() => removeItem(list.id, item.id)}
-                  className="p-2 text-slate-400 hover:text-red-500"
+                  className="p-2 text-stone-400 hover:text-red-500"
                 >
                   <TrashIcon className="w-5 h-5" />
                 </button>
@@ -121,16 +121,16 @@ const ListDetail = () => {
       
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-slate-950/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-xl p-5 w-full max-w-sm">
-            <h3 className="text-lg font-medium text-slate-100 mb-2">حذف لیست</h3>
-            <p className="text-slate-400 mb-4">
+        <div className="fixed inset-0 bg-stone-950/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-stone-800 rounded-xl p-5 w-full max-w-sm">
+            <h3 className="text-lg font-medium text-stone-100 mb-2">حذف لیست</h3>
+            <p className="text-stone-400 mb-4">
               آیا مطمئن هستید که می‌خواهید این لیست را حذف کنید؟ این عمل قابل بازگشت نیست.
             </p>
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
-                className="px-4 py-2 text-slate-300 hover:text-white"
+                className="px-4 py-2 text-stone-300 hover:text-white"
               >
                 انصراف
               </button>

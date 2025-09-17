@@ -37,7 +37,7 @@ const getCurrentPersianDay = (): PersianDay => {
 }
 
 // تبدیل نام فصل انگلیسی به فارسی
-const translateSeason = (season: string): string => {
+const transtoneSeason = (season: string): string => {
   switch(season) {
     case 'WINTER': return 'زمستان';
     case 'SPRING': return 'بهار';
@@ -52,8 +52,8 @@ const ScheduleSkeleton = () => (
   <div className="card mx-4">
     <div className="flex items-center justify-between mb-4">
       <div>
-        <h1 className="text-lg font-medium text-slate-100">برنامه پخش هفتگی</h1>
-        <div className="h-4 w-32 bg-slate-800 rounded animate-pulse mt-1" />
+        <h1 className="text-lg font-medium text-stone-100">برنامه پخش هفتگی</h1>
+        <div className="h-4 w-32 bg-stone-800 rounded animate-pulse mt-1" />
       </div>
     </div>
 
@@ -63,7 +63,7 @@ const ScheduleSkeleton = () => (
         {['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه', 'جمعه'].map((day) => (
           <button
             key={day}
-            className="p-2 rounded-lg text-sm whitespace-nowrap text-slate-400"
+            className="p-2 rounded-lg text-sm whitespace-nowrap text-stone-400"
           >
             {day}
           </button>
@@ -73,13 +73,13 @@ const ScheduleSkeleton = () => (
       {/* Anime List Skeleton */}
       <div className="space-y-2">
         {[...Array(5)].map((_, i) => (
-          <div key={i} className="flex bg-slate-900 gap-4 p-2 rounded-lg">
-            <div className="w-12 h-16 bg-slate-800 rounded animate-pulse" />
+          <div key={i} className="flex bg-stone-900 gap-4 p-2 rounded-lg">
+            <div className="w-12 h-16 bg-stone-800 rounded animate-pulse" />
             <div className="flex-1 min-w-0 mt-1">
-              <div className="h-5 w-3/4 bg-slate-800 rounded animate-pulse mb-2" />
+              <div className="h-5 w-3/4 bg-stone-800 rounded animate-pulse mb-2" />
               <div className="flex items-center gap-2">
-                <div className="h-4 w-20 bg-slate-800 rounded animate-pulse" />
-                <div className="h-4 w-24 bg-slate-800 rounded animate-pulse" />
+                <div className="h-4 w-20 bg-stone-800 rounded animate-pulse" />
+                <div className="h-4 w-24 bg-stone-800 rounded animate-pulse" />
               </div>
             </div>
           </div>
@@ -178,10 +178,10 @@ const Schedule = () => {
     <div className="card mx-4">
       <div className="flex items-center justify-between mb-4">
         <div>
-        <h1 className="text-lg font-medium text-slate-100">برنامه پخش هفتگی</h1>
+        <h1 className="text-lg font-medium text-stone-100">برنامه پخش هفتگی</h1>
           {currentSeason && (
-            <p className="text-sm text-slate-400">
-              فصل {translateSeason(currentSeason)} {currentYear}
+            <p className="text-sm text-stone-400">
+              فصل {transtoneSeason(currentSeason)} {currentYear}
             </p>
           )}
         </div>
@@ -197,7 +197,7 @@ const Schedule = () => {
               className={`p-2 rounded-lg text-sm whitespace-nowrap ${
                 activeDay === day
                   ? 'bg-primary-500 text-white'
-                  : 'text-slate-400'
+                  : 'text-stone-400'
               }`}
             >
               {day}
@@ -221,14 +221,14 @@ const Schedule = () => {
                 loading="lazy"
               />
               <div className="flex-1 min-w-0 mt-1">
-                <h2 className="font-medium text text-slate-100 line-clamp-1">
+                <h2 className="font-medium text text-stone-100 line-clamp-1">
                   {anime.title}
                 </h2>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-sm text-primary-400">
                     {anime.episode}
                   </span>
-                  <span className="text-sm text-slate-400">
+                  <span className="text-sm text-stone-400">
                     ساعت: {anime.time}
                   </span>
                 </div>
@@ -237,7 +237,7 @@ const Schedule = () => {
             ))
           ) : (
             <div className="text-center py-8">
-              <p className="text-slate-500">برنامه‌ای برای این روز موجود نیست</p>
+              <p className="text-stone-500">برنامه‌ای برای این روز موجود نیست</p>
             </div>
           )}
         </div>

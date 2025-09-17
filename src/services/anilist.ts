@@ -1,4 +1,4 @@
-import { translateText, translateGenre } from "./translate";
+import { transtoneText, transtoneGenre } from "./translate";
 
 const ANILIST_API_URL = import.meta.env.PROD 
   ? "https://graphql.anilist.co"
@@ -176,9 +176,9 @@ export const getAnimeById = async (id: number) => {
     id: anime.id,
     title: formatAnimeTitle(anime.title.english || anime.title.romaji),
     image: anime.coverImage.extraLarge || anime.coverImage.large,
-    description: await translateText(anime.description || ""),
+    description: await transtoneText(anime.description || ""),
     status: anime.status,
-    genres: (anime.genres || []).map(translateGenre),
+    genres: (anime.genres || []).map(transtoneGenre),
     episodes:
       anime.airingSchedule?.nodes.map((node) => ({
         id: node.episode,
@@ -297,9 +297,9 @@ export const getLatestAnime = async (page: number = 1, perPage: number = 10) => 
       id: anime.id,
       title: formatAnimeTitle(anime.title.english || anime.title.romaji),
       image: anime.coverImage.extraLarge,
-      description: await translateText(anime.description || ""),
+      description: await transtoneText(anime.description || ""),
       status: anime.status,
-      genres: (anime.genres || []).map(translateGenre),
+      genres: (anime.genres || []).map(transtoneGenre),
       episodes: anime.episodes,
       isNew: anime.nextAiringEpisode?.episode === 1,
       episode: anime.nextAiringEpisode ? `قسمت ${anime.nextAiringEpisode.episode}` : "قسمت ۱",
@@ -342,9 +342,9 @@ export const getPopularAnime = async (page: number = 1, perPage: number = 10) =>
       id: anime.id,
       title: formatAnimeTitle(anime.title.english || anime.title.romaji),
       image: anime.coverImage.extraLarge || anime.coverImage.large,
-      description: await translateText(anime.description || ""),
+      description: await transtoneText(anime.description || ""),
       status: anime.status,
-      genres: (anime.genres || []).map(translateGenre),
+      genres: (anime.genres || []).map(transtoneGenre),
       episodes: anime.episodes,
       isNew: anime.nextAiringEpisode?.episode === 1,
       episode: anime.nextAiringEpisode ? `قسمت ${anime.nextAiringEpisode.episode}` : "قسمت ۱",
@@ -387,9 +387,9 @@ export const getNewEpisodes = async (page: number = 1, perPage: number = 10) => 
       id: anime.id,
       title: formatAnimeTitle(anime.title.english || anime.title.romaji),
       image: anime.coverImage.extraLarge || anime.coverImage.large,
-      description: await translateText(anime.description || ""),
+      description: await transtoneText(anime.description || ""),
       status: anime.status,
-      genres: (anime.genres || []).map(translateGenre),
+      genres: (anime.genres || []).map(transtoneGenre),
       episodes: anime.episodes,
       isNew: anime.nextAiringEpisode?.episode === 1,
       episode: anime.nextAiringEpisode ? `قسمت ${anime.nextAiringEpisode.episode}` : "قسمت ۱",
@@ -432,9 +432,9 @@ export const getAnimeMovies = async (page: number = 1, perPage: number = 10) => 
       id: anime.id,
       title: formatAnimeTitle(anime.title.english || anime.title.romaji),
       image: anime.coverImage.extraLarge || anime.coverImage.large,
-      description: await translateText(anime.description || ""),
+      description: await transtoneText(anime.description || ""),
       status: anime.status,
-      genres: (anime.genres || []).map(translateGenre),
+      genres: (anime.genres || []).map(transtoneGenre),
       episodes: anime.episodes,
       isNew: anime.nextAiringEpisode?.episode === 1,
       episode: "فیلم",
@@ -667,9 +667,9 @@ export const searchAnime = async (search: string, page: number = 1, perPage: num
       id: anime.id,
       title: formatAnimeTitle(anime.title.english || anime.title.romaji),
       image: anime.coverImage.extraLarge || anime.coverImage.large,
-      description: await translateText(anime.description || ""),
+      description: await transtoneText(anime.description || ""),
       status: anime.status,
-      genres: (anime.genres || []).map(translateGenre),
+      genres: (anime.genres || []).map(transtoneGenre),
       episodes: anime.episodes,
       isNew: anime.nextAiringEpisode?.episode === 1,
       episode: anime.nextAiringEpisode ? `قسمت ${anime.nextAiringEpisode.episode}` : "قسمت ۱",
@@ -709,9 +709,9 @@ export const getTop100Anime = async (page: number = 1, perPage: number = 50) => 
       id: anime.id,
       title: formatAnimeTitle(anime.title.english || anime.title.romaji),
       image: anime.coverImage.extraLarge || anime.coverImage.large,
-      description: await translateText(anime.description || ""),
+      description: await transtoneText(anime.description || ""),
       status: anime.status,
-      genres: (anime.genres || []).map(translateGenre),
+      genres: (anime.genres || []).map(transtoneGenre),
       episodes: anime.episodes,
       averageScore: anime.averageScore,
     }))
@@ -749,9 +749,9 @@ export const getTrendingAnime = async (page: number = 1, perPage: number = 50) =
       id: anime.id,
       title: formatAnimeTitle(anime.title.english || anime.title.romaji),
       image: anime.coverImage.extraLarge || anime.coverImage.large,
-      description: await translateText(anime.description || ""),
+      description: await transtoneText(anime.description || ""),
       status: anime.status,
-      genres: (anime.genres || []).map(translateGenre),
+      genres: (anime.genres || []).map(transtoneGenre),
       episodes: anime.episodes,
     }))
   );
@@ -788,9 +788,9 @@ export const getTopMovies = async (page: number = 1, perPage: number = 50) => {
       id: anime.id,
       title: formatAnimeTitle(anime.title.english || anime.title.romaji),
       image: anime.coverImage.extraLarge || anime.coverImage.large,
-      description: await translateText(anime.description || ""),
+      description: await transtoneText(anime.description || ""),
       status: anime.status,
-      genres: (anime.genres || []).map(translateGenre),
+      genres: (anime.genres || []).map(transtoneGenre),
       episode: "فیلم",
     }))
   );

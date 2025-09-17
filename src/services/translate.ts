@@ -27,11 +27,11 @@ const GENRE_TRANSLATIONS: Record<string, string> = {
   Vampire: "خون‌آشامی",
 };
 
-export const translateGenre = (genre: string): string => {
+export const transtoneGenre = (genre: string): string => {
   return GENRE_TRANSLATIONS[genre] || genre;
 };
 
 // Simple pass-through function that returns the original text
-export const translateText = async (text: string): Promise<string> => {
+export const transtoneText = async (text: string): Promise<string> => {
   return text;
 };
