@@ -1,15 +1,15 @@
 import { ReactNode, useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { 
-  HomeIcon, 
-  CalendarIcon, 
-  MagnifyingGlassIcon,
+  Home01Icon, 
+  Calendar01Icon,
+  Search01Icon,
   UserIcon,
-  HeartIcon,
-  ArrowRightIcon,
-  Bars3Icon,
-  ArrowPathIcon
-} from '@heroicons/react/24/outline'
+  FavouriteIcon,
+  ArrowRight01Icon,
+  Menu01Icon,
+  RefreshIcon
+} from 'hugeicons-react'
 import logo from '../assets/images/shiori-logo.svg'
 
 interface LayoutProps {
@@ -37,13 +37,13 @@ const Layout = ({ children }: LayoutProps) => {
   const isAnimeDetailPage = location.pathname.includes('/anime/')
 
   return (
-    <div className="min-h-screen flex flex-col bg-stone-950">
+    <div className="min-h-screen flex flex-col bg-gray-950">
       <header className={`fixed top-0 left-0 right-0 z-50 transition-colors duration-200 ${
         isScrolled 
-          ? 'bg-stone-950' 
+          ? 'bg-gray-950' 
           : isAnimeDetailPage 
             ? 'bg-transparent' 
-            : 'bg-gradient-to-b from-stone-950/90 via-stone-950/60 to-transparent'
+            : 'bg-gradient-to-b from-gray-950/90 via-gray-950/60 to-transparent'
       }`}>
         <div className="container py-4">
           <div className="flex items-center justify-between">
@@ -51,7 +51,7 @@ const Layout = ({ children }: LayoutProps) => {
               className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors duration-200"
               aria-label="منو"
             >
-              <Bars3Icon className="w-6 h-6" />
+              <Menu01Icon className="w-6 h-6" />
             </button>
             
             <Link to="/" className="flex items-center justify-center gap-1 text-white">
@@ -64,7 +64,7 @@ const Layout = ({ children }: LayoutProps) => {
                 className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors duration-200"
                 aria-label="بارگذاری مجدد"
               >
-                <ArrowPathIcon className="w-6 h-6" />
+                <RefreshIcon className="w-6 h-6" />
               </button>
             ) : (
               <button 
@@ -72,7 +72,7 @@ const Layout = ({ children }: LayoutProps) => {
                 className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors duration-200"
                 aria-label="بازگشت"
               >
-                <ArrowRightIcon className="w-6 h-6" />
+                <ArrowRight01Icon className="w-6 h-6" />
               </button>
             )}
           </div>
@@ -83,53 +83,53 @@ const Layout = ({ children }: LayoutProps) => {
         {children}
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-gray-950 border-t border-stone-700 z-50">
+      <nav className="fixed bottom-0 left-0 right-0 bg-gray-950 z-50">
         <div className="container">
           <div className="flex justify-around py-4">
             <Link
               to="/"
               className={`flex flex-col items-center space-y-1 ${
-                isActive('/') ? 'text-primary-400' : 'text-stone-400'
+                isActive('/') ? 'text-primary-400' : 'text-gray-400'
               }`}
               aria-label="خانه"
             >
-              <HomeIcon className="w-6 h-6" />
+              <Home01Icon className="w-6 h-6" />
               <span className="text-xs">خانه</span>
             </Link>
             <Link
               to="/schedule"
               className={`flex flex-col items-center space-y-1 ${
-                isActive('/schedule') ? 'text-primary-400' : 'text-stone-400'
+                isActive('/schedule') ? 'text-primary-400' : 'text-gray-400'
               }`}
               aria-label="برنامه پخش"
             >
-              <CalendarIcon className="w-6 h-6" />
+              <Calendar01Icon className="w-6 h-6" />
               <span className="text-xs">برنامه پخش</span>
             </Link>
             <Link
               to="/search"
               className={`flex flex-col items-center space-y-1 ${
-                isActive('/search') ? 'text-primary-400' : 'text-stone-400'
+                isActive('/search') ? 'text-primary-400' : 'text-gray-400'
               }`}
               aria-label="جستجو"
             >
-              <MagnifyingGlassIcon className="w-6 h-6" />
+              <Search01Icon className="w-6 h-6" />
               <span className="text-xs">جستجو</span>
             </Link>
             <Link
               to="/my-list"
               className={`flex flex-col items-center space-y-1 ${
-                isActive('/my-list') ? 'text-primary-400' : 'text-stone-400'
+                isActive('/my-list') ? 'text-primary-400' : 'text-gray-400'
               }`}
               aria-label="لیست من"
             >
-              <HeartIcon className="w-6 h-6" />
+              <FavouriteIcon className="w-6 h-6" />
               <span className="text-xs">لیست من</span>
             </Link>
             <Link
               to="/profile"
               className={`flex flex-col items-center space-y-1 ${
-                isActive('/profile') ? 'text-primary-400' : 'text-stone-400'
+                isActive('/profile') ? 'text-primary-400' : 'text-gray-400'
               }`}
               aria-label="پروفایل"
             >

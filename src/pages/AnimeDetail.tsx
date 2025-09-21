@@ -1,18 +1,16 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { 
-  ArrowDownTrayIcon, 
-  HeartIcon, 
-  PlusIcon,
+  Download01Icon, 
+  FavouriteIcon, 
+  Add01Icon,
   StarIcon,
-  ClockIcon,
-  FilmIcon,
-  BuildingOfficeIcon,
-  CalendarIcon,
-  CalendarDaysIcon,
-  CalendarIcon as CalendarEndIcon
-} from '@heroicons/react/24/outline'
-import { HeartIcon as HeartIconSolid } from '@heroicons/react/24/solid'
+  Clock01Icon,
+  Video01Icon,
+  Building01Icon,
+  Calendar01Icon,
+  Calendar02Icon,
+} from 'hugeicons-react'
 import { useAnime } from '../hooks/useAnime'
 import { useTelegramApp } from '../hooks/useTelegramApp'
 import { useCacheStore } from '../store/cacheStore'
@@ -76,7 +74,7 @@ const AnimeDetail = () => {
     return String(num).replace(/[0-9]/g, (w) => persianDigits[+w]);
   };
 
-  const transtoneStatus = (status: string) => {
+  const trangrayStatus = (status: string) => {
     const statusMap: Record<string, string> = {
       'RELEASING': 'در حال پخش',
       'FINISHED': 'پایان یافته',
@@ -164,7 +162,7 @@ const AnimeDetail = () => {
     
     if (!similarAnime || similarAnime.length === 0) {
       return (
-        <div className="flex items-center justify-center h-32 text-stone-400">
+        <div className="flex items-center justify-center h-32 text-gray-400">
           <p className="text-sm">اثر مشابهی یافت نشد</p>
         </div>
       );
@@ -185,15 +183,15 @@ const AnimeDetail = () => {
                 className="w-full h-full object-cover"
                 loading="lazy"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-stone-950 to-transparent">
+              <div className="absolute inset-0 bg-gradient-to-t from-gray-950 to-transparent">
                 <div className="absolute bottom-0 left-0 right-0 p-2">
                   <h3 className="text-sm text-white font-medium line-clamp-1">{anime.title}</h3>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs text-stone-300">{transtoneStatus(anime.status)}</span>
+                    <span className="text-xs text-gray-300">{trangrayStatus(anime.status)}</span>
                     {anime.score && (
                       <div className="flex items-center gap-1">
                         <StarIcon className="w-3 h-3 text-yellow-400" />
-                        <span className="text-xs text-stone-300">{toPersianNumber((anime.score / 10).toFixed(1))}</span>
+                        <span className="text-xs text-gray-300">{toPersianNumber((anime.score / 10).toFixed(1))}</span>
                       </div>
                     )}
                   </div>
@@ -229,7 +227,7 @@ const AnimeDetail = () => {
     : anime.description
 
   return (
-    <div className="bg-stone-950 min-h-screen pb-20">
+    <div className="bg-gray-950 min-h-screen pb-20">
       {/* Header */}
       <div className="relative">
         {/* Banner image */}
@@ -239,14 +237,14 @@ const AnimeDetail = () => {
             alt="" 
             className="w-full h-full object-cover opacity-50"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-stone-950"></div>
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-gray-950"></div>
         </div>
         
         {/* Anime info overlay */}
         <div className="container pt-32 mx-auto px-4">
           <div className="flex relative z-10">
             {/* Anime poster */}
-            <div className="w-32 h-48 rounded-xl overflow-hidden border border-stone-700">
+            <div className="w-32 h-48 rounded-xl overflow-hidden border border-gray-700">
               <img 
                 src={anime.image} 
                 alt={anime.title} 
@@ -262,63 +260,63 @@ const AnimeDetail = () => {
                 {anime.genres.slice(0, 3).map((genre) => (
                   <span
                     key={genre}
-                    className="px-2 py-0.5 bg-stone-800/80 rounded-full text-xs text-stone-300"
+                    className="px-2 py-0.5 bg-gray-800/80 rounded-full text-xs text-gray-300"
                   >
                     {genre}
                   </span>
                 ))}
                 {anime.genres.length > 3 && (
-                  <span className="text-xs text-stone-400 px-1">+{toPersianNumber(anime.genres.length - 3)}</span>
+                  <span className="text-xs text-gray-400 px-1">+{toPersianNumber(anime.genres.length - 3)}</span>
                 )}
               </div>
               
               {/* Rating and action buttons in a single row */}
               <div className="flex items-center justify-between mt-3">
                 {/* Rating with badge style */}
-                <div className="flex items-center bg-stone-800/60 rounded-full px-3 py-1">
+                <div className="flex items-center bg-gray-800/60 rounded-full px-3 py-1">
                   <StarIcon className="w-4 h-4 text-yellow-400" />
                   <span className="text-sm text-white ms-1 font-medium">{toPersianNumber('4.8')}</span>
-                  <span className="text-xs text-stone-400 ms-1">({toPersianNumber('88.5')}K)</span>
+                  <span className="text-xs text-gray-400 ms-1">({toPersianNumber('88.5')}K)</span>
                 </div>
                 
                 {/* Action buttons in a connected container */}
-                <div className="flex bg-stone-800/60 rounded-full">
+                <div className="flex bg-gray-800/60 rounded-full">
                   <button 
                     onClick={handleFavorite}
-                    className="p-2 rounded-full hover:bg-stone-700/70"
+                    className="p-2 rounded-full hover:bg-gray-700/70"
                     aria-label={isFavorite(anime.id) ? 'حذف از علاقه‌مندی‌ها' : 'افزودن به علاقه‌مندی‌ها'}
                   >
                     {isFavorite(anime.id) ? (
-                      <HeartIconSolid className="w-5 h-5 text-red-500" />
+                      <FavouriteIcon className="w-5 h-5 text-red-500" />
                     ) : (
-                      <HeartIcon className="w-5 h-5 text-white" />
+                      <FavouriteIcon className="w-5 h-5 text-white" />
                     )}
                   </button>
                   
                   <div className="relative">
                     <button 
                       onClick={() => setShowListSelector(!showListSelector)}
-                      className="p-2 rounded-full hover:bg-stone-700/70"
+                      className="p-2 rounded-full hover:bg-gray-700/70"
                       aria-label="افزودن به لیست"
                     >
-                      <PlusIcon className="w-5 h-5 text-white" />
+                      <Add01Icon className="w-5 h-5 text-white" />
                     </button>
                     
                     {/* List Selector Dropdown */}
                     {showListSelector && (
-                      <div className="absolute top-full mt-2 left-0 w-48 bg-stone-800 rounded-lg shadow-lg p-2 z-20">
+                      <div className="absolute top-full mt-2 left-0 w-48 bg-gray-800 rounded-lg shadow-lg p-2 z-20">
                         {lists.length > 0 ? (
                           lists.map(list => (
                             <button 
                               key={list.id}
                               onClick={() => handleAddToList(list.id)}
-                              className="w-full text-right px-3 py-2 text-sm text-white hover:bg-stone-700 rounded"
+                              className="w-full text-right px-3 py-2 text-sm text-white hover:bg-gray-700 rounded"
                             >
                               {list.title}
                             </button>
                           ))
                         ) : (
-                          <div className="text-center text-stone-400 py-2 text-sm">
+                          <div className="text-center text-gray-400 py-2 text-sm">
                             لیستی موجود نیست
                           </div>
                         )}
@@ -334,7 +332,7 @@ const AnimeDetail = () => {
       
       {/* Description */}
       <div className="container mx-auto px-4 mt-6">
-          <p className="text-stone-300 text-sm">
+          <p className="text-gray-300 text-sm">
             {truncatedDescription}
           </p>
           {shouldTruncate && (
@@ -349,11 +347,11 @@ const AnimeDetail = () => {
       
       {/* Tabs */}
       <div className="container mx-auto px-4 mt-4">
-        <div className="border-b border-stone-700">
+        <div className="border-b border-gray-700">
           <div className="flex">
             <button
               className={`py-2 px-4 text-sm font-medium ${
-                activeTab === 'info' ? 'text-primary-400 border-b border-primary-500' : 'text-stone-400'
+                activeTab === 'info' ? 'text-primary-400 border-b border-primary-500' : 'text-gray-400'
               }`}
               onClick={() => setActiveTab('info')}
             >
@@ -361,7 +359,7 @@ const AnimeDetail = () => {
             </button>
             <button
               className={`py-2 px-4 text-sm font-medium ${
-                activeTab === 'episodes' ? 'text-primary-500 border-b border-primary-500' : 'text-stone-400'
+                activeTab === 'episodes' ? 'text-primary-500 border-b border-primary-500' : 'text-gray-400'
               }`}
               onClick={() => setActiveTab('episodes')}
             >
@@ -369,7 +367,7 @@ const AnimeDetail = () => {
             </button>
             <button
               className={`py-2 px-4 text-sm font-medium ${
-                activeTab === 'similar' ? 'text-primary-500 border-b border-primary-500' : 'text-stone-400'
+                activeTab === 'similar' ? 'text-primary-500 border-b border-primary-500' : 'text-gray-400'
               }`}
               onClick={() => setActiveTab('similar')}
             >
@@ -384,24 +382,24 @@ const AnimeDetail = () => {
           {activeTab === 'info' && (
             <div className="space-y-4">
               <div className="flex flex-col">
-                <div className="flex justify-between items-center pb-4 border-b border-b-stone-800">
-                  <span className="text-stone-400 text-sm flex items-center gap-2">
-                    <ClockIcon className="w-5 h-5 text-primary-400" />
+                <div className="flex justify-between items-center pb-4 border-b border-b-gray-800">
+                  <span className="text-gray-400 text-sm flex items-center gap-2">
+                    <Clock01Icon className="w-5 h-5 text-primary-400" />
                     وضعیت
                   </span>
-                  <span className="text-white text-sm">{transtoneStatus(anime.status)}</span>
+                  <span className="text-white text-sm">{trangrayStatus(anime.status)}</span>
                 </div>
-                <div className="flex justify-between items-center py-4 border-b border-b-stone-800">
-                  <span className="text-stone-400 text-sm flex items-center gap-2">
-                    <FilmIcon className="w-5 h-5 text-primary-400" />
+                <div className="flex justify-between items-center py-4 border-b border-b-gray-800">
+                  <span className="text-gray-400 text-sm flex items-center gap-2">
+                    <Video01Icon className="w-5 h-5 text-primary-400" />
                     تعداد قسمت‌ها
                   </span>
                   <span className="text-white text-sm">{toPersianNumber(anime.episodes.length)} قسمت</span>
                 </div>
 
-                <div className="flex justify-between items-center py-4 border-b border-b-stone-800">
-                  <span className="text-stone-400 text-sm flex items-center gap-2">
-                    <BuildingOfficeIcon className="w-5 h-5 text-primary-400" />
+                <div className="flex justify-between items-center py-4 border-b border-b-gray-800">
+                  <span className="text-gray-400 text-sm flex items-center gap-2">
+                    <Building01Icon className="w-5 h-5 text-primary-400" />
                     استودیو
                   </span>
                   <div className="flex flex-wrap gap-1">
@@ -413,25 +411,25 @@ const AnimeDetail = () => {
                   </div>
                 </div>
 
-                <div className="flex justify-between items-center py-4 border-b border-b-stone-800">
-                  <span className="text-stone-400 text-sm flex items-center gap-2">
-                    <CalendarIcon className="w-5 h-5 text-primary-400" />
+                <div className="flex justify-between items-center py-4 border-b border-b-gray-800">
+                  <span className="text-gray-400 text-sm flex items-center gap-2">
+                    <Calendar01Icon className="w-5 h-5 text-primary-400" />
                     فصل پخش
                   </span>
                   <span className="text-white text-sm">{anime.season || 'نامشخص'}</span>
                 </div>
 
-                <div className="flex justify-between items-center py-4 border-b border-b-stone-800">
-                  <span className="text-stone-400 text-sm flex items-center gap-2">
-                    <CalendarDaysIcon className="w-5 h-5 text-primary-400" />
+                <div className="flex justify-between items-center py-4 border-b border-b-gray-800">
+                  <span className="text-gray-400 text-sm flex items-center gap-2">
+                    <Calendar01Icon className="w-5 h-5 text-primary-400" />
                     تاریخ شروع
                   </span>
                   <span className="text-white text-sm">{anime.startDate || 'نامشخص'}</span>
                 </div>
 
                 <div className="flex justify-between items-center py-4">
-                  <span className="text-stone-400 text-sm flex items-center gap-2">
-                    <CalendarEndIcon className="w-5 h-5 text-primary-400" />
+                  <span className="text-gray-400 text-sm flex items-center gap-2">
+                    <Calendar02Icon className="w-5 h-5 text-primary-400" />
                     تاریخ پایان
                   </span>
                   <span className="text-white text-sm">
@@ -452,13 +450,13 @@ const AnimeDetail = () => {
                 >
                   <div className='flex flex-col gap-1'>
                     <span className="text-sm text-white">قسمت {toPersianNumber(episode.number)}</span>
-                    <span className="text-xs text-stone-400">زیرنویس چسبیده | 1080p x265</span>
+                    <span className="text-xs text-gray-400">زیرنویس چسبیده | 1080p x265</span>
                   </div>
                   <button 
-                    className="w-10 h-10 rounded-lg flex items-center justify-center bg-stone-800"
+                    className="w-10 h-10 rounded-lg flex items-center justify-center bg-gray-800"
                     aria-label={`دانلود قسمت ${toPersianNumber(episode.number)}`}
                   >
-                    <ArrowDownTrayIcon className="w-5 h-5 text-white" />
+                    <Download01Icon className="w-5 h-5 text-white" />
                   </button>
                 </div>
               ))}

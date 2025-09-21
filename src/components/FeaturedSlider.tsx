@@ -5,7 +5,7 @@ import { Autoplay, EffectFade } from 'swiper/modules';
 import type { Swiper as SwiperType } from 'swiper';
 import 'swiper/css';
 import 'swiper/css/effect-fade';
-import { PlayIcon } from '@heroicons/react/24/outline';
+import { PlayIcon } from 'hugeicons-react';
 
 interface Anime {
   id: number;
@@ -26,31 +26,31 @@ interface FeaturedSliderProps {
 // Skeleton Component for Featured Slider
 const FeaturedSkeleton = () => (
   <div className="relative w-full h-[600px] -mt-16">
-    <div className="w-full h-full bg-stone-950 animate-pulse">
+    <div className="w-full h-full bg-gray-950 animate-pulse">
       <div className="absolute inset-0">
-        <div className="w-full h-full bg-stone-800" />
-        <div className="absolute inset-0 bg-gradient-to-t from-stone-950 from-20% via-stone-950/80 via-40% to-transparent to-80% pointer-events-none" />
-        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-stone-950 to-transparent pointer-events-none" />
+        <div className="w-full h-full bg-gray-800" />
+        <div className="absolute inset-0 bg-gradient-to-t from-gray-950 from-20% via-gray-950/80 via-40% to-transparent to-80% pointer-events-none" />
+        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-gray-950 to-transparent pointer-events-none" />
       </div>
       
       <div className="absolute bottom-0 left-0 right-0 p-8 z-10">
         <div className="max-w-4xl mx-auto">
-          <div className="h-8 bg-stone-800 rounded-lg w-3/4 mb-4" />
+          <div className="h-8 bg-gray-800 rounded-lg w-3/4 mb-4" />
           <div className="flex items-center gap-2 mb-4">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="h-6 bg-stone-800 rounded-md w-20" />
+              <div key={i} className="h-6 bg-gray-800 rounded-md w-20" />
             ))}
           </div>
           <div className="space-y-2 mb-6">
-            <div className="h-4 bg-stone-800 rounded w-full" />
-            <div className="h-4 bg-stone-800 rounded w-2/3" />
+            <div className="h-4 bg-gray-800 rounded w-full" />
+            <div className="h-4 bg-gray-800 rounded w-2/3" />
           </div>
           
           <div className="flex flex-col items-center gap-6">
-            <div className="w-full h-12 bg-stone-800 rounded-lg" />
+            <div className="w-full h-12 bg-gray-800 rounded-lg" />
             <div className="flex items-center justify-center w-full max-w-[600px] gap-3">
               {[...Array(3)].map((_, i) => (
-                <div key={i} className="w-24 h-2 bg-stone-800 rounded-full" />
+                <div key={i} className="w-24 h-2 bg-gray-800 rounded-full" />
               ))}
             </div>
           </div>
@@ -106,8 +106,8 @@ const FeaturedSlider = ({ animeList, loading }: FeaturedSliderProps) => {
                   alt={anime.title}
                   className="w-full h-full object-cover"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-stone-950 from-20% via-stone-950/80 via-40% to-transparent to-80% pointer-events-none" />
-                <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-stone-950 to-transparent pointer-events-none" />
+                <div className="absolute inset-0 bg-gradient-to-t from-gray-950 from-20% via-gray-950/80 via-40% to-transparent to-80% pointer-events-none" />
+                <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-gray-950 to-transparent pointer-events-none" />
               </div>
               
               <div className="absolute bottom-0 left-0 right-0 p-8 z-10">
@@ -117,14 +117,14 @@ const FeaturedSlider = ({ animeList, loading }: FeaturedSliderProps) => {
                     {anime.genres?.slice(0, 3).map((genre) => (
                       <span
                         key={genre}
-                        className="px-3 py-1 bg-stone-800/80 text-white rounded-md text-sm"
+                        className="px-3 py-1 bg-gray-800/80 text-white rounded-md text-sm"
                       >
                         {genre}
                       </span>
                     ))}
-                    <span className='px-3 py-1 bg-stone-800/80 text-white rounded-md text-sm'>زیرنویس چسبیده</span>
+                    <span className='px-3 py-1 bg-gray-800/80 text-white rounded-md text-sm'>زیرنویس چسبیده</span>
                   </div>
-                  <p className="text-stone-200 mb-6 line-clamp-2 drop-shadow">
+                  <p className="text-gray-200 mb-6 line-clamp-2 drop-shadow">
                     {anime.description}
                   </p>
                   

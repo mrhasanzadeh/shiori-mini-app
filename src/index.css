@@ -8,7 +8,7 @@
   }
 
   body {
-    @apply bg-stone-950 text-stone-900;
+    @apply bg-gray-950 text-gray-900;
   }
 }
 

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { PlayIcon } from '@heroicons/react/24/outline';
+import { PlayIcon } from 'hugeicons-react';
 
 interface Anime {
   id: number;
@@ -22,10 +22,10 @@ const FeaturedSkeleton = () => (
   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
     {[...Array(8)].map((_, index) => (
       <div key={index} className="animate-pulse">
-        <div className="relative aspect-[16/9] overflow-hidden bg-stone-800 rounded-lg" />
+        <div className="relative aspect-[16/9] overflow-hidden bg-gray-800 rounded-lg" />
         <div className="mt-3">
-          <div className="h-4 bg-stone-800 rounded w-3/4" />
-          <div className="h-3 bg-stone-800 rounded w-1/2 mt-2" />
+          <div className="h-4 bg-gray-800 rounded w-3/4" />
+          <div className="h-3 bg-gray-800 rounded w-1/2 mt-2" />
         </div>
       </div>
     ))}
@@ -52,7 +52,7 @@ const FeaturedGrid = ({ animeList, loading }: FeaturedGridProps) => {
               alt={anime.title}
               className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-stone-950 via-stone-40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-gray-40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
               <div className="absolute bottom-0 left-0 right-0 p-3">
                 <div className="flex items-center gap-2 mb-2">
                   {anime.genres?.slice(0, 2).map((genre) => (
@@ -74,10 +74,10 @@ const FeaturedGrid = ({ animeList, loading }: FeaturedGridProps) => {
             </div>
           </div>
           <div className="mt-2">
-            <h3 className="text-sm font-medium line-clamp-1 text-stone-100 group-hover:text-primary-400 transition-colors duration-200">
+            <h3 className="text-sm font-medium line-clamp-1 text-gray-100 group-hover:text-primary-400 transition-colors duration-200">
               {anime.title}
             </h3>
-            <p className="text-xs text-stone-400 mt-1">
+            <p className="text-xs text-gray-400 mt-1">
               {anime.episode}
             </p>
           </div>

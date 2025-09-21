@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { MagnifyingGlassIcon } from '@heroicons/react/24/outline'
+import { Search01Icon } from 'hugeicons-react'
 import { searchAnime, getTop100Anime, getTrendingAnime, getTopMovies } from '../services/anilist'
 import { Anime } from '../store/cacheStore'
 
@@ -18,12 +18,11 @@ const SearchSkeleton = () => (
   <div className="grid grid-cols-3 gap-4 p-4 min-h-[600px]">
     {[...Array(12)].map((_, i) => (
       <div key={i} className="card">
-        <div className="relative aspect-[2/3] overflow-hidden">
-          <div className="w-full h-full bg-white/15 animate-pulse" />
+        <div className="relative aspect-[2/3] overflow-hidden rounded-lg">
+          <div className="w-full h-full bg-gray-900 animate-pulse" />
         </div>
         <div className="mt-3">
-          <div className="h-4 w-3/4 bg-white/15 rounded animate-pulse" />
-          <div className="h-3 w-1/2 bg-white/15 rounded animate-pulse mt-2" />
+          <div className="h-4 w-3/4 bg-gray-900 rounded animate-pulse" />
         </div>
       </div>
     ))}
@@ -247,7 +246,7 @@ const Search = () => {
               ref={index === currentData.length - 1 ? lastItemRef : null}
             >
               <div className="card">
-                <div className="relative aspect-[2/3] overflow-hidden">
+                <div className="relative aspect-[2/3] overflow-hidden rounded-lg border-2 border-white/10 !border-b-white/5">
                   <img
                     src={anime.image}
                     alt={anime.title}
@@ -266,7 +265,7 @@ const Search = () => {
                       )}
                       
                       {/* Score label */}
-                      <div className="absolute bottom-0 left-0 m-1 px-2 py-1 bg-stone-950/70 text-yellow-400 text-xs font-bold rounded flex items-center">
+                      <div className="absolute bottom-0 left-0 m-1 px-2 py-1 bg-gray-950/70 text-yellow-400 text-xs font-bold rounded flex items-center">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3 mr-1">
                           <path fillRule="evenodd" d="M10.788 3.21c.448-1.077 1.976-1.077 2.424 0l2.082 5.007 5.404.433c1.164.093 1.636 1.545.749 2.305l-4.117 3.527 1.257 5.273c.271 1.136-.964 2.033-1.96 1.425L12 18.354 7.373 21.18c-.996.608-2.231-.29-1.96-1.425l1.257-5.273-4.117-3.527c-.887-.76-.415-2.212.749-2.305l5.404-.433 2.082-5.006z" clipRule="evenodd" />
                         </svg>
@@ -278,7 +277,7 @@ const Search = () => {
                   )}
                 </div>
                 <div className="mt-3">
-                  <h3 className="text-sm font-medium line-clamp-1 text-stone-100">
+                  <h3 className="text-sm font-medium line-clamp-1 text-gray-100">
                     {anime.title}
                   </h3>
                 </div>
@@ -296,7 +295,7 @@ const Search = () => {
         
         {/* No more items indicator */}
         {!hasMore[activeTab] && currentData.length > 0 && (
-          <div className="text-center text-stone-400 py-4 text-sm">
+          <div className="text-center text-gray-400 py-4 text-sm">
             پایان نتایج
           </div>
         )}
@@ -310,8 +309,8 @@ const Search = () => {
       <div className="pb-24">
         {/* Search Input */}
         <div className="p-4">
-          <div className="relative w-full flex items-center gap-2 bg-white/10 text-white rounded-lg pl-10 p-3">
-            <MagnifyingGlassIcon className="w-6 h-6 text-stone-400" />
+          <div className="relative w-full flex items-center gap-2 bg-gray-900 border-white/10 text-white rounded-xl pl-10 p-3">
+            <Search01Icon className="w-6 h-6 text-gray-400" />
             <input
               type="text"
               value={searchTerm}
@@ -324,10 +323,10 @@ const Search = () => {
 
         {/* Tabs */}
         <div className="mx-4 mb-2">
-          <div className="flex rounded-lg bg-white/10 p-1">
+          <div className="flex rounded-lg  p-1 border-white/10 bg-gray-900/40 backdrop-blur-xl shadow-lg">
             <button
               className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                activeTab === 'top100' ? 'bg-stone-700 text-white' : 'text-stone-400'
+                activeTab === 'top100' ? 'bg-gray-700 text-white' : 'text-gray-400'
               }`}
               onClick={() => setActiveTab('top100')}
             >
@@ -335,7 +334,7 @@ const Search = () => {
             </button>
             <button
               className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                activeTab === 'trending' ? 'bg-stone-700 text-white' : 'text-stone-400'
+                activeTab === 'trending' ? 'bg-gray-700 text-white' : 'text-gray-400'
               }`}
               onClick={() => setActiveTab('trending')}
             >
@@ -343,7 +342,7 @@ const Search = () => {
             </button>
             <button
               className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                activeTab === 'movies' ? 'bg-stone-700 text-white' : 'text-stone-400'
+                activeTab === 'movies' ? 'bg-gray-700 text-white' : 'text-gray-400'
               }`}
               onClick={() => setActiveTab('movies')}
             >
@@ -362,8 +361,8 @@ const Search = () => {
     <div className="pb-24">
       {/* Search Input */}
       <div className="p-4">
-        <div className="relative w-full flex items-center gap-2 bg-white/10 text-white rounded-lg pl-10 p-3">
-          <MagnifyingGlassIcon className="w-6 h-6 text-stone-400" />
+        <div className="relative w-full flex items-center gap-2 bg-gray-900 border-white/10 text-white rounded-xl pl-10 p-3">
+          <Search01Icon className="w-6 h-6 text-gray-400" />
           <input
             type="text"
             value={searchTerm}
@@ -377,10 +376,10 @@ const Search = () => {
       {/* Tabs - Only show when no search is active */}
       {!debouncedSearchTerm && (
         <div className="mx-4 mb-2">
-          <div className="flex rounded-lg bg-white/10 p-1">
+           <div className="flex items-center gap-2 p-1 rounded-xl w-full mx-auto border border-white/10 bg-gray-900/40 backdrop-blur-xl shadow-lg">
             <button
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                activeTab === 'top100' ? 'bg-stone-700 text-white' : 'text-stone-400'
+              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors border border-transparent ${
+                activeTab === 'top100' ? 'bg-gray-900 border !border-white/10 text-white' : 'text-gray-400'
               }`}
               onClick={() => setActiveTab('top100')}
             >
@@ -388,7 +387,7 @@ const Search = () => {
             </button>
             <button
               className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                activeTab === 'trending' ? 'bg-stone-700 text-white' : 'text-stone-400'
+                activeTab === 'trending' ? 'bg-gray-900 border !border-white/10 text-white' : 'text-gray-400'
               }`}
               onClick={() => setActiveTab('trending')}
             >
@@ -396,7 +395,7 @@ const Search = () => {
             </button>
             <button
               className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                activeTab === 'movies' ? 'bg-stone-700 text-white' : 'text-stone-400'
+                activeTab === 'movies' ? 'bg-gray-900 border !border-white/10 text-white' : 'text-gray-400'
               }`}
               onClick={() => setActiveTab('movies')}
             >
@@ -431,7 +430,7 @@ const Search = () => {
               aria-label={`مشاهده ${anime.title}`}
             >
               <div className="card">
-                <div className="relative aspect-[2/3] overflow-hidden">
+                <div className="relative aspect-[2/3] overflow-hidden rounded-lg">
                   <img
                     src={anime.image}
                     alt={anime.title}
@@ -440,7 +439,7 @@ const Search = () => {
                   />
                 </div>
                 <div className="mt-3">
-                  <h3 className="text-sm font-medium line-clamp-1 text-stone-100">
+                  <h3 className="text-sm font-medium line-clamp-1 text-gray-100">
                     {anime.title}
                   </h3>
                 </div>
@@ -452,7 +451,7 @@ const Search = () => {
 
       {/* No Results for Search */}
       {debouncedSearchTerm && !loading && !error && results.length === 0 && (
-        <div className="text-center text-stone-400 p-4">
+        <div className="text-center text-gray-400 p-4">
           نتیجه‌ای یافت نشد
         </div>
       )}

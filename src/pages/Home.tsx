@@ -6,7 +6,7 @@ import { Swiper, SwiperSlide } from 'swiper/react'
 import { FreeMode, Autoplay } from 'swiper/modules'
 import 'swiper/css'
 import 'swiper/css/free-mode'
-import { ArrowLeftIcon } from '@heroicons/react/24/solid'
+import { ArrowLeft01Icon } from 'hugeicons-react'
 // Removed full-screen FeaturedSlider in favor of compact hero card on Home
 import { Anime } from "../store/cacheStore"
 
@@ -20,10 +20,10 @@ interface SliderSection {
 // Skeleton Card Component
 const SkeletonCard = () => (
   <div className="card animate-pulse">
-    <div className="relative aspect-[2/3] overflow-hidden bg-stone-800 rounded-lg" />
+    <div className="relative aspect-[2/3] overflow-hidden bg-gray-800 rounded-lg" />
     <div className="mt-3">
-      <div className="h-4 bg-stone-800 rounded w-3/4" />
-      <div className="h-3 bg-stone-800 rounded w-1/2 mt-2" />
+      <div className="h-4 bg-gray-800 rounded w-3/4" />
+      <div className="h-3 bg-gray-800 rounded w-1/2 mt-2" />
     </div>
   </div>
 )
@@ -174,7 +174,7 @@ const Home = () => {
                 aria-label={`مشاهده ${anime.title}`}
               >
                 <div className="card">
-                  <div className="relative aspect-[2/3] overflow-hidden">
+                  <div className="relative aspect-[2/3] overflow-hidden rounded-xl border-2 border-t-white/10 border-r-white/10 border-l-white/10 border-b-white/5">
                     <img
                       src={anime.image}
                       alt={anime.title}
@@ -183,10 +183,10 @@ const Home = () => {
                     />
                   </div>
                   <div className="mt-3">
-                    <h3 className="text-sm font-medium line-clamp-1 text-stone-100">
+                    <h3 className="text-sm font-medium line-clamp-1 text-gray-100">
                       {anime.title}
                     </h3>
-                    <p className="text-xs text-stone-400 mt-[2px]">
+                    <p className="text-xs text-gray-400 mt-[2px]">
                       زیرنویس چسبیده | 1080p
                     </p>
                   </div>
@@ -203,7 +203,7 @@ const Home = () => {
     <div>
       {/* Top Tabs: Anime - Movie - Donghua */}
       <div className="px-4 pt-4">
-        <div className="flex items-center gap-2 p-1 rounded-xl w-full mx-auto border border-white/10 bg-stone-900/40 backdrop-blur-xl shadow-lg">
+        <div className="flex items-center gap-2 p-1 rounded-xl w-full mx-auto border border-white/10 bg-gray-900/40 backdrop-blur-xl shadow-lg">
           {[
             { id: 'anime', label: 'انیمه' },
             { id: 'movie', label: 'انیمه سینمایی' },
@@ -214,8 +214,8 @@ const Home = () => {
               onClick={() => setSelectedType(tab.id as 'anime' | 'movie' | 'donghua')}
               className={`flex-1 text-center text-sm border border-transparent px-2 py-2 rounded-lg transition-all ${
                 selectedType === (tab.id as 'anime' | 'movie' | 'donghua')
-                  ? 'bg-stone-900 text-white font-medium shadow-md border !border-white/20'
-                  : 'text-stone-200 hover:text-white hover:bg-white/5'
+                  ? 'bg-gray-900 text-white font-medium shadow-md border !border-white/20'
+                  : 'text-gray-200 hover:text-white hover:bg-white/5'
               }`}
               aria-pressed={selectedType === (tab.id as 'anime' | 'movie' | 'donghua')}
             >
@@ -228,7 +228,7 @@ const Home = () => {
       {/* Compact Hero Carousel with peeking prev/next slides */}
       <div className="mt-4">
         {featuredLoading ? (
-          <div className="relative h-56 w-full rounded-2xl overflow-hidden bg-stone-800 animate-pulse" />
+          <div className="relative h-56 w-full rounded-2xl overflow-hidden bg-gray-900 animate-pulse" />
         ) : featuredAnime.length > 0 ? (
           <Swiper
             modules={[Autoplay]}
@@ -247,25 +247,25 @@ const Home = () => {
             {featuredAnime.slice(0, 8).map((anime) => (
               <SwiperSlide key={anime.id} className="!h-full">
                 <Link to={`/anime/${anime.id}`} className="block group h-full">
-                  <div className="relative h-full w-full rounded-2xl overflow-hidden shadow-lg border border-white/10">
+                  <div className="relative h-full w-full rounded-2xl overflow-hidden shadow-lg border-2 border-t-white/10 border-r-white/10 border-l-white/10 border-b-white/5">
                     <img
                       src={anime.image}
                       alt={anime.title}
                       className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                       loading="lazy"
                     />
-                    <div className="absolute h-1/2 -bottom-1 left-0 right-0 bg-gradient-to-t from-black/90 via-black/50" />
+                    <div className="absolute h-1/2 -bottom-1 left-0 right-0 bg-gradient-to-t from-gray-950 to-transparent" />
                     <div className="absolute bottom-0 left-0 right-0 px-4 pb-2">
                       <h2 className="text-lg font-bold text-white line-clamp-1 mb-1">{anime.title}</h2>
-                      <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center gap-1 mb-2">
                         {(anime.genres || []).slice(0, 2).map((g) => (
-                          <span key={g} className="px-2 py-0.5 text-sm rounded-md bg-stone-800/80 text-stone-100 border border-white/10">
+                          <span key={g} className="px-2 py-0.5 text-xs rounded-md bg-gray-800/80 text-gray-100 border border-white/10">
                             {g}
                           </span>
                         ))}
-                        <span className="px-2 py-0.5 text-sm rounded-md bg-stone-800/80 text-stone-100 border border-white/10">زیرنویس چسبیده</span>
+                        <span className="px-2 py-0.5 text-xs rounded-md bg-gray-800/80 text-gray-100 border border-white/10">زیرنویس چسبیده</span>
                       </div>
-                      {/* <p className="text-stone-300 text-sm mt-1 line-clamp-2">{anime.description}</p> */}
+                      {/* <p className="text-gray-300 text-sm mt-1 line-clamp-2">{anime.description}</p> */}
                     </div>
                   </div>
                 </Link>
@@ -273,7 +273,7 @@ const Home = () => {
             ))}
           </Swiper>
         ) : (
-          <div className="relative h-56 w-full rounded-2xl overflow-hidden bg-stone-800" />
+          <div className="relative h-56 w-full rounded-2xl overflow-hidden bg-gray-800" />
         )}
       </div>
 
@@ -281,7 +281,7 @@ const Home = () => {
         {sections.map((section) => (
           <div key={section.id} className="space-y-6 px-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-stone-100">
+              <h2 className="text-xl font-semibold text-gray-100">
                 {section.title}
               </h2>
               <div className="flex items-center gap-2 text-primary-400">
@@ -292,7 +292,7 @@ const Home = () => {
                 >
                   مشاهده همه
                 </Link>
-                <ArrowLeftIcon className="w-4 h-4" />
+                <ArrowLeft01Icon className="w-4 h-4" />
               </div>
             </div>
             {renderSlider(section)}
