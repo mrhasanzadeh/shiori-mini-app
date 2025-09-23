@@ -186,14 +186,14 @@ const Schedule = () => {
 
       <div className="space-y-4">
         {/* Days Tabs */}
-        <div className="flex justify-between overflow-x-auto bg-gray-900 rounded-lg border border-white/10 p-1">
+        <div className="flex justify-between overflow-x-auto bg-gray-900 rounded-lg border border-white/20">
           {days.map((day) => (
             <button
               key={day}
               onClick={() => setActiveDay(day)}
               className={`p-1 px-2 rounded-md text-xs whitespace-nowrap border border-transparent ${
                 activeDay === day
-                  ? 'bg-gray-800 border border-white/10 text-white font-medium'
+                  ? 'bg-gray-800 border border-white/20 text-white font-medium'
                   : 'text-gray-400'
               }`}
             >

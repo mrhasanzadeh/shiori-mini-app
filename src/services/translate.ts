@@ -25,6 +25,7 @@ const GENRE_TRANSLATIONS: Record<string, string> = {
   "Martial Arts": "هنرهای رزمی",
   Space: "فضایی",
   Vampire: "خون‌آشامی",
+  Ecchi: "اچی",
 };
 
 export const trangrayGenre = (genre: string): string => {

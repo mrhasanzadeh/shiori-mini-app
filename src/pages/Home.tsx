@@ -203,7 +203,7 @@ const Home = () => {
     <div>
       {/* Top Tabs: Anime - Movie - Donghua */}
       <div className="px-4 pt-4">
-        <div className="flex items-center gap-2 p-1 rounded-xl w-full mx-auto border border-white/10 bg-gray-900/40 backdrop-blur-xl shadow-lg">
+        <div className="flex items-center gap-2 p-1 rounded-xl w-full mx-auto border border-white/20 bg-gray-900/40 backdrop-blur-xl shadow-lg">
           {[
             { id: 'anime', label: 'انیمه' },
             { id: 'movie', label: 'انیمه سینمایی' },
@@ -247,7 +247,7 @@ const Home = () => {
             {featuredAnime.slice(0, 8).map((anime) => (
               <SwiperSlide key={anime.id} className="!h-full">
                 <Link to={`/anime/${anime.id}`} className="block group h-full">
-                  <div className="relative h-full w-full rounded-2xl overflow-hidden shadow-lg border-2 border-t-white/10 border-r-white/10 border-l-white/10 border-b-white/5">
+                  <div className="relative h-full w-full rounded-2xl overflow-hidden shadow-lg border-2 border-white/20 !border-b-white/10">
                     <img
                       src={anime.image}
                       alt={anime.title}
@@ -258,12 +258,11 @@ const Home = () => {
                     <div className="absolute bottom-0 left-0 right-0 px-4 pb-2">
                       <h2 className="text-lg font-bold text-white line-clamp-1 mb-1">{anime.title}</h2>
                       <div className="flex items-center gap-1 mb-2">
-                        {(anime.genres || []).slice(0, 2).map((g) => (
+                        {(anime.genres || []).slice(0, 4).map((g) => (
                           <span key={g} className="px-2 py-0.5 text-xs rounded-md bg-gray-800/80 text-gray-100 border border-white/10">
                             {g}
                           </span>
                         ))}
-                        <span className="px-2 py-0.5 text-xs rounded-md bg-gray-800/80 text-gray-100 border border-white/10">زیرنویس چسبیده</span>
                       </div>
                       {/* <p className="text-gray-300 text-sm mt-1 line-clamp-2">{anime.description}</p> */}
                     </div>
