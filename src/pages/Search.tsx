@@ -4,6 +4,8 @@ import { Search01Icon } from 'hugeicons-react'
 import { searchAnime } from '../services/anilist'
 import { Anime } from '../store/cacheStore'
 import shioriLogo from '../assets/images/shiori-logo.svg'
+import emptyListImage from '../assets/images/frieren-03.webp'
+
 
 type EmptyStateProps = {
   image?: string
@@ -14,7 +16,7 @@ type EmptyStateProps = {
 const EmptyState = ({ image, title, subtitle }: EmptyStateProps) => (
   <div className="flex flex-col items-center justify-center text-center gap-3 py-12 px-6 h-[55vh]">
     {image && (
-      <img src={image} alt="empty" className="w-28 h-28 opacity-80 select-none pointer-events-none" />
+       <img src={emptyListImage} alt="empty-list" className="w-48"/>
     )}
     <h2 className="text-base font-semibold text-gray-100">{title}</h2>
     {subtitle && (
@@ -69,7 +71,7 @@ const Search = () => {
   return (
     <div className="pb-24">
       {/* Search Input */}
-      <div className="p-4">
+      <div className="p-4 pb-2">
         <div className="relative w-full flex items-center gap-2 border bg-gray-900 border-white/10 text-white rounded-xl pl-10 p-3">
           <Search01Icon className="w-6 h-6 text-gray-400" />
           <input
@@ -98,7 +100,7 @@ const Search = () => {
 
       {/* Search Results */}
       {debouncedSearchTerm && !loading && !error && results.length > 0 && (
-        <div className="grid grid-cols-3 gap-4 p-4">
+        <div className="grid grid-cols-3 gap-3 p-4">
           {results.map((anime) => (
             <Link
               key={anime.id}
@@ -107,7 +109,7 @@ const Search = () => {
               aria-label={`مشاهده ${anime.title}`}
             >
               <div className="card">
-                <div className="relative aspect-[2/3] overflow-hidden rounded-lg">
+                <div className="relative aspect-[2/3] overflow-hidden rounded-lg border-2 border-t-white/10 border-r-white/10 border-l-white/10 border-b-white/5">
                   <img
                     src={anime.image}
                     alt={anime.title}

@@ -468,6 +468,7 @@ export const getSchedule = async () => {
           seasonYear: $year
         ) {
           id
+          isAdult
           title {
             romaji
             english
@@ -476,6 +477,7 @@ export const getSchedule = async () => {
             large
             extraLarge
           }
+          genres
           nextAiringEpisode {
             episode
             airingAt
@@ -491,11 +493,14 @@ export const getSchedule = async () => {
   });
   const animeList = await Promise.all(
     result.Page.media
+      // Exclude adult and hentai-genre shows
+      .filter(anime => !anime.isAdult && !(anime.genres || []).some(g => g?.toLowerCase() === 'hentai'))
       .filter(anime => anime.nextAiringEpisode?.airingAt)
       .map(async (anime) => ({
         id: anime.id,
         title: formatAnimeTitle(anime.title.english || anime.title.romaji),
         image: anime.coverImage.extraLarge || anime.coverImage.large,
+        genres: (anime.genres || []).map(trangrayGenre),
         episode: `قسمت ${anime.nextAiringEpisode?.episode}`,
         time: new Date(anime.nextAiringEpisode!.airingAt * 1000).toLocaleTimeString("fa-IR", {
           hour: "2-digit",
@@ -575,6 +580,7 @@ export const getSchedule = async () => {
         Page(perPage: 150) {
           media(type: ANIME, status: RELEASING, sort: POPULARITY_DESC) {
             id
+            isAdult
             title {
               romaji
               english
@@ -583,6 +589,7 @@ export const getSchedule = async () => {
               large
               extraLarge
             }
+            genres
             nextAiringEpisode {
               episode
               airingAt
@@ -595,11 +602,14 @@ export const getSchedule = async () => {
     const fallbackResult = await fetchAniList<{ Page: { media: AniListAnime[] } }>(fallbackQuery);
     const fallbackList = await Promise.all(
       fallbackResult.Page.media
+        // Exclude adult and hentai-genre shows
+        .filter(anime => !anime.isAdult && !(anime.genres || []).some(g => g?.toLowerCase() === 'hentai'))
         .filter(anime => anime.nextAiringEpisode?.airingAt)
         .map(async (anime) => ({
           id: anime.id,
           title: formatAnimeTitle(anime.title.english || anime.title.romaji),
           image: anime.coverImage.extraLarge || anime.coverImage.large,
+          genres: (anime.genres || []).map(trangrayGenre),
           episode: `قسمت ${anime.nextAiringEpisode?.episode}`,
           time: new Date(anime.nextAiringEpisode!.airingAt * 1000).toLocaleTimeString("fa-IR", {
             hour: "2-digit",

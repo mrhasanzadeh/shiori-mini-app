@@ -174,12 +174,17 @@ const Schedule = () => {
 
   const days = Object.keys(fullSchedule) as PersianDay[]
 
+  const toPersianNumber = (num: number | string): string => {
+    const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+    return String(num).replace(/[0-9]/g, (w) => persianDigits[+w]);
+  };
+
   return (
     <div className="card mx-4">
       <div className="flex items-center justify-between mb-4">
         <div>
           {currentSeason && (
-        <h1 className="text-lg font-medium text-gray-100"> فصل {trangraySeason(currentSeason)} {currentYear}</h1>
+        <h1 className="text-lg font-medium text-gray-100"> فصل {trangraySeason(currentSeason)} {toPersianNumber(currentYear)}</h1>
           )}
         </div>
       </div>
@@ -204,12 +209,19 @@ const Schedule = () => {
 
         {/* Anime List for Active Day */}
         <div className="space-y-2">
-          {fullSchedule[activeDay]?.length > 0 ? (
-            fullSchedule[activeDay].map((anime) => (
+          {(() => {
+            const safeList = fullSchedule[activeDay] || []
+            const filteredList = safeList.filter((anime) => {
+              const genres = anime.genres || []
+              return !genres.some((g) => g.toLowerCase() === 'hentai')
+            })
+            return filteredList.length > 0
+              ? (
+                filteredList.map((anime) => (
             <Link
               key={anime.id}
               to={`/anime/${anime.id}`}
-              className="flex bg-gray-900 gap-4 p-2 rounded-lg"
+              className="flex bg-gray-900 border shadow-inner border-white/10 gap-4 p-1 rounded-lg"
             >
               <img
                 src={anime.image}
@@ -217,26 +229,28 @@ const Schedule = () => {
                 className="w-12 h-16 object-cover rounded"
                 loading="lazy"
               />
-              <div className="flex-1 min-w-0 mt-1">
-                <h2 className="font-medium text text-gray-100 line-clamp-1">
+              <div className="flex-1 min-w-0 mt-2">
+                <h2 className="font-medium text-gray-100 line-clamp-1">
                   {anime.title}
                 </h2>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-sm text-primary-400">
-                    {anime.episode}
+                    {toPersianNumber(anime.episode)}
                   </span>
+                  <span className='text-gray-500'>|</span>
                   <span className="text-sm text-gray-400">
                     ساعت: {anime.time}
                   </span>
                 </div>
               </div>
             </Link>
-            ))
-          ) : (
-            <div className="text-center py-8">
-              <p className="text-gray-500">برنامه‌ای برای این روز موجود نیست</p>
-            </div>
-          )}
+                ))
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">برنامه‌ای برای این روز موجود نیست</p>
+                </div>
+              )
+          })()}
         </div>
       </div>
     </div>

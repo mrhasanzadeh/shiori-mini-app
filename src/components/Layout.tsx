@@ -47,13 +47,6 @@ const Layout = ({ children }: LayoutProps) => {
       }`}>
         <div className="container py-4">
           <div className="flex items-center justify-between">
-          <button 
-              className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors duration-200"
-              aria-label="منو"
-            >
-              <Menu01Icon className="w-6 h-6" />
-            </button>
-            
             <Link to="/" className="flex items-center justify-center gap-1 text-white">
               <img src={logo} alt="logo" className='w-6 h-6' />
             <span className='text-white text-xl font-bold'>شیوری</span>

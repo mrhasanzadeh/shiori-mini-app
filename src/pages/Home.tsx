@@ -57,7 +57,8 @@ const Home = () => {
     setPopularAnime,
     setNewEpisodes,
     setMovies,
-    setFeaturedAnime
+    setFeaturedAnime,
+    getSchedule
   } = useCacheStore()
 
   const featuredAnime = getAnimeBySection('featured')
@@ -87,10 +88,37 @@ const Home = () => {
     loadFeaturedAnime()
   }, [selectedType])
 
+  // Build dynamic current season/year title (prefer cache from schedule)
+  const toPersianNumber = (num: number | string): string => {
+    const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹']
+    return String(num).replace(/[0-9]/g, (w) => persianDigits[+w])
+  }
+
+  const translateSeason = (season: string): string => {
+    switch (season) {
+      case 'WINTER': return 'زمستان'
+      case 'SPRING': return 'بهار'
+      case 'SUMMER': return 'تابستان'
+      case 'FALL': return 'پاییز'
+      default: return season
+    }
+  }
+
+  const scheduleInfo = getSchedule()
+  const fallbackSeason = (() => {
+    const month = new Date().getMonth()
+    if (month >= 0 && month < 3) return 'WINTER'
+    if (month >= 3 && month < 6) return 'SPRING'
+    if (month >= 6 && month < 9) return 'SUMMER'
+    return 'FALL'
+  })()
+  const currentSeasonFa = translateSeason(scheduleInfo.currentSeason || fallbackSeason)
+  const currentYearFa = toPersianNumber((scheduleInfo.currentYear || new Date().getFullYear()).toString())
+
   const sections: SliderSection[] = [
     { 
       id: 'latest', 
-      title: 'بهار ۲۰۲۵',
+      title: ` ${currentSeasonFa} ${currentYearFa}`,
       fetchData: () => fetchAnimeList('latest'),
       setCache: setLatestAnime
     },

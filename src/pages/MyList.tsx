@@ -188,26 +188,30 @@ const MyList = () => {
 
   return (
     <div className="pb-24">
-      {/* Tabs Header */}
-      <div className="bg-gray-950 shadow">
-        <div className="container flex border-b border-gray-700">
+      {/* Tabs Header - match Home segmented tabs */}
+      <div className="px-4 pt-4">
+      <div className="flex items-center gap-2 p-1 rounded-xl w-full mx-auto border border-white/20 bg-gray-900/40 backdrop-blur-xl shadow-lg">
           <button
             onClick={() => setActiveTab('favorites')}
-            className={`flex items-center gap-2 px-4 py-3 font-medium text-sm ${
-              activeTab === 'favorites' ? 'text-primary-400 border-b-2 border-primary-400' : 'text-gray-400'
+            className={`flex-1 text-center text-sm border border-transparent p-1 py-2 rounded-lg transition-all ${
+              activeTab === 'favorites'
+                ? 'bg-gray-900 text-white font-medium shadow-md border !border-white/20'
+                : 'text-gray-200 hover:text-white hover:bg-white/5'
             }`}
+            aria-pressed={activeTab === 'favorites'}
           >
-            <FavouriteIcon className="w-5 h-5" />
-            <span>علاقه‌مندی‌ها</span>
+              علاقه‌مندی‌ها
           </button>
           <button
             onClick={() => setActiveTab('lists')}
-            className={`flex items-center gap-2 px-4 py-3 font-medium text-sm ${
-              activeTab === 'lists' ? 'text-primary-400 border-b-2 border-primary-400' : 'text-gray-400'
+            className={`flex-1 text-center border border-transparent p-1 py-2 rounded-lg transition-all ${
+              activeTab === 'lists'
+                ? 'bg-gray-900 text-white font-medium shadow-md border !border-white/20'
+                : 'text-gray-200 hover:text-white hover:bg-white/5'
             }`}
+            aria-pressed={activeTab === 'lists'}
           >
-            <ListViewIcon className="w-5 h-5" />
-            <span>لیست‌ها</span>
+              لیست‌ها
           </button>
         </div>
       </div>
@@ -229,7 +233,7 @@ const MyList = () => {
                 </p>
                 <Link 
                   to="/search" 
-                  className="flex items-center justify-center gap-2 bg-primary-500 hover:bg-primary-600 text-white px-6 py-3 rounded-lg transition-colors duration-200"
+                  className="flex items-center justify-center gap-2 bg-gray-800 hover:bg-primary-600 text-white px-12 py-3 rounded-lg transition-colors duration-200"
                 >
                   مرور انیمه‌ها
                 </Link>
