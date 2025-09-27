@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { UserIcon, Settings01Icon, AlarmClockIcon } from 'hugeicons-react'
 import { Link } from 'react-router-dom'
 import WebApp from '@twa-dev/sdk'
 

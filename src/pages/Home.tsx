@@ -231,7 +231,7 @@ const Home = () => {
     <div>
       {/* Top Tabs: Anime - Movie - Donghua */}
       <div className="px-4 pt-4">
-        <div className="flex items-center gap-2 p-1 rounded-xl w-full mx-auto border border-white/20 bg-gray-900/40 backdrop-blur-xl shadow-lg">
+        <div className="flex items-center gap-2 rounded-xl w-full mx-auto border border-white/20 bg-gray-900/40 backdrop-blur-xl shadow-lg">
           {[
             { id: 'anime', label: 'انیمه' },
             { id: 'movie', label: 'انیمه سینمایی' },
@@ -240,7 +240,7 @@ const Home = () => {
             <button
               key={tab.id}
               onClick={() => setSelectedType(tab.id as 'anime' | 'movie' | 'donghua')}
-              className={`flex-1 text-center text-sm border border-transparent px-2 py-2 rounded-lg transition-all ${
+              className={`flex-1 text-center text-sm border border-transparent p-2 rounded-lg transition-all ${
                 selectedType === (tab.id as 'anime' | 'movie' | 'donghua')
                   ? 'bg-gray-900 text-white font-medium shadow-md border !border-white/20'
                   : 'text-gray-200 hover:text-white hover:bg-white/5'

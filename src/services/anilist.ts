@@ -72,7 +72,7 @@ interface AniListResponse<T> {
   }>;
 }
 
-const fetchAniList = async <T>(query: string, variables?: Record<string, any>): Promise<T> => {
+const fetchAniList = async <T>(query: string, variables?: Record<string, unknown>): Promise<T> => {
   const response = await fetch(ANILIST_API_URL, {
     method: "POST",
     headers: {

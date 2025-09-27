@@ -128,7 +128,7 @@ const Schedule = () => {
         // اگر برنامه‌ای وجود نداشت یا داده‌ها خالی بود
         if (!data.schedule || Object.values(data.schedule).every(arr => arr.length === 0)) {
           setSchedule({
-            schedule: emptySchedule as any,
+            schedule: emptySchedule,
             currentSeason: data.currentSeason,
             currentYear: data.currentYear
           })
@@ -170,7 +170,7 @@ const Schedule = () => {
   }
 
   // Ensure we have data for all days
-  const fullSchedule = cachedScheduleInfo?.schedule as unknown as ScheduleData || emptySchedule;
+  const fullSchedule = cachedScheduleInfo?.schedule || emptySchedule;
 
   const days = Object.keys(fullSchedule) as PersianDay[]
 

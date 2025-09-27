@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAnimeStore } from '../store/animeStore'
+import { useCacheStore } from '../store/cacheStore'
 import { Add01Icon, FavouriteIcon, ListViewIcon } from 'hugeicons-react'
 import { Anime } from '../store/cacheStore'
 import { getAnimeById } from '../services/anilist'
@@ -111,6 +112,11 @@ const MyList = () => {
   
   // State for Favorites tab
   const { favoriteAnime } = useAnimeStore()
+  const { 
+    getFavoriteAnimeDetails, 
+    setFavoriteAnimeDetails: cacheFavoriteAnimeDetails, 
+    clearFavoriteAnimeDetails 
+  } = useCacheStore()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [favoriteAnimeDetails, setFavoriteAnimeDetails] = useState<Anime[]>([])
@@ -135,6 +141,7 @@ const MyList = () => {
     }
   }, [favoriteAnime, activeTab])
   
+  
   const loadFavoriteAnime = async () => {
     if (favoriteAnime.length === 0) {
       setFavoriteAnimeDetails([])
@@ -145,10 +152,31 @@ const MyList = () => {
       setLoading(true)
       setError(null)
       
-      const animeDetails = await Promise.all(
-        favoriteAnime.map(async (id) => {
+      // Check cache first
+      const cachedAnime: Anime[] = []
+      const missingIds: number[] = []
+      
+      favoriteAnime.forEach(id => {
+        const cached = getFavoriteAnimeDetails(id)
+        if (cached) {
+          cachedAnime.push(cached)
+        } else {
+          missingIds.push(id)
+        }
+      })
+      
+      // If all anime are cached, use cached data
+      if (missingIds.length === 0) {
+        setFavoriteAnimeDetails(cachedAnime)
+        setLoading(false)
+        return
+      }
+      
+      // Fetch missing anime details
+      const newAnimeDetails = await Promise.all(
+        missingIds.map(async (id) => {
           const details = await getAnimeById(id)
-          return {
+          const animeData = {
             id: details.id,
             title: details.title,
             image: details.image,
@@ -156,10 +184,16 @@ const MyList = () => {
             genres: details.genres,
             description: details.description
           } as Anime
+          
+          // Cache the result
+          cacheFavoriteAnimeDetails(id, animeData)
+          return animeData
         })
       )
       
-      setFavoriteAnimeDetails(animeDetails)
+      // Combine cached and new data
+      const allAnimeDetails = [...cachedAnime, ...newAnimeDetails]
+      setFavoriteAnimeDetails(allAnimeDetails)
     } catch (err) {
       setError('خطا در بارگذاری لیست مورد علاقه')
       console.error('Failed to load favorite anime:', err)
@@ -190,10 +224,10 @@ const MyList = () => {
     <div className="pb-24">
       {/* Tabs Header - match Home segmented tabs */}
       <div className="px-4 pt-4">
-      <div className="flex items-center gap-2 p-1 rounded-xl w-full mx-auto border border-white/20 bg-gray-900/40 backdrop-blur-xl shadow-lg">
+      <div className="flex items-center gap-2 rounded-xl w-full mx-auto border border-white/20 bg-gray-900/40 backdrop-blur-xl shadow-lg">
           <button
             onClick={() => setActiveTab('favorites')}
-            className={`flex-1 text-center text-sm border border-transparent p-1 py-2 rounded-lg transition-all ${
+            className={`flex-1 text-center p-2 border border-transparent rounded-lg transition-all ${
               activeTab === 'favorites'
                 ? 'bg-gray-900 text-white font-medium shadow-md border !border-white/20'
                 : 'text-gray-200 hover:text-white hover:bg-white/5'
@@ -204,7 +238,7 @@ const MyList = () => {
           </button>
           <button
             onClick={() => setActiveTab('lists')}
-            className={`flex-1 text-center border border-transparent p-1 py-2 rounded-lg transition-all ${
+            className={`flex-1 text-center p-2 border border-transparent rounded-lg transition-all ${
               activeTab === 'lists'
                 ? 'bg-gray-900 text-white font-medium shadow-md border !border-white/20'
                 : 'text-gray-200 hover:text-white hover:bg-white/5'
@@ -240,14 +274,7 @@ const MyList = () => {
               </div>
             ) : (
               <div>
-                <div className="px-4 pt-4 pb-6">
-                  <h1 className="text-xl font-semibold text-gray-100">لیست مورد علاقه</h1>
-                  <p className="text-gray-400 text-sm mt-1">
-                    {favoriteAnimeDetails.length} انیمه در لیست شما
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-3 md:grid-cols-3 gap-4 px-4">
+                <div className="grid grid-cols-3 gap-2 px-4">
                   {favoriteAnimeDetails.map((anime) => (
                     <Link
                       key={anime.id}
@@ -256,7 +283,7 @@ const MyList = () => {
                       aria-label={`مشاهده ${anime.title}`}
                     >
                       <div className="card">
-                        <div className="relative aspect-[2/3] overflow-hidden">
+                        <div className="relative aspect-[2/3] overflow-hidden rounded-xl border-2 border-t-white/10 border-r-white/10 border-l-white/10 border-b-white/5">
                           <img
                             src={anime.image}
                             alt={anime.title}
@@ -266,14 +293,6 @@ const MyList = () => {
                           <div className="absolute top-2 right-2">
                             <FavouriteIcon className="w-6 h-6 text-primary-500 drop-shadow-lg" />
                           </div>
-                        </div>
-                        <div className="mt-3">
-                          <h3 className="text-sm font-medium line-clamp-1 text-gray-100">
-                            {anime.title}
-                          </h3>
-                          <p className="text-xs text-gray-400 mt-[2px]">
-                            {anime.episode}
-                          </p>
                         </div>
                       </div>
                     </Link>
@@ -324,7 +343,7 @@ const MyList = () => {
                     <div
                       key={list.id}
                       onClick={() => navigate(`/lists/${list.id}`)}
-                      className="bg-gray-800 rounded-xl p-4 shadow-md border border-gray-700 cursor-pointer active:bg-gray-700 transition-colors"
+                      className="bg-gray-900 rounded-xl p-4 shadow-md border border-white/10"
                     >
                       <div className="flex items-center justify-between mb-2">
                         <h3 className="text-gray-100 font-medium text-lg">{list.title}</h3>

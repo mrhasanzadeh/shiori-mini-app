@@ -49,6 +49,7 @@ interface CacheState {
   featuredAnime: Anime[];
   scheduleInfo: ScheduleInfo;
   animeDetails: Record<number, AnimeDetails>;
+  favoriteAnimeDetails: Record<number, Anime>;
   setLatestAnime: (anime: Anime[]) => void;
   setPopularAnime: (anime: Anime[]) => void;
   setNewEpisodes: (anime: Anime[]) => void;
@@ -56,9 +57,12 @@ interface CacheState {
   setFeaturedAnime: (anime: Anime[]) => void;
   setSchedule: (scheduleInfo: ScheduleInfo) => void;
   setAnimeDetails: (id: number, details: AnimeDetails) => void;
+  setFavoriteAnimeDetails: (id: number, anime: Anime) => void;
   getAnimeBySection: (section: string) => Anime[];
   getSchedule: () => ScheduleInfo;
   getAnimeDetails: (id: number) => AnimeDetails | undefined;
+  getFavoriteAnimeDetails: (id: number) => Anime | undefined;
+  clearFavoriteAnimeDetails: () => void;
 }
 
 export const useCacheStore = create<CacheState>()(
@@ -75,6 +79,7 @@ export const useCacheStore = create<CacheState>()(
         currentYear: 0,
       },
       animeDetails: {},
+      favoriteAnimeDetails: {},
       setLatestAnime: (anime) => set({ latestAnime: anime }),
       setPopularAnime: (anime) => set({ popularAnime: anime }),
       setNewEpisodes: (anime) => set({ newEpisodes: anime }),
@@ -84,6 +89,10 @@ export const useCacheStore = create<CacheState>()(
       setAnimeDetails: (id, details) =>
         set((state) => ({
           animeDetails: { ...state.animeDetails, [id]: details },
+        })),
+      setFavoriteAnimeDetails: (id, anime) =>
+        set((state) => ({
+          favoriteAnimeDetails: { ...state.favoriteAnimeDetails, [id]: anime },
         })),
       getAnimeBySection: (section) => {
         const state = get();
@@ -104,6 +113,8 @@ export const useCacheStore = create<CacheState>()(
       },
       getSchedule: () => get().scheduleInfo,
       getAnimeDetails: (id) => get().animeDetails[id],
+      getFavoriteAnimeDetails: (id) => get().favoriteAnimeDetails[id],
+      clearFavoriteAnimeDetails: () => set({ favoriteAnimeDetails: {} }),
     }),
     {
       name: "anime-cache",
