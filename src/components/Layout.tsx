@@ -7,7 +7,6 @@ import {
   UserIcon,
   FavouriteIcon,
   ArrowRight01Icon,
-  Menu01Icon,
   RefreshIcon
 } from 'hugeicons-react'
 import logo from '../assets/images/shiori-logo.svg'

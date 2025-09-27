@@ -493,8 +493,8 @@ export const getSchedule = async () => {
   });
   const animeList = await Promise.all(
     result.Page.media
-      // Exclude adult and hentai-genre shows
-      .filter(anime => !anime.isAdult && !(anime.genres || []).some(g => g?.toLowerCase() === 'hentai'))
+      // Exclude hentai-genre shows
+      .filter(anime => !(anime.genres || []).some(g => g?.toLowerCase() === 'hentai'))
       .filter(anime => anime.nextAiringEpisode?.airingAt)
       .map(async (anime) => ({
         id: anime.id,
@@ -602,8 +602,8 @@ export const getSchedule = async () => {
     const fallbackResult = await fetchAniList<{ Page: { media: AniListAnime[] } }>(fallbackQuery);
     const fallbackList = await Promise.all(
       fallbackResult.Page.media
-        // Exclude adult and hentai-genre shows
-        .filter(anime => !anime.isAdult && !(anime.genres || []).some(g => g?.toLowerCase() === 'hentai'))
+        // Exclude hentai-genre shows
+        .filter(anime => !(anime.genres || []).some(g => g?.toLowerCase() === 'hentai'))
         .filter(anime => anime.nextAiringEpisode?.airingAt)
         .map(async (anime) => ({
           id: anime.id,

@@ -115,7 +115,6 @@ const MyList = () => {
   const { 
     getFavoriteAnimeDetails, 
     setFavoriteAnimeDetails: cacheFavoriteAnimeDetails, 
-    clearFavoriteAnimeDetails 
   } = useCacheStore()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
