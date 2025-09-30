@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { fetchAnimeList } from '../utils/api'
+import { fetchAnimeCards } from '../utils/api'
 import { useCacheStore } from '../store/cacheStore'
 import { Swiper, SwiperSlide } from 'swiper/react'
 import { FreeMode, Autoplay } from 'swiper/modules'
@@ -72,7 +72,7 @@ const Home = () => {
 
         // Map tabs to existing API sections. Donghua currently proxies to popular.
         const sectionKey = selectedType === 'movie' ? 'movies' : selectedType === 'donghua' ? 'popular' : 'latest'
-        const data = await fetchAnimeList(sectionKey)
+        const data = await fetchAnimeCards(sectionKey)
         setFeaturedAnime(data)
       } catch (err) {
         setError(prev => ({ 
@@ -119,25 +119,25 @@ const Home = () => {
     { 
       id: 'latest', 
       title: ` ${currentSeasonFa} ${currentYearFa}`,
-      fetchData: () => fetchAnimeList('latest'),
+      fetchData: () => fetchAnimeCards('latest'),
       setCache: setLatestAnime
     },
     { 
       id: 'popular', 
       title: 'محبوب‌ترین‌ها',
-      fetchData: () => fetchAnimeList('popular'),
+      fetchData: () => fetchAnimeCards('popular'),
       setCache: setPopularAnime
     },
     { 
       id: 'episodes', 
       title: 'قسمت‌های جدید',
-      fetchData: () => fetchAnimeList('episodes'),
+      fetchData: () => fetchAnimeCards('episodes'),
       setCache: setNewEpisodes
     },
     { 
       id: 'movies', 
       title: 'انیمه‌های سینمایی',
-      fetchData: () => fetchAnimeList('movies'),
+      fetchData: () => fetchAnimeCards('movies'),
       setCache: setMovies
     }
   ]
