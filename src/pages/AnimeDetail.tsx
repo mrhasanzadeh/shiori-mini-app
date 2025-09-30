@@ -15,7 +15,7 @@ import { useAnime } from '../hooks/useAnime'
 import { useTelegramApp } from '../hooks/useTelegramApp'
 import { useCacheStore } from '../store/cacheStore'
 import { useListsStore } from './MyList'
-import { getSimilarAnime } from '../services/anilist'
+import { fetchSimilar } from '../utils/api'
 
 interface Episode {
   id: number
@@ -124,7 +124,7 @@ const AnimeDetail = () => {
       
       try {
         setLoadingSimilar(true)
-        const data = await getSimilarAnime(anime.id);
+        const data = await fetchSimilar(anime.id);
         setSimilarAnime(data);
       } catch (err) {
         console.error('Failed to load similar anime:', err);

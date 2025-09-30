@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Search01Icon } from 'hugeicons-react'
-import { searchAnime } from '../services/anilist'
+import { fetchSearch } from '../utils/api'
 import { Anime } from '../store/cacheStore'
 import shioriLogo from '../assets/images/shiori-logo.svg'
 import emptyListImage from '../assets/images/frieren-03.webp'
@@ -53,7 +53,7 @@ const Search = () => {
       try {
         setLoading(true)
         setError(null)
-        const data = await searchAnime(debouncedSearchTerm)
+        const data = await fetchSearch(debouncedSearchTerm)
         setResults(data)
       } catch (err) {
         setError('خطا در جستجوی انیمه')

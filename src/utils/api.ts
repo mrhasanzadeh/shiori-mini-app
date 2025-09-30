@@ -1,6 +1,4 @@
-// Mock API functions for demonstration
-// In a real application, these would be replaced with actual API calls
-
+// App-level API wrapper that points to our local service (mock for now)
 import {
   getLatestAnime,
   getPopularAnime,
@@ -8,7 +6,9 @@ import {
   getAnimeById,
   getSchedule,
   getAnimeMovies,
-} from "../services/anilist";
+  searchAnime,
+  getSimilarAnime,
+} from "../services/shiori";
 
 export const fetchAnimeList = async (section: string = "latest") => {
   switch (section) {
@@ -31,4 +31,13 @@ export const fetchAnimeById = async (id: number) => {
 
 export const fetchSchedule = async () => {
   return getSchedule();
+};
+
+export const fetchSearch = async (q: string, page: number = 1) => {
+  // page is ignored in mock; included for future compatibility
+  return searchAnime(q);
+};
+
+export const fetchSimilar = async (id: number) => {
+  return getSimilarAnime(id);
 };

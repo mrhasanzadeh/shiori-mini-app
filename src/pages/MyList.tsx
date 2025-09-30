@@ -4,7 +4,7 @@ import { useAnimeStore } from '../store/animeStore'
 import { useCacheStore } from '../store/cacheStore'
 import { Add01Icon, FavouriteIcon, ListViewIcon } from 'hugeicons-react'
 import { Anime } from '../store/cacheStore'
-import { getAnimeById } from '../services/anilist'
+import { fetchAnimeById } from '../utils/api'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import emptyListImage from '../assets/images/frieren-03.webp'
@@ -174,7 +174,7 @@ const MyList = () => {
       // Fetch missing anime details
       const newAnimeDetails = await Promise.all(
         missingIds.map(async (id) => {
-          const details = await getAnimeById(id)
+          const details = await fetchAnimeById(id)
           const animeData = {
             id: details.id,
             title: details.title,
