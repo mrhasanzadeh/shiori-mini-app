@@ -1,7 +1,21 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { fetchSchedule } from '../utils/api'
-import { useCacheStore, Anime, ScheduleInfo } from '../store/cacheStore'
+type Anime = {
+  id: number;
+  title: string;
+  image: string;
+  episode: string;
+  isNew?: boolean;
+  description?: string;
+  genres?: string[];
+  time?: string;
+}
+type ScheduleInfo = {
+  schedule: Record<string, Anime[]>;
+  currentSeason: string;
+  currentYear: number;
+}
 
 // با استفاده از یک type برای نمایش آیتم‌های قابل نمایش در Schedule
 type ScheduleAnimeItem = Anime & { 
@@ -96,8 +110,7 @@ const Schedule = () => {
   const [currentSeason, setCurrentSeason] = useState<string>('')
   const [currentYear, setCurrentYear] = useState<number>(0)
   
-  const { setSchedule, getSchedule } = useCacheStore()
-  const cachedScheduleInfo = getSchedule()
+  const [scheduleInfo, setScheduleInfo] = useState<ScheduleInfo>({ schedule: {}, currentSeason: '', currentYear: 0 })
 
   // Empty schedule template
   const emptySchedule: ScheduleData = {
@@ -127,13 +140,13 @@ const Schedule = () => {
         
         // اگر برنامه‌ای وجود نداشت یا داده‌ها خالی بود
         if (!data.schedule || Object.values(data.schedule).every(arr => arr.length === 0)) {
-          setSchedule({
+          setScheduleInfo({
             schedule: emptySchedule,
             currentSeason: data.currentSeason,
             currentYear: data.currentYear
           })
         } else {
-        setSchedule(data)
+        setScheduleInfo(data)
         }
         
         // ذخیره اطلاعات فصل و سال جاری
@@ -147,14 +160,7 @@ const Schedule = () => {
       }
     }
 
-    // اگر داده‌های cache خالی باشد یا فصل جاری ذخیره نشده باشد
-    if (!cachedScheduleInfo || !cachedScheduleInfo.currentSeason) {
     loadSchedule()
-    } else {
-      setCurrentSeason(cachedScheduleInfo.currentSeason)
-      setCurrentYear(cachedScheduleInfo.currentYear)
-      setLoading(false)
-    }
   }, [])
 
   if (loading) {
@@ -170,7 +176,7 @@ const Schedule = () => {
   }
 
   // Ensure we have data for all days
-  const fullSchedule = cachedScheduleInfo?.schedule || emptySchedule;
+  const fullSchedule = scheduleInfo.schedule || emptySchedule;
 
   const days = Object.keys(fullSchedule) as PersianDay[]
 

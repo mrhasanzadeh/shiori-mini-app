@@ -13,7 +13,7 @@ import {
 } from 'hugeicons-react'
 import { useAnime } from '../hooks/useAnime'
 import { useTelegramApp } from '../hooks/useTelegramApp'
-import { useCacheStore } from '../store/cacheStore'
+ 
 import { useListsStore } from './MyList'
 import { fetchSimilar } from '../utils/api'
 
@@ -53,7 +53,6 @@ const AnimeDetail = () => {
   const { id } = useParams<{ id: string }>()
   const { loadAnimeById, toggleFavorite, isFavorite } = useAnime()
   const { showAlert } = useTelegramApp()
-  const { getAnimeDetails, setAnimeDetails } = useCacheStore()
   const { lists, addItem } = useListsStore()
   const [anime, setAnime] = useState<Anime | null>(null)
   const [loading, setLoading] = useState(true)
@@ -89,21 +88,11 @@ const AnimeDetail = () => {
     const fetchAnime = async () => {
       if (!id) return
 
-      // Check cache first
-      const cachedAnime = getAnimeDetails(parseInt(id))
-      if (cachedAnime) {
-        setAnime(cachedAnime)
-        setLoading(false)
-        return
-      }
-
       try {
         setLoading(true)
         const data = await loadAnimeById(parseInt(id))
         if (data) {
           setAnime(data)
-          // Cache the data
-          setAnimeDetails(data.id, data)
         } else {
           setError('انیمه مورد نظر یافت نشد')
         }

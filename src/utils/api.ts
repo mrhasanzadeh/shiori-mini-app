@@ -1,19 +1,19 @@
 // App-level API wrapper that points to our local service (mock for now)
-import {
-  getLatestAnime,
-  getPopularAnime,
-  getNewEpisodes,
-  getAnimeById,
-  getSchedule,
-  getAnimeMovies,
-  searchAnime,
-  getSimilarAnime,
-} from "../services/shiori";
+import * as supa from "../services/supabaseAnime";
 
-import type { Anime as CacheAnime } from "../store/cacheStore";
+// Lightweight card shape used across Home/Search UIs
+export type UiAnimeCard = {
+  id: number;
+  title: string;
+  image: string;
+  episode: string;
+  isNew?: boolean;
+  description?: string;
+  genres?: string[];
+};
 import type { AnimeListItem } from "../store/animeStore";
 
-const toCacheAnime = (c: any): CacheAnime => ({
+const toCacheAnime = (c: any): UiAnimeCard => ({
   id: c.id,
   title: c.title,
   image: c.image,
@@ -40,58 +40,58 @@ export const fetchAnimeList = async (section: string = "latest"): Promise<AnimeL
   let data: any[] = [];
   switch (section) {
     case "latest":
-      data = await getLatestAnime();
+      data = await supa.getLatestAnime();
       break;
     case "popular":
-      data = await getPopularAnime();
+      data = await supa.getPopularAnime();
       break;
     case "episodes":
-      data = await getNewEpisodes();
+      data = await supa.getNewEpisodes();
       break;
     case "movies":
-      data = await getAnimeMovies();
+      data = await supa.getAnimeMovies();
       break;
     default:
-      data = await getLatestAnime();
+      data = await supa.getLatestAnime();
   }
   return data.map(toListItem);
 };
 
 // Returns items shaped for cache cards on Home/Search (Anime[])
-export const fetchAnimeCards = async (section: string = "latest"): Promise<CacheAnime[]> => {
+export const fetchAnimeCards = async (section: string = "latest"): Promise<UiAnimeCard[]> => {
   let data: any[] = [];
   switch (section) {
     case "latest":
-      data = await getLatestAnime();
+      data = await supa.getLatestAnime();
       break;
     case "popular":
-      data = await getPopularAnime();
+      data = await supa.getPopularAnime();
       break;
     case "episodes":
-      data = await getNewEpisodes();
+      data = await supa.getNewEpisodes();
       break;
     case "movies":
-      data = await getAnimeMovies();
+      data = await supa.getAnimeMovies();
       break;
     default:
-      data = await getLatestAnime();
+      data = await supa.getLatestAnime();
   }
   return data.map(toCacheAnime);
 };
 
 export const fetchAnimeById = async (id: number) => {
-  return getAnimeById(id);
+  return supa.getAnimeById(id);
 };
 
 export const fetchSchedule = async () => {
-  return getSchedule();
+  return supa.getSchedule();
 };
 
 export const fetchSearch = async (q: string, _page: number = 1): Promise<CacheAnime[]> => {
-  const data = await searchAnime(q);
+  const data = await supa.searchAnime(q);
   return data.map(toCacheAnime);
 };
 
 export const fetchSimilar = async (id: number) => {
-  return getSimilarAnime(id);
+  return supa.getSimilarAnime(id);
 };

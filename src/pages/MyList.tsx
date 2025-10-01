@@ -1,9 +1,16 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAnimeStore } from '../store/animeStore'
-import { useCacheStore } from '../store/cacheStore'
 import { Add01Icon, FavouriteIcon, ListViewIcon } from 'hugeicons-react'
-import { Anime } from '../store/cacheStore'
+type Anime = {
+  id: number
+  title: string
+  image: string
+  episode: string
+  isNew?: boolean
+  description?: string
+  genres?: string[]
+}
 import { fetchAnimeById } from '../utils/api'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
@@ -112,10 +119,7 @@ const MyList = () => {
   
   // State for Favorites tab
   const { favoriteAnime } = useAnimeStore()
-  const { 
-    getFavoriteAnimeDetails, 
-    setFavoriteAnimeDetails: cacheFavoriteAnimeDetails, 
-  } = useCacheStore()
+ 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [favoriteAnimeDetails, setFavoriteAnimeDetails] = useState<Anime[]>([])
@@ -151,31 +155,11 @@ const MyList = () => {
       setLoading(true)
       setError(null)
       
-      // Check cache first
-      const cachedAnime: Anime[] = []
-      const missingIds: number[] = []
-      
-      favoriteAnime.forEach(id => {
-        const cached = getFavoriteAnimeDetails(id)
-        if (cached) {
-          cachedAnime.push(cached)
-        } else {
-          missingIds.push(id)
-        }
-      })
-      
-      // If all anime are cached, use cached data
-      if (missingIds.length === 0) {
-        setFavoriteAnimeDetails(cachedAnime)
-        setLoading(false)
-        return
-      }
-      
-      // Fetch missing anime details
-      const newAnimeDetails = await Promise.all(
-        missingIds.map(async (id) => {
+      // Fetch all favorite anime details without cache
+      const results = await Promise.all(
+        favoriteAnime.map(async (id) => {
           const details = await fetchAnimeById(id)
-          const animeData = {
+          return {
             id: details.id,
             title: details.title,
             image: details.image,
@@ -183,16 +167,9 @@ const MyList = () => {
             genres: details.genres,
             description: details.description
           } as Anime
-          
-          // Cache the result
-          cacheFavoriteAnimeDetails(id, animeData)
-          return animeData
         })
       )
-      
-      // Combine cached and new data
-      const allAnimeDetails = [...cachedAnime, ...newAnimeDetails]
-      setFavoriteAnimeDetails(allAnimeDetails)
+      setFavoriteAnimeDetails(results)
     } catch (err) {
       setError('خطا در بارگذاری لیست مورد علاقه')
       console.error('Failed to load favorite anime:', err)

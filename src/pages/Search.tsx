@@ -2,7 +2,15 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Search01Icon } from 'hugeicons-react'
 import { fetchSearch } from '../utils/api'
-import { Anime } from '../store/cacheStore'
+type Anime = {
+  id: number
+  title: string
+  image: string
+  episode: string
+  isNew?: boolean
+  description?: string
+  genres?: string[]
+}
 import shioriLogo from '../assets/images/shiori-logo.svg'
 import emptyListImage from '../assets/images/frieren-03.webp'
 

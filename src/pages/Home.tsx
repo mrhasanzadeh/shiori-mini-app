@@ -1,14 +1,24 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { fetchAnimeCards } from '../utils/api'
-import { useCacheStore } from '../store/cacheStore'
 import { Swiper, SwiperSlide } from 'swiper/react'
 import { FreeMode, Autoplay } from 'swiper/modules'
 import 'swiper/css'
 import 'swiper/css/free-mode'
 import { ArrowLeft01Icon } from 'hugeicons-react'
 // Removed full-screen FeaturedSlider in favor of compact hero card on Home
-import { Anime } from "../store/cacheStore"
+type Anime = {
+  id: number
+  title: string
+  image: string
+  description?: string
+  status?: string
+  genres?: string[]
+  episodes?: number
+  isNew?: boolean
+  episode?: string
+  averageScore?: number
+}
 
 interface SliderSection {
   id: string
@@ -49,19 +59,10 @@ const SkeletonSlider = () => (
 const Home = () => {
   const [loading, setLoading] = useState<Record<string, boolean>>({})
   const [error, setError] = useState<Record<string, string | null>>({})
+  const [sectionData, setSectionData] = useState<Record<string, Anime[]>>({})
   const [selectedType, setSelectedType] = useState<'anime' | 'movie' | 'donghua'>('anime')
   
-  const { 
-    getAnimeBySection,
-    setLatestAnime,
-    setPopularAnime,
-    setNewEpisodes,
-    setMovies,
-    setFeaturedAnime,
-    getSchedule
-  } = useCacheStore()
-
-  const featuredAnime = getAnimeBySection('featured')
+  const [featuredAnime, setFeaturedAnime] = useState<Anime[]>([])
   const featuredLoading = loading['featured'] || false
 
   useEffect(() => {
@@ -104,7 +105,7 @@ const Home = () => {
     }
   }
 
-  const scheduleInfo = getSchedule()
+  const scheduleInfo = { currentSeason: '', currentYear: new Date().getFullYear() }
   const fallbackSeason = (() => {
     const month = new Date().getMonth()
     if (month >= 0 && month < 3) return 'WINTER'
@@ -120,41 +121,35 @@ const Home = () => {
       id: 'latest', 
       title: ` ${currentSeasonFa} ${currentYearFa}`,
       fetchData: () => fetchAnimeCards('latest'),
-      setCache: setLatestAnime
+      setCache: () => {}
     },
     { 
       id: 'popular', 
       title: 'محبوب‌ترین‌ها',
       fetchData: () => fetchAnimeCards('popular'),
-      setCache: setPopularAnime
+      setCache: () => {}
     },
     { 
       id: 'episodes', 
       title: 'قسمت‌های جدید',
       fetchData: () => fetchAnimeCards('episodes'),
-      setCache: setNewEpisodes
+      setCache: () => {}
     },
     { 
       id: 'movies', 
       title: 'انیمه‌های سینمایی',
       fetchData: () => fetchAnimeCards('movies'),
-      setCache: setMovies
+      setCache: () => {}
     }
   ]
 
   useEffect(() => {
     const loadAnime = async (section: SliderSection) => {
-      // Check if we have cached data
-      const cachedData = getAnimeBySection(section.id)
-      if (cachedData.length > 0) {
-        return
-      }
-
       try {
         setLoading(prev => ({ ...prev, [section.id]: true }))
         setError(prev => ({ ...prev, [section.id]: null }))
         const data = await section.fetchData()
-        section.setCache(data)
+        setSectionData(prev => ({ ...prev, [section.id]: data }))
       } catch (err) {
         setError(prev => ({ 
           ...prev, 
@@ -170,7 +165,7 @@ const Home = () => {
   }, [])
 
   const renderSlider = (section: SliderSection) => {
-    const animeList = getAnimeBySection(section.id)
+    const animeList = sectionData[section.id] || []
     const isLoading = loading[section.id]
     const hasError = error[section.id]
 
