@@ -58,7 +58,10 @@ export const getLatestAnime = async () => {
     .eq("category", "latest")
     .order("created_at", { ascending: false })
     .limit(24);
-  if (error) throw error;
+  if (error) {
+    console.error("Error fetching latest anime:", error);
+    throw error;
+  }
   return (data || []).map(toAnimeCard);
 };
 

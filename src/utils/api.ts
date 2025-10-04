@@ -18,7 +18,7 @@ const toCacheAnime = (c: any): UiAnimeCard => ({
   title: c.title,
   image: c.image,
   episode: c.episode ?? "قسمت ۱",
-  isNew: Boolean(c.isNew),
+  isNew: Boolean(c.isNew || c.is_new),
   description: c.description ?? "",
   genres: Array.isArray(c.genres) ? c.genres : [],
 });
@@ -31,7 +31,7 @@ const toListItem = (c: any): AnimeListItem => ({
   status: c.status ?? "RELEASING",
   genres: Array.isArray(c.genres) ? c.genres : [],
   episodes: typeof c.episodes === "number" ? c.episodes : 1,
-  isNew: Boolean(c.isNew),
+  isNew: Boolean(c.isNew || c.is_new),
   episode: c.episode ?? "قسمت ۱",
 });
 
@@ -87,7 +87,7 @@ export const fetchSchedule = async () => {
   return supa.getSchedule();
 };
 
-export const fetchSearch = async (q: string, _page: number = 1): Promise<CacheAnime[]> => {
+export const fetchSearch = async (q: string, _page: number = 1): Promise<UiAnimeCard[]> => {
   const data = await supa.searchAnime(q);
   return data.map(toCacheAnime);
 };
