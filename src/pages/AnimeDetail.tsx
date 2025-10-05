@@ -444,6 +444,10 @@ const AnimeDetail = () => {
                   <button 
                     className="w-10 h-10 rounded-lg flex items-center justify-center bg-gray-800"
                     aria-label={`دانلود قسمت ${toPersianNumber(episode.number)}`}
+                    onClick={() => {
+                      const deeplink = `https://t.me/ShioriUploadBot?start=get_${episode.id}`;
+                      window.location.href = deeplink;
+                    }}
                   >
                     <Download01Icon className="w-5 h-5 text-white" />
                   </button>
