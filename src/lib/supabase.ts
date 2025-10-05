@@ -10,9 +10,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  autoRefreshToken: true,
-  persistSession: true,
-  detectSessionInUrl: true,
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+  },
 });
 
 export type SupabaseClientType = typeof supabase;
