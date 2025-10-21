@@ -14,7 +14,7 @@ import {
 import { useAnime } from '../hooks/useAnime'
 import { useTelegramApp } from '../hooks/useTelegramApp'
  
-import { useListsStore } from './MyList'
+import { useListsStore } from '../store/listsStore'
 import { fetchSimilar } from '../utils/api'
 
 interface Episode {

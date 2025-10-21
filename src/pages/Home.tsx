@@ -308,7 +308,7 @@ const Home = () => {
               </h2>
               <div className="flex items-center gap-2 text-primary-400">
                 <Link
-                  to={`/anime/${section.id}`}
+                  to="/search"
                   className="text-sm transition-colors duration-200"
                   aria-label="مشاهده همه"
                 >

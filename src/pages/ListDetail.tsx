@@ -6,7 +6,7 @@ import {
   ArrowLeft01Icon,
   CheckmarkCircle01Icon
 } from 'hugeicons-react'
-import { useListsStore } from './MyList'
+import { useListsStore } from '../store/listsStore'
 
 const ListDetail = () => {
   const { id } = useParams<{ id: string }>()

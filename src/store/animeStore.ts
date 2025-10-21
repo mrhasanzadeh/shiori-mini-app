@@ -31,7 +31,9 @@ export const useAnimeStore = create<AnimeState>()(
       recentlyWatched: [],
       addToFavorites: (animeId) =>
         set((state) => ({
-          favoriteAnime: [...state.favoriteAnime, animeId],
+          favoriteAnime: state.favoriteAnime.includes(animeId)
+            ? state.favoriteAnime
+            : [...state.favoriteAnime, animeId],
         })),
       removeFromFavorites: (animeId) =>
         set((state) => ({
