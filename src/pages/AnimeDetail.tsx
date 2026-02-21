@@ -447,7 +447,7 @@ const AnimeDetail = () => {
                     aria-label={`دانلود قسمت ${toPersianNumber(episode.number)}`}
                     onClick={() => {
                       const deeplink = `${episode.download_link}`;
-                      window.location.href = deeplink;
+                      window.location.replace(deeplink);
                     }}
                   >
                     <Download01Icon className="w-5 h-5 text-white" />
