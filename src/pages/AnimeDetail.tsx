@@ -18,9 +18,10 @@ import { useListsStore } from '../store/listsStore'
 import { fetchSimilar } from '../utils/api'
 
 interface Episode {
-  id: number
+  id: number | string
   number: number
   title: string
+  download_link?: string
 }
 
 interface Anime {
@@ -90,7 +91,7 @@ const AnimeDetail = () => {
 
       try {
         setLoading(true)
-        const data = await loadAnimeById(parseInt(id))
+        const data = await loadAnimeById(id!)
         if (data) {
           setAnime(data)
         } else {
@@ -445,8 +446,8 @@ const AnimeDetail = () => {
                     className="w-10 h-10 rounded-lg flex items-center justify-center bg-gray-800"
                     aria-label={`دانلود قسمت ${toPersianNumber(episode.number)}`}
                     onClick={() => {
-                      const deeplink = `https://t.me/ShioriUploadBot?start=get_${episode.id}`;
-                      window.location.href = deeplink;
+                      const link = episode.download_link || `https://t.me/ShioriUploadBot?start=get_${episode.id}`;
+                      window.location.href = link;
                     }}
                   >
                     <Download01Icon className="w-5 h-5 text-white" />

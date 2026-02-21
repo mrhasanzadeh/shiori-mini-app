@@ -1,283 +1,115 @@
-import { supabase } from "../lib/supabase";
-
-type Episode = {
-  id: number;
-  number: number;
-  title: string;
-};
+import { supabase, hasSupabaseConfig } from "../lib/supabase";
 
 export type AnimeCard = {
-  id: number;
+  id: number | string;
   title: string;
   image: string;
   description: string;
   status: string;
   genres: string[];
   episodes?: number;
+  studio?: string;
+  season?: string;
+  startDate?: string;
+  endDate?: string;
   isNew?: boolean;
   episode?: string;
   averageScore?: number;
 };
 
-export type AnimeDetails = {
-  id: number;
-  title: string;
-  image: string;
-  description: string;
-  status: string;
-  genres: string[];
-  episodes: Episode[];
-  studios: string[];
-  producers: string[];
-  season: string;
-  startDate: string;
-  endDate: string;
-};
+// نام ستون تصویر در جدول anime — از .env می‌خوانیم؛ پیش‌فرض: cover_image
+const IMAGE_COLUMN = (import.meta.env.VITE_ANIME_IMAGE_COLUMN as string) || "cover_image";
+
+const getImageUrl = (row: any): string =>
+  row[IMAGE_COLUMN] ?? row.image ?? row.cover_image ?? row.poster ?? row.poster_url ?? row.cover ?? row.thumbnail ?? "";
 
 const toAnimeCard = (row: any): AnimeCard => ({
   id: row.id,
   title: row.title || "بدون عنوان",
-  image: row.image || "",
-  description: row.synopsis || "",
-  status: row.status || "ongoing",
+  image: getImageUrl(row),
+  description: (row.synopsis ?? row.description) ?? "",
+  status: row.format || row.status || "ongoing",
   genres: Array.isArray(row.genres) ? row.genres : [],
   episodes: typeof row.episodes === "number" ? row.episodes : undefined,
+  studio: row.studio ?? undefined,
+  season: row.season ?? undefined,
+  startDate: row.start_date ?? undefined,
+  endDate: row.end_date ?? undefined,
   isNew: Boolean(row.is_new),
   episode: row.latest_episode ? `قسمت ${row.latest_episode}` : undefined,
   averageScore: typeof row.average_score === "number" ? row.average_score : undefined,
 });
 
-// Fetch anime with genres using join
-export const getLatestAnime = async () => {
+// دریافت تمام انیمه‌های موجود در دیتابیس
+// مطابق اسکیما: id, title, cover_image, banner_image, format, synopsis, average_score, created_at
+// (ستون‌های status و episodes و رابطه anime_genres در این اسکیما نیستند)
+export const getAllAnime = async (): Promise<AnimeCard[]> => {
+  if (!hasSupabaseConfig) {
+    throw new Error(
+      "تنظیمات Supabase یافت نشد. در روت پروژه فایل .env بسازید و VITE_SUPABASE_URL و VITE_SUPABASE_ANON_KEY را از پروژه Supabase قرار دهید."
+    );
+  }
+
   const { data, error } = await supabase
     .from("anime")
     .select(`
       id,
       title,
-      image,
+      ${IMAGE_COLUMN},
       synopsis,
-      status,
-      episodes,
+      format,
       average_score,
-      created_at,
-      anime_genres(genres(name))
+      episodes,
+      studio,
+      season,
+      start_date,
+      end_date,
+      created_at
     `)
-    .order("created_at", { ascending: false })
-    .limit(24);
-  
+    .order("created_at", { ascending: false });
+
   if (error) {
-    console.error("Error fetching latest anime:", error);
+    console.error("Error fetching all anime:", error);
     throw error;
   }
-  
-  return (data || []).map((row: any) => ({
+
+  const list = (data || []).map((row: any) => ({
     ...toAnimeCard(row),
-    genres: row.anime_genres?.map((ag: any) => ag.genres?.name).filter(Boolean) || [],
+    genres: [],
   }));
+  if (import.meta.env.DEV && list.length === 0) {
+    console.warn(
+      "[getAllAnime] لیست خالی برگشت. اگر در Supabase داده دارید، احتمالاً RLS جلوی خواندن را گرفته. در SQL Editor اجرا کنید:\n" +
+        "CREATE POLICY \"Allow public read\" ON anime FOR SELECT USING (true);"
+    );
+  }
+  return list;
 };
 
-export const getPopularAnime = async () => {
+// نوع هر قسمت برای نمایش در تب «قسمت‌ها»
+export type EpisodeItem = {
+  id: string | number;
+  number: number;
+  title: string;
+  download_link?: string;
+};
+
+// دریافت لیست قسمت‌های یک انیمه از جدول episodes (هر قسمت یک لینک دانلود دارد)
+export const getEpisodesByAnimeId = async (animeId: string | number): Promise<EpisodeItem[]> => {
+  if (!hasSupabaseConfig) return [];
   const { data, error } = await supabase
-    .from("anime")
-    .select(`
-      id,
-      title,
-      image,
-      synopsis,
-      status,
-      episodes,
-      average_score,
-      anime_genres(genres(name))
-    `)
-    .order("average_score", { ascending: false })
-    .limit(24);
-  
-  if (error) throw error;
-  
-  return (data || []).map((row: any) => ({
-    ...toAnimeCard(row),
-    genres: row.anime_genres?.map((ag: any) => ag.genres?.name).filter(Boolean) || [],
-  }));
-};
-
-export const getNewEpisodes = async () => {
-  const { data, error} = await supabase
-    .from("anime")
-    .select(`
-      id,
-      title,
-      image,
-      synopsis,
-      status,
-      episodes,
-      average_score,
-      created_at,
-      anime_genres(genres(name))
-    `)
-    .eq("status", "ongoing")
-    .order("created_at", { ascending: false })
-    .limit(24);
-  
-  if (error) throw error;
-  
-  return (data || []).map((row: any) => ({
-    ...toAnimeCard(row),
-    genres: row.anime_genres?.map((ag: any) => ag.genres?.name).filter(Boolean) || [],
-    isNew: true,
-  }));
-};
-
-export const getAnimeMovies = async () => {
-  const { data, error } = await supabase
-    .from("anime")
-    .select(`
-      id,
-      title,
-      image,
-      synopsis,
-      status,
-      episodes,
-      average_score,
-      anime_genres(genres(name))
-    `)
-    .eq("category", "movie")
-    .order("average_score", { ascending: false })
-    .limit(24);
-  
-  if (error) throw error;
-  
-  return (data || []).map((row: any) => ({
-    ...toAnimeCard(row),
-    genres: row.anime_genres?.map((ag: any) => ag.genres?.name).filter(Boolean) || [],
-  }));
-};
-
-export const getAnimeById = async (id: number): Promise<AnimeDetails> => {
-  const { data, error } = await supabase
-    .from("anime")
-    .select(`
-      id,
-      title,
-      image,
-      synopsis,
-      status,
-      episodes,
-      season,
-      aired_from,
-      aired_to,
-      anime_genres(genres(name)),
-      anime_studios(studios(name)),
-      anime_episodes(id, title, episode_number)
-    `)
-    .eq("id", id)
-    .single();
-  
-  if (error) throw error;
-
-  const anime = data as any;
-  return {
-    id: anime.id,
-    title: anime.title,
-    image: anime.image || "",
-    description: anime.synopsis || "",
-    status: anime.status || "ongoing",
-    genres: anime.anime_genres?.map((ag: any) => ag.genres?.name).filter(Boolean) || [],
-    episodes: anime.anime_episodes?.map((ae: any) => ({
-      id: ae.id || 0,
-      number: ae.episode_number || 0,
-      title: ae.title || `قسمت ${ae.episode_number || 0}`,
-    })).sort((a: any, b: any) => a.number - b.number) || [],
-    studios: anime.anime_studios?.map((as: any) => as.studios?.name).filter(Boolean) || [],
-    producers: [],
-    season: anime.season || "",
-    startDate: anime.aired_from || "",
-    endDate: anime.aired_to || "",
-  };
-};
-
-export const getSimilarAnime = async (animeId: number) => {
-  // Get genres of the current anime
-  const { data: currentAnime } = await supabase
-    .from("anime")
-    .select("anime_genres(genre_id)")
-    .eq("id", animeId)
-    .single();
-
-  if (!currentAnime) return [];
-
-  const genreIds = currentAnime.anime_genres?.map((ag: any) => ag.genre_id) || [];
-  
-  if (genreIds.length === 0) return [];
-
-  // Find anime with similar genres
-  const { data, error } = await supabase
-    .from("anime")
-    .select(`
-      id,
-      title,
-      image,
-      status,
-      average_score,
-      anime_genres!inner(genre_id, genres(name))
-    `)
-    .neq("id", animeId)
-    .in("anime_genres.genre_id", genreIds)
-    .order("average_score", { ascending: false })
-    .limit(24);
-
-  if (error) throw error;
-
+    .from("episodes")
+    .select("id, episode_number, title, download_link")
+    .eq("anime_id", animeId)
+    .order("episode_number", { ascending: true });
+  if (error) {
+    console.warn("getEpisodesByAnimeId:", error.message);
+    return [];
+  }
   return (data || []).map((row: any) => ({
     id: row.id,
-    title: row.title,
-    image: row.image || "",
-    status: row.status || "ongoing",
-    genres: row.anime_genres?.map((ag: any) => ag.genres?.name).filter(Boolean) || [],
-    score: row.average_score,
-  }));
-};
-
-export const getSchedule = async () => {
-  // For now, return empty schedule - you can implement based on your needs
-  const schedule: Record<string, Array<{ id: number; title: string; time: string; episode: string; image: string }>> = {
-    "شنبه": [],
-    "یکشنبه": [],
-    "دوشنبه": [],
-    "سه‌شنبه": [],
-    "چهارشنبه": [],
-    "پنج‌شنبه": [],
-    "جمعه": [],
-  };
-  
-  const currentSeason = "FALL";
-  const currentYear = new Date().getFullYear();
-
-  return { schedule, currentSeason, currentYear };
-};
-
-export const searchAnime = async (search: string) => {
-  const term = search.trim();
-  if (!term) return [] as AnimeCard[];
-  
-  const { data, error } = await supabase
-    .from("anime")
-    .select(`
-      id,
-      title,
-      image,
-      synopsis,
-      status,
-      episodes,
-      average_score,
-      anime_genres(genres(name))
-    `)
-    .or(`title.ilike.%${term}%,title_ja.ilike.%${term}%`)
-    .limit(50);
-  
-  if (error) throw error;
-  
-  return (data || []).map((row: any) => ({
-    ...toAnimeCard(row),
-    genres: row.anime_genres?.map((ag: any) => ag.genres?.name).filter(Boolean) || [],
+    number: row.episode_number ?? 0,
+    title: row.title || `قسمت ${row.episode_number ?? 0}`,
+    download_link: row.download_link ?? undefined,
   }));
 };

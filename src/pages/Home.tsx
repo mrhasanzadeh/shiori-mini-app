@@ -76,9 +76,10 @@ const Home = () => {
         const data = await fetchAnimeCards(sectionKey)
         setFeaturedAnime(data)
       } catch (err) {
+        const message = err instanceof Error ? err.message : 'خطا در بارگذاری پیشنهاد ویژه'
         setError(prev => ({ 
           ...prev, 
-          featured: 'خطا در بارگذاری پیشنهاد ویژه' 
+          featured: message 
         }))
         console.error('Failed to load featured anime:', err)
       } finally {
@@ -151,9 +152,10 @@ const Home = () => {
         const data = await section.fetchData()
         setSectionData(prev => ({ ...prev, [section.id]: data }))
       } catch (err) {
+        const message = err instanceof Error ? err.message : 'خطا در بارگذاری لیست انیمه‌ها'
         setError(prev => ({ 
           ...prev, 
-          [section.id]: 'خطا در بارگذاری لیست انیمه‌ها' 
+          [section.id]: message 
         }))
         console.error('Failed to load anime list:', err)
       } finally {
@@ -177,6 +179,17 @@ const Home = () => {
       return (
         <div className="text-center text-red-500 p-4">
           {hasError}
+        </div>
+      )
+    }
+
+    if (!isLoading && !hasError && animeList.length === 0) {
+      return (
+        <div className="text-center text-gray-400 p-4 text-sm">
+          <p>انیمه‌ای لود نشد.</p>
+          <p className="mt-2 text-xs max-w-xs mx-auto">
+            اگر در Supabase داده دارید، در SQL Editor این را اجرا کنید: Enable RLS و سپس policy با نام Allow public read برای SELECT روی جدول anime.
+          </p>
         </div>
       )
     }

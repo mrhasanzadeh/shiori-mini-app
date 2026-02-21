@@ -9,7 +9,7 @@ interface Episode {
 }
 
 interface AnimeDetails {
-  id: number;
+  id: number | string;
   title: string;
   image: string;
   description: string;
@@ -43,7 +43,7 @@ export const useAnime = () => {
     }
   };
 
-  const loadAnimeById = async (id: number): Promise<AnimeDetails | null> => {
+  const loadAnimeById = async (id: number | string): Promise<AnimeDetails | null> => {
     try {
       setLoading(true);
       setError(null);
@@ -58,7 +58,7 @@ export const useAnime = () => {
     }
   };
 
-  const toggleFavorite = (animeId: number) => {
+  const toggleFavorite = (animeId: number | string) => {
     if (favoriteAnime.includes(animeId)) {
       removeFromFavorites(animeId);
     } else {
@@ -66,7 +66,7 @@ export const useAnime = () => {
     }
   };
 
-  const isFavorite = (animeId: number) => {
+  const isFavorite = (animeId: number | string) => {
     return favoriteAnime.includes(animeId);
   };
 

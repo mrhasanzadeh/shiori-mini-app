@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 export interface AnimeListItem {
-  id: number;
+  id: number | string;
   title: string;
   image: string;
   description: string;
@@ -15,11 +15,11 @@ export interface AnimeListItem {
 
 interface AnimeState {
   animeList: AnimeListItem[];
-  favoriteAnime: number[];
-  recentlyWatched: number[];
-  addToFavorites: (animeId: number) => void;
-  removeFromFavorites: (animeId: number) => void;
-  addToRecentlyWatched: (animeId: number) => void;
+  favoriteAnime: (number | string)[];
+  recentlyWatched: (number | string)[];
+  addToFavorites: (animeId: number | string) => void;
+  removeFromFavorites: (animeId: number | string) => void;
+  addToRecentlyWatched: (animeId: number | string) => void;
   setAnimeList: (animeList: AnimeListItem[]) => void;
 }
 
