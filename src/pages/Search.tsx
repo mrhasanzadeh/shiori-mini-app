@@ -62,7 +62,7 @@ const Search = () => {
         setLoading(true)
         setError(null)
         const data = await fetchSearch(debouncedSearchTerm)
-        setResults(data)
+        setResults(data as Anime[])
       } catch (err) {
         setError('خطا در جستجوی انیمه')
         console.error('Failed to search anime:', err)
