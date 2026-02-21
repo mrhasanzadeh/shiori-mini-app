@@ -93,7 +93,7 @@ const AnimeDetail = () => {
         setLoading(true)
         const data = await loadAnimeById(id!)
         if (data) {
-          setAnime(data)
+          setAnime(data as Anime)
         } else {
           setError('انیمه مورد نظر یافت نشد')
         }
@@ -115,7 +115,7 @@ const AnimeDetail = () => {
       try {
         setLoadingSimilar(true)
         const data = await fetchSimilar(anime.id);
-        setSimilarAnime(data);
+        setSimilarAnime(data as SimilarAnime[]);
       } catch (err) {
         console.error('Failed to load similar anime:', err);
         setSimilarAnime([]);

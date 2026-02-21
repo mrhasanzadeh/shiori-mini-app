@@ -74,7 +74,7 @@ const Home = () => {
         // Map tabs to existing API sections. Donghua currently proxies to popular.
         const sectionKey = selectedType === 'movie' ? 'movies' : selectedType === 'donghua' ? 'popular' : 'latest'
         const data = await fetchAnimeCards(sectionKey)
-        setFeaturedAnime(data)
+        setFeaturedAnime(data as Anime[])
       } catch (err) {
         const message = err instanceof Error ? err.message : 'خطا در بارگذاری پیشنهاد ویژه'
         setError(prev => ({ 
@@ -121,25 +121,25 @@ const Home = () => {
     { 
       id: 'latest', 
       title: ` ${currentSeasonFa} ${currentYearFa}`,
-      fetchData: () => fetchAnimeCards('latest'),
+      fetchData: () => fetchAnimeCards('latest') as Promise<Anime[]>,
       setCache: () => {}
     },
     { 
       id: 'popular', 
       title: 'محبوب‌ترین‌ها',
-      fetchData: () => fetchAnimeCards('popular'),
+      fetchData: () => fetchAnimeCards('popular') as Promise<Anime[]>,
       setCache: () => {}
     },
     { 
       id: 'episodes', 
       title: 'قسمت‌های جدید',
-      fetchData: () => fetchAnimeCards('episodes'),
+      fetchData: () => fetchAnimeCards('episodes') as Promise<Anime[]>,
       setCache: () => {}
     },
     { 
       id: 'movies', 
       title: 'انیمه‌های سینمایی',
-      fetchData: () => fetchAnimeCards('movies'),
+      fetchData: () => fetchAnimeCards('movies') as Promise<Anime[]>,
       setCache: () => {}
     }
   ]

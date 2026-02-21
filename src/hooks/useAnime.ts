@@ -1,80 +1,80 @@
-import { useEffect, useState } from "react";
-import { useAnimeStore } from "../store/animeStore";
-import { fetchAnimeList, fetchAnimeById } from "../utils/api";
+import { useEffect, useState } from 'react'
+import { useAnimeStore } from '../store/animeStore'
+import { fetchAnimeList, fetchAnimeById } from '../utils/api'
 
 interface Episode {
-  id: number;
-  number: number;
-  title: string;
+  id: number
+  number: number
+  title: string
 }
 
 interface AnimeDetails {
-  id: number | string;
-  title: string;
-  image: string;
-  description: string;
-  status: string;
-  genres: string[];
-  episodes: Episode[];
-  studios: string[];
-  producers: string[];
-  season: string;
-  startDate: string;
-  endDate: string;
+  id: number | string
+  title: string
+  image: string
+  description: string
+  status: string
+  genres: string[]
+  episodes: Episode[]
+  studios: string[]
+  producers: string[]
+  season: string
+  startDate: string
+  endDate: string
 }
 
 export const useAnime = () => {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const { animeList, setAnimeList, favoriteAnime, addToFavorites, removeFromFavorites } =
-    useAnimeStore();
+    useAnimeStore()
 
   const loadAnimeList = async () => {
     try {
-      setLoading(true);
-      setError(null);
-      const data = await fetchAnimeList();
-      setAnimeList(data);
+      setLoading(true)
+      setError(null)
+      const data = await fetchAnimeList()
+      setAnimeList(data)
     } catch (err) {
-      setError("خطا در بارگذاری لیست انیمه‌ها");
-      console.error("Failed to load anime list:", err);
+      setError('خطا در بارگذاری لیست انیمه‌ها')
+      console.error('Failed to load anime list:', err)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const loadAnimeById = async (id: number | string): Promise<AnimeDetails | null> => {
     try {
-      setLoading(true);
-      setError(null);
-      const data = await fetchAnimeById(id);
-      return data;
+      setLoading(true)
+      setError(null)
+      const data = await fetchAnimeById(id)
+      return data as AnimeDetails
     } catch (err) {
-      setError("خطا در بارگذاری اطلاعات انیمه");
-      console.error("Failed to load anime:", err);
-      return null;
+      setError('خطا در بارگذاری اطلاعات انیمه')
+      console.error('Failed to load anime:', err)
+      return null
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const toggleFavorite = (animeId: number | string) => {
     if (favoriteAnime.includes(animeId)) {
-      removeFromFavorites(animeId);
+      removeFromFavorites(animeId)
     } else {
-      addToFavorites(animeId);
+      addToFavorites(animeId)
     }
-  };
+  }
 
   const isFavorite = (animeId: number | string) => {
-    return favoriteAnime.includes(animeId);
-  };
+    return favoriteAnime.includes(animeId)
+  }
 
   useEffect(() => {
     if (animeList.length === 0) {
-      loadAnimeList();
+      loadAnimeList()
     }
-  }, []);
+  }, [])
 
   return {
     animeList,
@@ -84,5 +84,5 @@ export const useAnime = () => {
     loadAnimeById,
     toggleFavorite,
     isFavorite,
-  };
-};
+  }
+}
