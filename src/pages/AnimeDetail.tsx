@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { 
-  Download01Icon, 
   FavouriteIcon, 
   Add01Icon,
   StarIcon,
@@ -16,9 +15,11 @@ import { useTelegramApp } from '../hooks/useTelegramApp'
  
 import { useListsStore } from '../store/listsStore'
 import { fetchSimilar } from '../utils/api'
+import malLogo from '../assets/images/mal-logo.png'
+import alLogo from '../assets/images/anilist-logo.svg'
 
 interface Episode {
-  id: number | string
+  id: string | number
   number: number
   title: string
   download_link?: string
@@ -32,6 +33,9 @@ interface Anime {
   status: string
   genres: string[]
   episodes: Episode[]
+  episodes_count: number
+  animeListScore?: number
+  averageScore?: number
   studios: string[]
   producers: string[]
   season: string
@@ -232,9 +236,9 @@ const AnimeDetail = () => {
         
         {/* Anime info overlay */}
         <div className="container pt-32 mx-auto px-4">
-          <div className="flex relative z-10">
+          <div className="flex flex-col items-center relative z-10">
             {/* Anime poster */}
-            <div className="w-32 h-48 rounded-xl overflow-hidden border border-gray-700">
+            <div className="w-40 rounded-xl overflow-hidden border-2 border-white/10 shadow-inner">
               <img 
                 src={anime.image} 
                 alt={anime.title} 
@@ -242,8 +246,8 @@ const AnimeDetail = () => {
               />
             </div>
             {/* Basic info */}
-            <div className="flex-1 ms-4">
-              <h1 className="text-xl font-bold text-white line-clamp-4">{anime.title}</h1>
+            <div className="flex-1 mt-4">
+              <h1 className="text-xl text-center font-semibold text-white line-clamp-4">{anime.title}</h1>
               
               {/* Genres pills */}
               <div className="flex flex-wrap gap-1 mt-2">
@@ -262,11 +266,19 @@ const AnimeDetail = () => {
               
               {/* Rating and action buttons in a single row */}
               <div className="flex items-center justify-between mt-3">
-                {/* Rating with badge style */}
-                <div className="flex items-center bg-gray-800/60 rounded-full px-3 py-1">
-                  <StarIcon className="w-4 h-4 text-yellow-400" />
-                  <span className="text-sm text-white ms-1 font-medium">{toPersianNumber('4.8')}</span>
-                  <span className="text-xs text-gray-400 ms-1">({toPersianNumber('88.5')}K)</span>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 bg-gray-800/60 rounded-lg px-1 pe-4 py-1">
+                    <img src={malLogo} className="w-6 h-6 rounded" alt="" />
+                    <span className="text-sm text-white font-medium">
+                      {typeof anime.animeListScore === 'number' ? toPersianNumber(anime.animeListScore.toFixed(1)) : '8.24'}
+                    </span>
+                  </div>
+                <div className="flex items-center gap-2 bg-gray-800/60 rounded-lg px-1 pe-4 py-1">
+                    <img src={alLogo} className="w-6 h-6 rounded" alt="" />
+                    <span className="text-sm text-white font-medium">
+                      {typeof anime.animeListScore === 'number' ? toPersianNumber(anime.animeListScore.toFixed(1)) : '8.24'}
+                    </span>
+                  </div>
                 </div>
                 
                 {/* Action buttons in a connected container */}
@@ -321,8 +333,8 @@ const AnimeDetail = () => {
       </div>
       
       {/* Description */}
-      <div className="container mx-auto px-4 mt-6">
-          <p className="text-gray-300 text-sm">
+      <div className="flex flex-col gap-2 mx-auto px-4 mt-4">
+          <p className="text-gray-400 text-sm text-center">
             {truncatedDescription}
           </p>
           {shouldTruncate && (
@@ -384,7 +396,7 @@ const AnimeDetail = () => {
                     <Video01Icon className="w-5 h-5 text-primary-400" />
                     تعداد قسمت‌ها
                   </span>
-                  <span className="text-white text-sm">{toPersianNumber(anime.episodes.length)} قسمت</span>
+                  <span className="text-white text-sm">{toPersianNumber(anime.episodes_count)} قسمت</span>
                 </div>
 
                 <div className="flex justify-between items-center py-4 border-b border-b-gray-800">
@@ -436,22 +448,34 @@ const AnimeDetail = () => {
               {anime.episodes.map((episode) => (
                 <div
                   key={episode.id}
-                  className="flex items-center justify-between p-3 bg-white/10 rounded-md"
+                  className="flex items-center justify-between p-3 bg-white/5 rounded-md"
                 >
                   <div className='flex flex-col gap-1'>
                     <span className="text-sm text-white">قسمت {toPersianNumber(episode.number)}</span>
                     <span className="text-xs text-gray-400">زیرنویس چسبیده | 1080p x265</span>
                   </div>
-                  <button 
-                    className="w-10 h-10 rounded-lg flex items-center justify-center bg-gray-800"
+                  <div className="flex gap-2">
+                    <button 
+                    className="py-2 px-3 rounded-lg bg-white/5"
                     aria-label={`دانلود قسمت ${toPersianNumber(episode.number)}`}
                     onClick={() => {
                       const deeplink = `${episode.download_link}`;
-                      window.location.replace(deeplink);
+                      window.open(deeplink, '_blank');
                     }}
                   >
-                    <Download01Icon className="w-5 h-5 text-white" />
+                    دانلود
                   </button>
+                   <button 
+                    className="py-2 px-3 rounded-lg bg-white/5"
+                    aria-label={`دانلود قسمت ${toPersianNumber(episode.number)}`}
+                    onClick={() => {
+                      const deeplink = `${episode.download_link}`;
+                      window.open(deeplink, '_blank');
+                    }}
+                  >
+                    زیرنویس
+                  </button>
+                  </div>
                 </div>
               ))}
             </div>

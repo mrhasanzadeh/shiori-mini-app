@@ -31,7 +31,7 @@ const toListItem = (c: any): AnimeListItem => ({
   description: c.description ?? "",
   status: c.status ?? "RELEASING",
   genres: Array.isArray(c.genres) ? c.genres : [],
-  episodes: typeof c.episodes === "number" ? c.episodes : 1,
+  episodes: typeof c.episodes_count === "number" ? c.episodes_count : 1,
   isNew: Boolean(c.isNew || c.is_new),
   episode: c.episode ?? "قسمت ۱",
 });
@@ -58,20 +58,8 @@ export const fetchAnimeById = async (id: number | string) => {
     throw new Error(`Anime with id ${id} not found`);
   }
 
-  // اول از جدول episodes می‌گیریم (با download_link)؛ اگر خالی بود از تعداد در anime لیست ساختگی
-  const episodesFromDb = await supa.getEpisodesByAnimeId(anime.id);
-  const episodesList =
-    episodesFromDb.length > 0
-      ? episodesFromDb
-      : Array.from(
-          { length: typeof anime.episodes === "number" ? anime.episodes : 0 },
-          (_, i) => ({
-            id: i + 1,
-            number: i + 1,
-            title: `قسمت ${i + 1}`,
-            download_link: undefined as string | undefined,
-          })
-        );
+  // لیست قسمت‌ها فقط از جدول episodes خوانده می‌شود
+  const episodesList = await supa.getEpisodesByAnimeId(anime.id);
 
   return {
     id: anime.id,
@@ -81,6 +69,8 @@ export const fetchAnimeById = async (id: number | string) => {
     status: anime.status,
     genres: anime.genres,
     episodes: episodesList,
+    episodes_count: typeof anime.episodes_count === "number" ? anime.episodes_count : 0,
+    averageScore: typeof anime.averageScore === "number" ? anime.averageScore : undefined,
     studios: anime.studio ? [anime.studio] : [],
     producers: [],
     season: anime.season ?? "",

@@ -3,9 +3,10 @@ import { useAnimeStore } from '../store/animeStore'
 import { fetchAnimeList, fetchAnimeById } from '../utils/api'
 
 interface Episode {
-  id: number
+  id: string | number
   number: number
   title: string
+  download_link?: string
 }
 
 interface AnimeDetails {
@@ -16,6 +17,7 @@ interface AnimeDetails {
   status: string
   genres: string[]
   episodes: Episode[]
+  episodes_count?: number
   studios: string[]
   producers: string[]
   season: string

@@ -7,7 +7,7 @@ export type AnimeCard = {
   description: string;
   status: string;
   genres: string[];
-  episodes?: number;
+  episodes_count?: number;
   studio?: string;
   season?: string;
   startDate?: string;
@@ -30,7 +30,7 @@ const toAnimeCard = (row: any): AnimeCard => ({
   description: (row.synopsis ?? row.description) ?? "",
   status: row.format || row.status || "ongoing",
   genres: Array.isArray(row.genres) ? row.genres : [],
-  episodes: typeof row.episodes === "number" ? row.episodes : undefined,
+  episodes_count: typeof row.episodes_count === "number" ? row.episodes_count : undefined,
   studio: row.studio ?? undefined,
   season: row.season ?? undefined,
   startDate: row.start_date ?? undefined,
@@ -59,7 +59,7 @@ export const getAllAnime = async (): Promise<AnimeCard[]> => {
       synopsis,
       format,
       average_score,
-      episodes,
+      episodes_count,
       studio,
       season,
       start_date,
