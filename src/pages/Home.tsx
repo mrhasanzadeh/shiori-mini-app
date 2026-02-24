@@ -6,6 +6,7 @@ import { FreeMode, Autoplay } from 'swiper/modules'
 import 'swiper/css'
 import 'swiper/css/free-mode'
 import { ArrowLeft01Icon } from 'hugeicons-react'
+import type { GenreItem } from '../services/supabaseAnime'
 // Removed full-screen FeaturedSlider in favor of compact hero card on Home
 type Anime = {
   id: number | string
@@ -14,7 +15,7 @@ type Anime = {
   featuredImage?: string
   description?: string
   status?: string
-  genres?: string[]
+  genres?: GenreItem[]
   episodes?: number
   isNew?: boolean
   episode?: string
@@ -310,8 +311,8 @@ const Home = () => {
                       <h2 className="text-lg font-bold text-white line-clamp-1 mb-1">{anime.title}</h2>
                       <div className="flex items-center gap-1 mb-2">
                         {(anime.genres || []).slice(0, 4).map((g) => (
-                          <span key={g} className="px-2 py-0.5 text-xs rounded-md bg-gray-800/80 text-gray-100 border border-white/10">
-                            {g}
+                          <span key={g.slug} className="px-2 py-0.5 text-xs rounded-md bg-gray-800/80 text-gray-100 border border-white/10">
+                            {g.name_fa || g.name_en || g.slug}
                           </span>
                         ))}
                       </div>

@@ -5,6 +5,7 @@ import { Add01Icon, FavouriteIcon, ListViewIcon } from 'hugeicons-react'
 import { fetchAnimeById } from '../utils/api'
 import { useListsStore } from '../store/listsStore'
 import emptyListImage from '../assets/images/frieren-03.webp'
+import type { GenreItem } from '../services/supabaseAnime'
 
 type Anime = {
   id: number
@@ -13,7 +14,7 @@ type Anime = {
   episode: string
   isNew?: boolean
   description?: string
-  genres?: string[]
+  genres?: GenreItem[]
 }
 
 type TabType = 'favorites' | 'lists';

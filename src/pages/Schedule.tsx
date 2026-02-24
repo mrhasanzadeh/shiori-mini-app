@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { fetchSchedule } from '../utils/api'
+import type { GenreItem } from '../services/supabaseAnime'
+
 type Anime = {
   id: number;
   title: string;
@@ -8,9 +10,10 @@ type Anime = {
   episode: string;
   isNew?: boolean;
   description?: string;
-  genres?: string[];
+  genres?: GenreItem[];
   time?: string;
 }
+
 type ScheduleInfo = {
   schedule: Record<string, Anime[]>;
   currentSeason: string;
@@ -219,7 +222,7 @@ const Schedule = () => {
             const safeList = fullSchedule[activeDay] || []
             const filteredList = safeList.filter((anime) => {
               const genres = anime.genres || []
-              return !genres.some((g) => g.toLowerCase() === 'hentai')
+              return !genres.some((g) => String(g.slug).toLowerCase() === 'hentai')
             })
             return filteredList.length > 0
               ? (

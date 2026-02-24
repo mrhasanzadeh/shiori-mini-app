@@ -1,26 +1,27 @@
-import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+import type { GenreItem } from '../services/supabaseAnime'
 
 export interface AnimeListItem {
-  id: number | string;
-  title: string;
-  image: string;
-  description: string;
-  status: string;
-  genres: string[];
-  episodes: number;
-  isNew: boolean;
-  episode: string;
+  id: number | string
+  title: string
+  image: string
+  description: string
+  status: string
+  genres: GenreItem[]
+  episodes: number
+  isNew: boolean
+  episode: string
 }
 
 interface AnimeState {
-  animeList: AnimeListItem[];
-  favoriteAnime: (number | string)[];
-  recentlyWatched: (number | string)[];
-  addToFavorites: (animeId: number | string) => void;
-  removeFromFavorites: (animeId: number | string) => void;
-  addToRecentlyWatched: (animeId: number | string) => void;
-  setAnimeList: (animeList: AnimeListItem[]) => void;
+  animeList: AnimeListItem[]
+  favoriteAnime: (number | string)[]
+  recentlyWatched: (number | string)[]
+  addToFavorites: (animeId: number | string) => void
+  removeFromFavorites: (animeId: number | string) => void
+  addToRecentlyWatched: (animeId: number | string) => void
+  setAnimeList: (animeList: AnimeListItem[]) => void
 }
 
 export const useAnimeStore = create<AnimeState>()(
@@ -46,7 +47,7 @@ export const useAnimeStore = create<AnimeState>()(
       setAnimeList: (animeList) => set({ animeList }),
     }),
     {
-      name: "anime-storage",
+      name: 'anime-storage',
     }
   )
-);
+)

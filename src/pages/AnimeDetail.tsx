@@ -10,12 +10,14 @@ import {
 } from 'hugeicons-react'
 import { useAnime } from '../hooks/useAnime'
 import { useTelegramApp } from '../hooks/useTelegramApp'
+import type { GenreItem } from '../services/supabaseAnime'
 
 import malLogo from '../assets/images/mal-logo.png'
 import alLogo from '../assets/images/anilist-logo.svg'
 
 interface Episode {
   id: string | number
+  season_number?: number
   number: number
   title: string
   download_link?: string
@@ -25,10 +27,11 @@ interface Anime {
   id: number
   title: string
   image: string
+  featured_image: string
   format?: string
   description: string
   status: string
-  genres: string[]
+  genres: GenreItem[]
   episodes: Episode[]
   episodes_count: number
   animeListScore?: number
@@ -54,10 +57,12 @@ const AnimeDetail = () => {
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<TabType>('info')
   const [showFullDescription, setShowFullDescription] = useState(false)
+  const [selectedSeason, setSelectedSeason] = useState<number>(1)
 
   // Reset active tab when anime ID changes
   useEffect(() => {
     setActiveTab('info')
+    setSelectedSeason(1)
   }, [id])
 
   const isDonghua = String(anime?.format ?? '').trim().toUpperCase() === 'ONA (CHINESE)'
@@ -97,7 +102,14 @@ const AnimeDetail = () => {
         setLoading(true)
         const data = await loadAnimeById(id!)
         if (data) {
-          setAnime(data as Anime)
+          const nextAnime = data as unknown as Anime
+          setAnime(nextAnime)
+
+          const seasons = Array.from(
+            new Set((nextAnime.episodes || []).map((e) => (typeof e.season_number === 'number' ? e.season_number : 1)))
+          ).sort((a, b) => a - b)
+
+          setSelectedSeason(seasons[0] ?? 1)
         } else {
           setError('انیمه مورد نظر یافت نشد')
         }
@@ -188,6 +200,14 @@ const AnimeDetail = () => {
     ? `${anime.description.substring(0, 150)}...`
     : anime.description
 
+  const seasons = Array.from(
+    new Set((anime.episodes || []).map((e) => (typeof e.season_number === 'number' ? e.season_number : 1)))
+  ).sort((a, b) => a - b)
+
+  const filteredEpisodes = (anime.episodes || []).filter(
+    (episode) => (typeof episode.season_number === 'number' ? episode.season_number : 1) === selectedSeason
+  )
+
   return (
     <div className="bg-gray-950 min-h-screen pb-20">
       {/* Header */}
@@ -195,7 +215,7 @@ const AnimeDetail = () => {
         {/* Banner image */}
         <div className="h-64 overflow-hidden absolute top-0 w-full">
           <img 
-            src={anime.image} 
+            src={anime.featured_image} 
             alt="" 
             className="w-full h-full object-cover opacity-50"
           />
@@ -203,7 +223,7 @@ const AnimeDetail = () => {
         </div>
         
         {/* Anime info overlay */}
-        <div className="container pt-32 mx-auto px-4">
+        <div className="container pt-24 mx-auto px-4">
           <div className="flex flex-col items-center relative z-10">
             {/* Anime poster */}
             <div className="w-40 rounded-xl overflow-hidden border-2 border-white/10 shadow-inner">
@@ -218,23 +238,23 @@ const AnimeDetail = () => {
               <h1 className="text-xl text-center font-semibold text-white line-clamp-4">{anime.title}</h1>
               
               {/* Genres pills */}
-              <div className="flex flex-wrap gap-1 mt-2">
-                {anime.genres.slice(0, 3).map((genre) => (
-                  <span
-                    key={genre}
-                    className="px-2 py-0.5 bg-gray-800/80 rounded-full text-xs text-gray-300"
+              <div className="flex flex-wrap justify-center gap-1 mt-2">
+                {anime.genres?.map((genre) => (
+                  <button
+                    key={genre.slug}
+                    type="button"
+                    onClick={() => {
+                      navigate(`/search?genre=${encodeURIComponent(String(genre.slug).trim().toLowerCase())}`)
+                    }}
+                    className="px-2 py-0.5 text-xs rounded-full bg-gray-800/60"
                   >
-                    {genre}
-                  </span>
+                    {genre.name_fa || genre.name_en || genre.slug}
+                  </button>
                 ))}
-                {anime.genres.length > 3 && (
-                  <span className="text-xs text-gray-400 px-1">+{toPersianNumber(anime.genres.length - 3)}</span>
-                )}
               </div>
               
               {/* Rating and action buttons in a single row */}
               <div className="flex items-center justify-center mt-3 gap-2">
-                <div className="flex items-center">
                   <div className="flex items-center gap-2 bg-gray-800/60 rounded-lg px-1 pe-2 py-1">
                     <img src={malLogo} className="w-6 h-6 rounded" alt="" />
                     <span className="text-sm text-white font-medium">
@@ -247,8 +267,6 @@ const AnimeDetail = () => {
                       {typeof anime.animeListScore === 'number' ? toPersianNumber(anime.animeListScore.toFixed(1)) : '8.24'}
                     </span>
                   </div>
-                </div>
-                
                 {/* Action buttons in a connected container */}
                 <div className="flex bg-gray-800/60 rounded-full">
                   <button 
@@ -357,7 +375,7 @@ const AnimeDetail = () => {
                     {anime.season && typeof anime.year === 'number' ? (
                       <button
                         type="button"
-                        className="text-white text-sm"
+                        className="text-sm text-primary-300 font-medium"
                         onClick={() => {
                           const seasonKey = String(anime.season).toUpperCase()
                           navigate(`/search?year=${anime.year}&season=${encodeURIComponent(seasonKey)}`)
@@ -397,13 +415,35 @@ const AnimeDetail = () => {
           {/* Episodes Tab */}
           {activeTab === 'episodes' && (
             <div className="space-y-2">
-              {anime.episodes.map((episode) => (
+              {seasons.length > 1 && (
+                <div className="flex gap-2 overflow-x-auto pb-2">
+                  {seasons.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setSelectedSeason(s)}
+                      className={`px-3 py-1.5 rounded-lg text-sm whitespace-nowrap ${
+                        selectedSeason === s ? 'bg-primary-500 text-white' : 'bg-white/5 text-gray-300'
+                      }`}
+                      aria-pressed={selectedSeason === s}
+                    >
+                      فصل {toPersianNumber(s)}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {filteredEpisodes.map((episode) => (
                 <div
                   key={episode.id}
                   className="flex items-center justify-between p-3 bg-white/5 rounded-md"
                 >
                   <div className='flex flex-col gap-1'>
-                    <span className="text-sm text-white">قسمت {toPersianNumber(episode.number)}</span>
+                    <span className="text-sm text-white">قسمت {toPersianNumber(episode.number)}
+                    {episode.season_number && seasons.length > 1 && (
+                      <span className="text-xs text-gray-400 ms-2">فصل {toPersianNumber(episode.season_number)}</span>
+                    )}
+                    </span>
                     <span className="text-xs text-gray-400">زیرنویس چسبیده | 1080p x265</span>
                   </div>
                   <div className="flex gap-2">

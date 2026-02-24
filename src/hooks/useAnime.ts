@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useAnimeStore } from '../store/animeStore'
 import { fetchAnimeList, fetchAnimeById } from '../utils/api'
+import type { GenreItem } from '../services/supabaseAnime'
 
 interface Episode {
   id: string | number
+  season_number?: number
   number: number
   title: string
   download_link?: string
@@ -13,9 +15,10 @@ interface AnimeDetails {
   id: number | string
   title: string
   image: string
+  featured_image: string
   description: string
   status: string
-  genres: string[]
+  genres: GenreItem[]
   episodes: Episode[]
   episodes_count?: number
   studios: string[]
@@ -50,7 +53,7 @@ export const useAnime = () => {
       setLoading(true)
       setError(null)
       const data = await fetchAnimeById(id)
-      return data as AnimeDetails
+      return data as unknown as AnimeDetails
     } catch (err) {
       setError('خطا در بارگذاری اطلاعات انیمه')
       console.error('Failed to load anime:', err)

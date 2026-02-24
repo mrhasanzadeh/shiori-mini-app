@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Search01Icon } from 'hugeicons-react'
 import { fetchAnimeCards } from '../utils/api'
+import type { GenreItem } from '../services/supabaseAnime'
 type Anime = {
   id: number | string
   title: string
@@ -11,7 +12,7 @@ type Anime = {
   year?: number
   isNew?: boolean
   description?: string
-  genres?: string[]
+  genres?: GenreItem[]
 }
 import shioriLogo from '../assets/images/shiori-logo.svg'
 import emptyListImage from '../assets/images/frieren-03.webp'
@@ -44,8 +45,10 @@ const Search = () => {
 
   const yearParam = searchParams.get('year')
   const seasonParam = searchParams.get('season')
+  const genreParam = searchParams.get('genre')
   const selectedYear = yearParam ? Number(yearParam) : null
   const selectedSeason = seasonParam ? seasonParam.trim().toUpperCase() : null
+  const selectedGenre = genreParam ? genreParam.trim().toLowerCase() : null
 
   // Load all anime once on page mount
   useEffect(() => {
@@ -79,6 +82,10 @@ const Search = () => {
   const filteredBySeasonYear = allAnime.filter((anime) => {
     if (selectedYear !== null && (!Number.isFinite(selectedYear) || anime.year !== selectedYear)) return false
     if (selectedSeason && String(anime.season ?? '').toUpperCase() !== selectedSeason) return false
+    if (selectedGenre) {
+      const normalizedGenres = (anime.genres || []).map((g) => String(g.slug).trim().toLowerCase())
+      if (!normalizedGenres.includes(selectedGenre)) return false
+    }
     return true
   })
 
@@ -140,6 +147,21 @@ const Search = () => {
                   <h3 className="text-sm font-medium line-clamp-1 text-gray-100">
                     {anime.title}
                   </h3>
+                  {Array.isArray(anime.genres) && anime.genres.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {anime.genres.slice(0, 3).map((genre) => (
+                        <span
+                          key={genre.slug}
+                          className="px-1.5 py-0.5 bg-gray-800/80 rounded-full text-[10px] text-gray-300"
+                        >
+                          {genre.name_fa || genre.name_en || genre.slug}
+                        </span>
+                      ))}
+                      {anime.genres.length > 3 && (
+                        <span className="text-[10px] text-gray-500 px-1">+{anime.genres.length - 3}</span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </Link>
