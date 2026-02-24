@@ -6,7 +6,11 @@ export type UiAnimeCard = {
   id: number | string;
   title: string;
   image: string;
+  featuredImage?: string;
   episode: string;
+  format?: string;
+  season?: string;
+  year?: number;
   isNew?: boolean;
   description?: string;
   genres?: string[];
@@ -18,7 +22,11 @@ const toCacheAnime = (c: any): UiAnimeCard => ({
   id: c.id,
   title: c.title,
   image: c.image,
+  featuredImage: c.featuredImage ?? undefined,
   episode: c.episode ?? "قسمت ۱",
+  format: c.format ?? undefined,
+  season: c.season ?? undefined,
+  year: typeof c.year === "number" ? c.year : undefined,
   isNew: Boolean(c.isNew || c.is_new),
   description: c.description ?? "",
   genres: Array.isArray(c.genres) ? c.genres : [],
@@ -46,7 +54,24 @@ export const fetchAnimeList = async (_section?: string): Promise<AnimeListItem[]
 // آرگومان section برای سازگاری با کد موجود پذیرفته می‌شود اما نادیده گرفته می‌شود
 export const fetchAnimeCards = async (_section?: string): Promise<UiAnimeCard[]> => {
   const data = await supa.getAllAnime();
-  return data.map(toCacheAnime);
+  const mapped = data.map(toCacheAnime);
+
+  const normalizeFormat = (f: unknown) => String(f ?? "").trim().toUpperCase();
+
+  if (_section === "movies") {
+    return mapped.filter((a) => normalizeFormat(a.format) === "MOVIE");
+  }
+
+  if (_section === "donghua") {
+    return mapped.filter((a) => normalizeFormat(a.format) === "ONA (CHINESE)");
+  }
+
+  if (_section === "popular") {
+    const allowed = new Set(["TV", "ONA", "SPECIAL", "MOVIE"]);
+    return mapped.filter((a) => allowed.has(normalizeFormat(a.format)));
+  }
+
+  return mapped;
 };
 
 // دریافت جزئیات یک انیمه + لیست قسمت‌ها از جدول episodes (با لینک دانلود هر قسمت)
@@ -65,6 +90,7 @@ export const fetchAnimeById = async (id: number | string) => {
     id: anime.id,
     title: anime.title,
     image: anime.image,
+    format: anime.format ?? undefined,
     description: anime.description,
     status: anime.status,
     genres: anime.genres,
@@ -74,6 +100,7 @@ export const fetchAnimeById = async (id: number | string) => {
     studios: anime.studio ? [anime.studio] : [],
     producers: [],
     season: anime.season ?? "",
+    year: typeof anime.year === "number" ? anime.year : undefined,
     startDate: anime.startDate ?? "",
     endDate: anime.endDate ?? "",
   };

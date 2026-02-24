@@ -8,9 +8,10 @@ import 'swiper/css/free-mode'
 import { ArrowLeft01Icon } from 'hugeicons-react'
 // Removed full-screen FeaturedSlider in favor of compact hero card on Home
 type Anime = {
-  id: number
+  id: number | string
   title: string
   image: string
+  featuredImage?: string
   description?: string
   status?: string
   genres?: string[]
@@ -18,6 +19,8 @@ type Anime = {
   isNew?: boolean
   episode?: string
   averageScore?: number
+  season?: string
+  year?: number
 }
 
 interface SliderSection {
@@ -72,7 +75,7 @@ const Home = () => {
         setError(prev => ({ ...prev, featured: null }))
 
         // Map tabs to existing API sections. Donghua currently proxies to popular.
-        const sectionKey = selectedType === 'movie' ? 'movies' : selectedType === 'donghua' ? 'popular' : 'latest'
+        const sectionKey = selectedType === 'movie' ? 'movies' : selectedType === 'donghua' ? 'donghua' : 'latest'
         const data = await fetchAnimeCards(sectionKey)
         setFeaturedAnime(data as Anime[])
       } catch (err) {
@@ -116,6 +119,8 @@ const Home = () => {
   })()
   const currentSeasonFa = translateSeason(scheduleInfo.currentSeason || fallbackSeason)
   const currentYearFa = toPersianNumber((scheduleInfo.currentYear || new Date().getFullYear()).toString())
+  const currentSeasonKey = (scheduleInfo.currentSeason || fallbackSeason).toUpperCase()
+  const currentYearNumber = scheduleInfo.currentYear || new Date().getFullYear()
 
   const sections: SliderSection[] = [
     { 
@@ -131,9 +136,9 @@ const Home = () => {
       setCache: () => {}
     },
     { 
-      id: 'episodes', 
-      title: 'قسمت‌های جدید',
-      fetchData: () => fetchAnimeCards('episodes') as Promise<Anime[]>,
+      id: 'donghua', 
+      title: 'دونگهوا',
+      fetchData: () => fetchAnimeCards('donghua') as Promise<Anime[]>,
       setCache: () => {}
     },
     { 
@@ -167,7 +172,16 @@ const Home = () => {
   }, [])
 
   const renderSlider = (section: SliderSection) => {
-    const animeList = sectionData[section.id] || []
+    const rawList = sectionData[section.id] || []
+    const animeList =
+      section.id === 'latest'
+        ? rawList.filter(
+            (a) =>
+              typeof a.year === 'number' &&
+              a.year === currentYearNumber &&
+              String(a.season ?? '').toUpperCase() === currentSeasonKey
+          )
+        : rawList
     const isLoading = loading[section.id]
     const hasError = error[section.id]
 
@@ -285,11 +299,12 @@ const Home = () => {
                 <Link to={`/anime/${anime.id}`} className="block group h-full">
                   <div className="relative h-full w-full rounded-2xl overflow-hidden shadow-lg border-2 border-white/20 !border-b-white/10">
                     <img
-                      src={anime.image}
+                      src={anime.featuredImage || anime.image}
                       alt={anime.title}
                       className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                       loading="lazy"
                     />
+
                     <div className="absolute h-1/2 -bottom-1 left-0 right-0 bg-gradient-to-t from-gray-950 to-transparent" />
                     <div className="absolute bottom-0 left-0 right-0 px-4 pb-2">
                       <h2 className="text-lg font-bold text-white line-clamp-1 mb-1">{anime.title}</h2>

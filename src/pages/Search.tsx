@@ -1,19 +1,20 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Search01Icon } from 'hugeicons-react'
-import { fetchSearch } from '../utils/api'
+import { fetchAnimeCards } from '../utils/api'
 type Anime = {
-  id: number
+  id: number | string
   title: string
   image: string
   episode: string
+  season?: string
+  year?: number
   isNew?: boolean
   description?: string
   genres?: string[]
 }
 import shioriLogo from '../assets/images/shiori-logo.svg'
 import emptyListImage from '../assets/images/frieren-03.webp'
-
 
 type EmptyStateProps = {
   image?: string
@@ -24,7 +25,7 @@ type EmptyStateProps = {
 const EmptyState = ({ image, title, subtitle }: EmptyStateProps) => (
   <div className="flex flex-col items-center justify-center text-center gap-3 py-12 px-6 h-[55vh]">
     {image && (
-       <img src={emptyListImage} alt="empty-list" className="w-48"/>
+      <img src={emptyListImage} alt="empty-list" className="w-48"/>
     )}
     <h2 className="text-base font-semibold text-gray-100">{title}</h2>
     {subtitle && (
@@ -34,12 +35,36 @@ const EmptyState = ({ image, title, subtitle }: EmptyStateProps) => (
 )
 
 const Search = () => {
+  const [searchParams] = useSearchParams()
   const [searchTerm, setSearchTerm] = useState('')
-  const [results, setResults] = useState<Anime[]>([])
+  const [allAnime, setAllAnime] = useState<Anime[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
-  
+
+  const yearParam = searchParams.get('year')
+  const seasonParam = searchParams.get('season')
+  const selectedYear = yearParam ? Number(yearParam) : null
+  const selectedSeason = seasonParam ? seasonParam.trim().toUpperCase() : null
+
+  // Load all anime once on page mount
+  useEffect(() => {
+    const loadAll = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const data = await fetchAnimeCards()
+        setAllAnime(data as Anime[])
+      } catch (err) {
+        setError('خطا در بارگذاری لیست انیمه‌ها')
+        console.error('Failed to load all anime:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadAll()
+  }, [])
 
   // Debounce search term
   useEffect(() => {
@@ -50,34 +75,20 @@ const Search = () => {
     return () => clearTimeout(timer)
   }, [searchTerm])
 
-  // Perform search when debounced search term changes
-  useEffect(() => {
-    const performSearch = async () => {
-      if (!debouncedSearchTerm) {
-        setResults([])
-        return
-      }
+  const normalizedQuery = debouncedSearchTerm.trim().toLowerCase()
+  const filteredBySeasonYear = allAnime.filter((anime) => {
+    if (selectedYear !== null && (!Number.isFinite(selectedYear) || anime.year !== selectedYear)) return false
+    if (selectedSeason && String(anime.season ?? '').toUpperCase() !== selectedSeason) return false
+    return true
+  })
 
-      try {
-        setLoading(true)
-        setError(null)
-        const data = await fetchSearch(debouncedSearchTerm)
-        setResults(data as Anime[])
-      } catch (err) {
-        setError('خطا در جستجوی انیمه')
-        console.error('Failed to search anime:', err)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    performSearch()
-  }, [debouncedSearchTerm])
-
-  
+  const filteredResults = normalizedQuery
+    ? filteredBySeasonYear.filter((anime) => anime.title.toLowerCase().includes(normalizedQuery))
+    : filteredBySeasonYear
 
   return (
     <div className="pb-24">
+
       {/* Search Input */}
       <div className="p-4 pb-2">
         <div className="relative w-full flex items-center gap-2 border bg-gray-900 border-white/10 text-white rounded-xl pl-10 p-3">
@@ -92,8 +103,8 @@ const Search = () => {
         </div>
       </div>
 
-      {/* Loading State for Search */}
-      {debouncedSearchTerm && loading && (
+      {/* Loading State */}
+      {loading && (
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
         </div>
@@ -106,10 +117,10 @@ const Search = () => {
         </div>
       )}
 
-      {/* Search Results */}
-      {debouncedSearchTerm && !loading && !error && results.length > 0 && (
+      {/* Results */}
+      {!loading && !error && filteredResults.length > 0 && (
         <div className="grid grid-cols-3 gap-3 p-4">
-          {results.map((anime) => (
+          {filteredResults.map((anime) => (
             <Link
               key={anime.id}
               to={`/anime/${anime.id}`}
@@ -136,21 +147,12 @@ const Search = () => {
         </div>
       )}
 
-      {/* No Results for Search */}
-      {debouncedSearchTerm && !loading && !error && results.length === 0 && (
+      {/* No Results */}
+      {!loading && !error && filteredResults.length === 0 && (
         <EmptyState
           image={shioriLogo}
           title="چیزی پیدا نشد"
           subtitle="عبارت جستجوی خود را دقیق‌تر وارد کنید یا عبارت دیگری امتحان کنید."
-        />
-      )}
-
-      {/* Empty state when no search term */}
-      {!debouncedSearchTerm && (
-        <EmptyState
-          image={shioriLogo}
-          title="جستجوی انیمه"
-          subtitle="برای شروع، نام یک انیمه را در کادر بالا وارد کنید."
         />
       )}
     </div>

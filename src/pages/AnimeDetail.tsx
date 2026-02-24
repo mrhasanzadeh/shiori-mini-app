@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { 
   FavouriteIcon, 
-  Add01Icon,
-  StarIcon,
   Clock01Icon,
   Video01Icon,
   Building01Icon,
@@ -12,9 +10,7 @@ import {
 } from 'hugeicons-react'
 import { useAnime } from '../hooks/useAnime'
 import { useTelegramApp } from '../hooks/useTelegramApp'
- 
-import { useListsStore } from '../store/listsStore'
-import { fetchSimilar } from '../utils/api'
+
 import malLogo from '../assets/images/mal-logo.png'
 import alLogo from '../assets/images/anilist-logo.svg'
 
@@ -29,6 +25,7 @@ interface Anime {
   id: number
   title: string
   image: string
+  format?: string
   description: string
   status: string
   genres: string[]
@@ -39,39 +36,32 @@ interface Anime {
   studios: string[]
   producers: string[]
   season: string
+  year?: number
   startDate: string
   endDate: string
-}
-
-interface SimilarAnime {
-  id: number;
-  title: string;
-  image: string;
-  status: string;
-  genres: string[];
   score?: number;
 }
 
-type TabType = 'info' | 'episodes' | 'similar'
+type TabType = 'info' | 'episodes'
 
 const AnimeDetail = () => {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const { loadAnimeById, toggleFavorite, isFavorite } = useAnime()
   const { showAlert } = useTelegramApp()
-  const { lists, addItem } = useListsStore()
   const [anime, setAnime] = useState<Anime | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<TabType>('info')
   const [showFullDescription, setShowFullDescription] = useState(false)
-  const [showListSelector, setShowListSelector] = useState(false)
-  const [similarAnime, setSimilarAnime] = useState<SimilarAnime[] | null>(null)
-  const [loadingSimilar, setLoadingSimilar] = useState(false)
 
   // Reset active tab when anime ID changes
   useEffect(() => {
     setActiveTab('info')
   }, [id])
+
+  const isDonghua = String(anime?.format ?? '').trim().toUpperCase() === 'ONA (CHINESE)'
+  const isMovie = String(anime?.format ?? '').trim().toUpperCase() === 'MOVIE'
 
   const toPersianNumber = (num: number | string): string => {
     const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
@@ -88,6 +78,16 @@ const AnimeDetail = () => {
     };
     return statusMap[status] || status;
   };
+
+  const translateSeason = (season: string): string => {
+    switch (season) {
+      case 'WINTER': return 'زمستان'
+      case 'SPRING': return 'بهار'
+      case 'SUMMER': return 'تابستان'
+      case 'FALL': return 'پاییز'
+      default: return season
+    }
+  }
 
   useEffect(() => {
     const fetchAnime = async () => {
@@ -111,92 +111,60 @@ const AnimeDetail = () => {
     fetchAnime()
   }, [id])
 
-  // Effect for loading similar anime when tab changes to 'similar'
-  useEffect(() => {
-    const fetchSimilarAnime = async () => {
-      if (activeTab !== 'similar' || !anime) return
-      
-      try {
-        setLoadingSimilar(true)
-        const data = await fetchSimilar(anime.id);
-        setSimilarAnime(data as SimilarAnime[]);
-      } catch (err) {
-        console.error('Failed to load similar anime:', err);
-        setSimilarAnime([]);
-      } finally {
-        setLoadingSimilar(false)
-      }
-    };
-
-    fetchSimilarAnime();
-  }, [activeTab, anime]);
-
   const handleFavorite = () => {
     if (!anime) return
     toggleFavorite(anime.id)
     showAlert(isFavorite(anime.id) ? 'از علاقه‌مندی‌ها حذف شد' : 'به علاقه‌مندی‌ها اضافه شد')
   }
 
-  const handleAddToList = (listId: string) => {
-    if (!anime) return
-    addItem(listId, anime.title)
-    showAlert('به لیست اضافه شد')
-    setShowListSelector(false)
-  }
+  const toJalaliDate = (value?: string) => {
+    if (!value) return 'نامشخص'
 
-  // تابع رندر آثار مشابه
-  const renderSimilarTab = () => {
-    if (loadingSimilar) {
-      return (
-        <div className="flex items-center justify-center h-32">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-500"></div>
-        </div>
-      );
+    const raw = String(value).trim()
+    const match = raw.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/)
+    if (!match) return toPersianNumber(raw)
+
+    const gy = Number(match[1])
+    const gm = Number(match[2])
+    const gd = Number(match[3])
+    if (!Number.isFinite(gy) || !Number.isFinite(gm) || !Number.isFinite(gd)) return toPersianNumber(raw)
+
+    // If it's already Jalali-ish, don't convert again.
+    if (gy < 1700) {
+      const pad2 = (n: number) => String(n).padStart(2, '0')
+      return toPersianNumber(`${gy}/${pad2(gm)}/${pad2(gd)}`)
     }
-    
-    if (!similarAnime || similarAnime.length === 0) {
-      return (
-        <div className="flex items-center justify-center h-32 text-gray-400">
-          <p className="text-sm">اثر مشابهی یافت نشد</p>
-        </div>
-      );
+
+    const g2j = (y: number, m: number, d: number) => {
+      const g_d_m = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334]
+      let jy = y <= 1600 ? 0 : 979
+      y -= y <= 1600 ? 621 : 1600
+      const gy2 = m > 2 ? y + 1 : y
+      let days =
+        365 * y +
+        Math.floor((gy2 + 3) / 4) -
+        Math.floor((gy2 + 99) / 100) +
+        Math.floor((gy2 + 399) / 400) -
+        80 +
+        d +
+        g_d_m[m - 1]
+      jy += 33 * Math.floor(days / 12053)
+      days %= 12053
+      jy += 4 * Math.floor(days / 1461)
+      days %= 1461
+      if (days > 365) {
+        jy += Math.floor((days - 1) / 365)
+        days = (days - 1) % 365
+      }
+      const jm = days < 186 ? 1 + Math.floor(days / 31) : 7 + Math.floor((days - 186) / 30)
+      const jd = 1 + (days < 186 ? (days % 31) : ((days - 186) % 30))
+      return { jy, jm, jd }
     }
-    
-    return (
-      <div className="grid grid-cols-2 gap-3">
-        {similarAnime.map((anime) => (
-          <Link 
-            key={anime.id} 
-            to={`/anime/${anime.id}`}
-            className="block"
-          >
-            <div className="relative aspect-[2/3] overflow-hidden rounded-lg">
-              <img 
-                src={anime.image} 
-                alt={anime.title} 
-                className="w-full h-full object-cover"
-                loading="lazy"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-gray-950 to-transparent">
-                <div className="absolute bottom-0 left-0 right-0 p-2">
-                  <h3 className="text-sm text-white font-medium line-clamp-1">{anime.title}</h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs text-gray-300">{trangrayStatus(anime.status)}</span>
-                    {anime.score && (
-                      <div className="flex items-center gap-1">
-                        <StarIcon className="w-3 h-3 text-yellow-400" />
-                        <span className="text-xs text-gray-300">{toPersianNumber((anime.score / 10).toFixed(1))}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </Link>
-        ))}
-      </div>
-    );
-  };
+
+    const { jy, jm, jd } = g2j(gy, gm, gd)
+    const pad2 = (n: number) => String(n).padStart(2, '0')
+    return toPersianNumber(`${jy}/${pad2(jm)}/${pad2(jd)}`)
+  }
 
   if (loading) {
     return (
@@ -265,15 +233,15 @@ const AnimeDetail = () => {
               </div>
               
               {/* Rating and action buttons in a single row */}
-              <div className="flex items-center justify-between mt-3">
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-2 bg-gray-800/60 rounded-lg px-1 pe-4 py-1">
+              <div className="flex items-center justify-center mt-3 gap-2">
+                <div className="flex items-center">
+                  <div className="flex items-center gap-2 bg-gray-800/60 rounded-lg px-1 pe-2 py-1">
                     <img src={malLogo} className="w-6 h-6 rounded" alt="" />
                     <span className="text-sm text-white font-medium">
                       {typeof anime.animeListScore === 'number' ? toPersianNumber(anime.animeListScore.toFixed(1)) : '8.24'}
                     </span>
                   </div>
-                <div className="flex items-center gap-2 bg-gray-800/60 rounded-lg px-1 pe-4 py-1">
+                  <div className="flex items-center gap-2 bg-gray-800/60 rounded-lg px-1 pe-2 py-1">
                     <img src={alLogo} className="w-6 h-6 rounded" alt="" />
                     <span className="text-sm text-white font-medium">
                       {typeof anime.animeListScore === 'number' ? toPersianNumber(anime.animeListScore.toFixed(1)) : '8.24'}
@@ -289,42 +257,11 @@ const AnimeDetail = () => {
                     aria-label={isFavorite(anime.id) ? 'حذف از علاقه‌مندی‌ها' : 'افزودن به علاقه‌مندی‌ها'}
                   >
                     {isFavorite(anime.id) ? (
-                      <FavouriteIcon className="w-5 h-5 text-red-500" />
+                      <FavouriteIcon className="w-5 h-5 text-red-500 fill-red-500" />
                     ) : (
                       <FavouriteIcon className="w-5 h-5 text-white" />
                     )}
                   </button>
-                  
-                  <div className="relative">
-                    <button 
-                      onClick={() => setShowListSelector(!showListSelector)}
-                      className="p-2 rounded-full hover:bg-gray-700/70"
-                      aria-label="افزودن به لیست"
-                    >
-                      <Add01Icon className="w-5 h-5 text-white" />
-                    </button>
-                    
-                    {/* List Selector Dropdown */}
-                    {showListSelector && (
-                      <div className="absolute top-full mt-2 left-0 w-48 bg-gray-800 rounded-lg shadow-lg p-2 z-20">
-                        {lists.length > 0 ? (
-                          lists.map(list => (
-                            <button 
-                              key={list.id}
-                              onClick={() => handleAddToList(list.id)}
-                              className="w-full text-right px-3 py-2 text-sm text-white hover:bg-gray-700 rounded"
-                            >
-                              {list.title}
-                            </button>
-                          ))
-                        ) : (
-                          <div className="text-center text-gray-400 py-2 text-sm">
-                            لیستی موجود نیست
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
                 </div>
               </div>
             </div>
@@ -368,12 +305,10 @@ const AnimeDetail = () => {
               قسمت‌ها
             </button>
             <button
-              className={`py-2 px-4 text-sm font-medium ${
-                activeTab === 'similar' ? 'text-primary-500 border-b border-primary-500' : 'text-gray-400'
-              }`}
-              onClick={() => setActiveTab('similar')}
-            >
-              آثار مشابه
+              className="py-2 px-4 text-sm font-medium text-gray-500"
+              onClick={() => {}}
+              aria-disabled={true}>
+              آثار مشابه <span className="px-2 py-0.5 text-xs mr-1 font-light bg-white/20 text-white rounded-full">به‌زودی</span>
             </button>
           </div>
         </div>
@@ -387,7 +322,7 @@ const AnimeDetail = () => {
                 <div className="flex justify-between items-center pb-4 border-b border-b-gray-800">
                   <span className="text-gray-400 text-sm flex items-center gap-2">
                     <Clock01Icon className="w-5 h-5 text-primary-400" />
-                    وضعیت
+                    نوع
                   </span>
                   <span className="text-white text-sm">{trangrayStatus(anime.status)}</span>
                 </div>
@@ -413,31 +348,48 @@ const AnimeDetail = () => {
                   </div>
                 </div>
 
-                <div className="flex justify-between items-center py-4 border-b border-b-gray-800">
+                {!isDonghua && (
+                  <div className="flex justify-between items-center py-4 border-b border-b-gray-800">
+                    <span className="text-gray-400 text-sm flex items-center gap-2">
+                      <Calendar01Icon className="w-5 h-5 text-primary-400" />
+                      فصل پخش
+                    </span>
+                    {anime.season && typeof anime.year === 'number' ? (
+                      <button
+                        type="button"
+                        className="text-white text-sm"
+                        onClick={() => {
+                          const seasonKey = String(anime.season).toUpperCase()
+                          navigate(`/search?year=${anime.year}&season=${encodeURIComponent(seasonKey)}`)
+                        }}
+                      >
+                        {translateSeason(String(anime.season).toUpperCase())} {toPersianNumber(anime.year)}
+                      </button>
+                    ) : (
+                      <span className="text-white text-sm">{anime.season || 'نامشخص'}</span>
+                    )}
+                  </div>
+                )}
+
+                <div className={`flex justify-between items-center py-4 ${isMovie ? '' : 'border-b border-b-gray-800'}`}>
                   <span className="text-gray-400 text-sm flex items-center gap-2">
                     <Calendar01Icon className="w-5 h-5 text-primary-400" />
-                    فصل پخش
+                    {isMovie ? 'تاریخ اکران' : 'تاریخ شروع'}
                   </span>
-                  <span className="text-white text-sm">{anime.season || 'نامشخص'}</span>
+                  <span className="text-white text-sm">{toJalaliDate(anime.startDate)}</span>
                 </div>
 
-                <div className="flex justify-between items-center py-4 border-b border-b-gray-800">
-                  <span className="text-gray-400 text-sm flex items-center gap-2">
-                    <Calendar01Icon className="w-5 h-5 text-primary-400" />
-                    تاریخ شروع
-                  </span>
-                  <span className="text-white text-sm">{anime.startDate || 'نامشخص'}</span>
-                </div>
-
-                <div className="flex justify-between items-center py-4">
-                  <span className="text-gray-400 text-sm flex items-center gap-2">
-                    <Calendar02Icon className="w-5 h-5 text-primary-400" />
-                    تاریخ پایان
-                  </span>
-                  <span className="text-white text-sm">
-                    {anime.status === 'RELEASING' ? 'در حال پخش' : anime.status === 'NOT_YET_RELEASED' ? 'هنوز پخش نشده' : anime.endDate || 'نامشخص'}
-                  </span>
-                </div>
+                {!isMovie && (
+                  <div className="flex justify-between items-center py-4">
+                    <span className="text-gray-400 text-sm flex items-center gap-2">
+                      <Calendar02Icon className="w-5 h-5 text-primary-400" />
+                      تاریخ پایان
+                    </span>
+                    <span className="text-white text-sm">
+                      {anime.status === 'RELEASING' ? 'در حال پخش' : anime.status === 'NOT_YET_RELEASED' ? 'هنوز پخش نشده' : toJalaliDate(anime.endDate)}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -480,15 +432,10 @@ const AnimeDetail = () => {
               ))}
             </div>
           )}
-          
-          {/* Similar Tab */}
-          {activeTab === 'similar' && (
-            renderSimilarTab()
-          )}
         </div>
       </div>
     </div>
   )
 }
 
-export default AnimeDetail 
+export default AnimeDetail

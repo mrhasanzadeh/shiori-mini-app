@@ -4,12 +4,15 @@ export type AnimeCard = {
   id: number | string;
   title: string;
   image: string;
+  featuredImage?: string;
   description: string;
+  format?: string;
   status: string;
   genres: string[];
   episodes_count?: number;
   studio?: string;
   season?: string;
+  year?: number;
   startDate?: string;
   endDate?: string;
   isNew?: boolean;
@@ -27,12 +30,15 @@ const toAnimeCard = (row: any): AnimeCard => ({
   id: row.id,
   title: row.title || "بدون عنوان",
   image: getImageUrl(row),
+  featuredImage: row.featured_image ?? undefined,
   description: (row.synopsis ?? row.description) ?? "",
+  format: row.format ?? undefined,
   status: row.format || row.status || "ongoing",
   genres: Array.isArray(row.genres) ? row.genres : [],
   episodes_count: typeof row.episodes_count === "number" ? row.episodes_count : undefined,
   studio: row.studio ?? undefined,
   season: row.season ?? undefined,
+  year: typeof row.year === "number" ? row.year : undefined,
   startDate: row.start_date ?? undefined,
   endDate: row.end_date ?? undefined,
   isNew: Boolean(row.is_new),
@@ -56,12 +62,14 @@ export const getAllAnime = async (): Promise<AnimeCard[]> => {
       id,
       title,
       ${IMAGE_COLUMN},
+      featured_image,
       synopsis,
       format,
       average_score,
       episodes_count,
       studio,
       season,
+      year,
       start_date,
       end_date,
       created_at
