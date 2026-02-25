@@ -13,10 +13,21 @@ export type UiAnimeCard = {
   year?: number
   isNew?: boolean
   description?: string
-  genres?: supa.GenreItem[]
+  genres?: string[]
 }
 
 import type { AnimeListItem } from '../store/animeStore'
+
+const getGenreLabel = (g: any): string | null => {
+  if (!g) return null
+  if (typeof g === 'string') return g
+  if (typeof g === 'object') {
+    if (typeof g.name_fa === 'string' && g.name_fa.trim()) return g.name_fa
+    if (typeof g.name_en === 'string' && g.name_en.trim()) return g.name_en
+    if (typeof g.slug === 'string' && g.slug.trim()) return g.slug
+  }
+  return null
+}
 
 const toCacheAnime = (c: any): UiAnimeCard => ({
   id: c.id,
@@ -29,7 +40,11 @@ const toCacheAnime = (c: any): UiAnimeCard => ({
   year: typeof c.year === 'number' ? c.year : undefined,
   isNew: Boolean(c.isNew || c.is_new),
   description: c.description ?? '',
-  genres: Array.isArray(c.genres) ? c.genres : [],
+  genres: Array.isArray(c.genres)
+    ? c.genres
+        .map(getGenreLabel)
+        .filter((v: any) => typeof v === 'string' && v.trim().length > 0)
+    : [],
 })
 
 const toListItem = (c: any): AnimeListItem => ({

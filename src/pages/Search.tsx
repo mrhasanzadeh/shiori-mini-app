@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Search01Icon } from 'hugeicons-react'
 import { fetchAnimeCards } from '../utils/api'
-import type { GenreItem } from '../services/supabaseAnime'
 type Anime = {
   id: number | string
   title: string
@@ -12,10 +11,9 @@ type Anime = {
   year?: number
   isNew?: boolean
   description?: string
-  genres?: GenreItem[]
+  genres?: string[]
 }
 import shioriLogo from '../assets/images/shiori-logo.svg'
-import emptyListImage from '../assets/images/frieren-03.webp'
 
 type EmptyStateProps = {
   image?: string
@@ -26,7 +24,7 @@ type EmptyStateProps = {
 const EmptyState = ({ image, title, subtitle }: EmptyStateProps) => (
   <div className="flex flex-col items-center justify-center text-center gap-3 py-12 px-6 h-[55vh]">
     {image && (
-      <img src={emptyListImage} alt="empty-list" className="w-48"/>
+      <img src={image} alt="empty-list" className="w-48"/>
     )}
     <h2 className="text-base font-semibold text-gray-100">{title}</h2>
     {subtitle && (
@@ -49,6 +47,31 @@ const Search = () => {
   const selectedYear = yearParam ? Number(yearParam) : null
   const selectedSeason = seasonParam ? seasonParam.trim().toUpperCase() : null
   const selectedGenre = genreParam ? genreParam.trim().toLowerCase() : null
+
+  const toPersianNumber = (num: number | string): string => {
+    const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹']
+    return String(num).replace(/[0-9]/g, (w) => persianDigits[+w])
+  }
+
+  const translateSeason = (season: string): string => {
+    switch (season) {
+      case 'WINTER': return 'زمستان'
+      case 'SPRING': return 'بهار'
+      case 'SUMMER': return 'تابستان'
+      case 'FALL': return 'پاییز'
+      default: return season
+    }
+  }
+
+  const pageTitle = (() => {
+    if (selectedSeason && selectedYear !== null && Number.isFinite(selectedYear)) {
+      return `فصل ${translateSeason(selectedSeason)} ${toPersianNumber(selectedYear)}`
+    }
+    if (selectedGenre) {
+      return `بهترین انیمه‌ای ژانر ${genreParam}`
+    }
+    return null
+  })()
 
   // Load all anime once on page mount
   useEffect(() => {
@@ -83,8 +106,10 @@ const Search = () => {
     if (selectedYear !== null && (!Number.isFinite(selectedYear) || anime.year !== selectedYear)) return false
     if (selectedSeason && String(anime.season ?? '').toUpperCase() !== selectedSeason) return false
     if (selectedGenre) {
-      const normalizedGenres = (anime.genres || []).map((g) => String(g.slug).trim().toLowerCase())
-      if (!normalizedGenres.includes(selectedGenre)) return false
+      const hasGenre = Array.isArray(anime.genres)
+        ? anime.genres.some((g) => String(g).trim().toLowerCase() === selectedGenre)
+        : false
+      if (!hasGenre) return false
     }
     return true
   })
@@ -95,6 +120,12 @@ const Search = () => {
 
   return (
     <div className="pb-24">
+
+      {pageTitle && (
+        <div className="px-4 pt-4 pb-1">
+          <h2 className="text-base font-semibold text-gray-100">{pageTitle}</h2>
+        </div>
+      )}
 
       {/* Search Input */}
       <div className="p-4 pb-2">
@@ -147,21 +178,6 @@ const Search = () => {
                   <h3 className="text-sm font-medium line-clamp-1 text-gray-100">
                     {anime.title}
                   </h3>
-                  {Array.isArray(anime.genres) && anime.genres.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {anime.genres.slice(0, 3).map((genre) => (
-                        <span
-                          key={genre.slug}
-                          className="px-1.5 py-0.5 bg-gray-800/80 rounded-full text-[10px] text-gray-300"
-                        >
-                          {genre.name_fa || genre.name_en || genre.slug}
-                        </span>
-                      ))}
-                      {anime.genres.length > 3 && (
-                        <span className="text-[10px] text-gray-500 px-1">+{anime.genres.length - 3}</span>
-                      )}
-                    </div>
-                  )}
                 </div>
               </div>
             </Link>
