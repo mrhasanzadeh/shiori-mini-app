@@ -21,6 +21,14 @@ interface Episode {
   number: number
   title: string
   download_link?: string
+  subtitle_link?: string
+}
+
+interface SubtitlePack {
+  id: string | number
+  season_number?: number
+  title?: string
+  subtitle_link?: string
 }
 
 interface Anime {
@@ -31,8 +39,10 @@ interface Anime {
   format?: string
   description: string
   status: string
+  airing_status?: string
   genres: GenreItem[]
   episodes: Episode[]
+  subtitle_packs?: SubtitlePack[]
   episodes_count: number
   animeListScore?: number
   averageScore?: number
@@ -46,6 +56,7 @@ interface Anime {
 }
 
 type TabType = 'info' | 'episodes'
+type EpisodeSubTab = 'episodes' | 'subtitles'
 
 const AnimeDetail = () => {
   const { id } = useParams<{ id: string }>()
@@ -58,11 +69,13 @@ const AnimeDetail = () => {
   const [activeTab, setActiveTab] = useState<TabType>('info')
   const [showFullDescription, setShowFullDescription] = useState(false)
   const [selectedSeason, setSelectedSeason] = useState<number>(1)
+  const [episodeSubTab, setEpisodeSubTab] = useState<EpisodeSubTab>('episodes')
 
   // Reset active tab when anime ID changes
   useEffect(() => {
     setActiveTab('info')
     setSelectedSeason(1)
+    setEpisodeSubTab('episodes')
   }, [id])
 
   const isDonghua = String(anime?.format ?? '').trim().toUpperCase() === 'ONA (CHINESE)'
@@ -204,6 +217,10 @@ const AnimeDetail = () => {
     new Set((anime.episodes || []).map((e) => (typeof e.season_number === 'number' ? e.season_number : 1)))
   ).sort((a, b) => a - b)
 
+  const isFinished = String(anime.airing_status ?? anime.status ?? '')
+    .trim()
+    .toUpperCase() === 'FINISHED'
+
   const filteredEpisodes = (anime.episodes || []).filter(
     (episode) => (typeof episode.season_number === 'number' ? episode.season_number : 1) === selectedSeason
   )
@@ -215,7 +232,7 @@ const AnimeDetail = () => {
         {/* Banner image */}
         <div className="h-64 overflow-hidden absolute top-0 w-full">
           <img 
-            src={anime.image} 
+            src={anime.featured_image} 
             alt="" 
             className="w-full h-full object-cover opacity-50"
           />
@@ -223,7 +240,7 @@ const AnimeDetail = () => {
         </div>
         
         {/* Anime info overlay */}
-        <div className="container pt-32 mx-auto px-4">
+        <div className="container pt-24 mx-auto px-4">
           <div className="flex flex-col items-center relative z-10">
             {/* Anime poster */}
             <div className="w-40 rounded-xl overflow-hidden border-2 border-white/10 shadow-inner">
@@ -238,7 +255,7 @@ const AnimeDetail = () => {
               <h1 className="text-xl text-center font-semibold text-white line-clamp-4">{anime.title}</h1>
               
               {/* Genres pills */}
-              <div className="flex flex-wrap gap-1 mt-2">
+              <div className="flex flex-wrap justify-center gap-1 mt-2">
                 {anime.genres.map((genre) => (
                   <button
                     key={genre.slug}
@@ -413,61 +430,143 @@ const AnimeDetail = () => {
           {/* Episodes Tab */}
           {activeTab === 'episodes' && (
             <div className="space-y-2">
-              {seasons.length > 1 && (
-                <div className="flex gap-2 overflow-x-auto pb-2">
-                  {seasons.map((s) => (
+              <div className="flex justify-between items-center gap-2">
+                {seasons.length > 1 && (
+                  <div className="flex gap-2 overflow-x-auto pb-2">
+                    {seasons.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setSelectedSeason(s)}
+                        className={`px-3 py-1.5 rounded-lg text-sm whitespace-nowrap ${
+                          selectedSeason === s ? 'bg-primary-500 text-white' : 'bg-white/5 text-gray-300'
+                        }`}
+                        aria-pressed={selectedSeason === s}
+                      >
+                        فصل {toPersianNumber(s)}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {isFinished && (
+                  <div className="flex gap-1 pb-2">
                     <button
-                      key={s}
                       type="button"
-                      onClick={() => setSelectedSeason(s)}
                       className={`px-3 py-1.5 rounded-lg text-sm whitespace-nowrap ${
-                        selectedSeason === s ? 'bg-primary-500 text-white' : 'bg-white/5 text-gray-300'
+                        episodeSubTab === 'episodes' ? 'bg-white/10 text-white' : 'text-gray-300'
                       }`}
-                      aria-pressed={selectedSeason === s}
+                      onClick={() => setEpisodeSubTab('episodes')}
+                      aria-pressed={episodeSubTab === 'episodes'}
                     >
-                      فصل {toPersianNumber(s)}
+                      قسمت‌ها
                     </button>
+                     <button
+                      type="button"
+                      className={`px-3 py-1.5 rounded-md text-sm whitespace-nowrap ${
+                        episodeSubTab === 'subtitles' ? 'bg-white/10 text-white' : 'text-gray-300'
+                      }`}
+                      onClick={() => setEpisodeSubTab('subtitles')}
+                      aria-pressed={episodeSubTab === 'subtitles'}
+                    >
+                      زیرنویس
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {episodeSubTab === 'episodes' && (
+                <>
+                  {filteredEpisodes.map((episode) => (
+                    <div
+                      key={episode.id}
+                      className="flex items-center justify-between p-3 bg-white/5 rounded-md"
+                    >
+                      <div className="flex flex-col gap-1">
+                        <span className="text-sm text-white">
+                          قسمت {toPersianNumber(episode.number)}
+                          {episode.season_number && seasons.length > 1 && (
+                            <span className="text-xs text-gray-400 ms-2">
+                              فصل {toPersianNumber(episode.season_number)}
+                            </span>
+                          )}
+                        </span>
+                        <span className="text-xs text-gray-400">زیرنویس چسبیده | 1080p x265</span>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <button
+                          className="py-2 px-3 rounded-lg bg-white/5"
+                          aria-label={`دانلود قسمت ${toPersianNumber(episode.number)}`}
+                          onClick={() => {
+                            if (!episode.download_link) {
+                              showAlert('لینک دانلود برای این قسمت موجود نیست')
+                              return
+                            }
+                            window.open(String(episode.download_link), '_blank')
+                          }}
+                        >
+                          دانلود
+                        </button>
+
+                      {!isFinished && (
+                          <button
+                          className="py-2 px-3 rounded-lg bg-white/5"
+                          aria-label={`دانلود زیرنویس قسمت ${toPersianNumber(episode.number)}`}
+                          onClick={() => {
+                            if (!episode.subtitle_link) {
+                              showAlert('زیرنویس برای این قسمت موجود نیست')
+                              return
+                            }
+                            window.open(String(episode.subtitle_link), '_blank')
+                          }}
+                        >
+                          زیرنویس
+                        </button>
+                      )}
+                      </div>
+                    </div>
                   ))}
-                </div>
+                </>
               )}
 
-              {filteredEpisodes.map((episode) => (
-                <div
-                  key={episode.id}
-                  className="flex items-center justify-between p-3 bg-white/5 rounded-md"
-                >
-                  <div className='flex flex-col gap-1'>
-                    <span className="text-sm text-white">قسمت {toPersianNumber(episode.number)}
-                    {episode.season_number && seasons.length > 1 && (
-                      <span className="text-xs text-gray-400 ms-2">فصل {toPersianNumber(episode.season_number)}</span>
-                    )}
-                    </span>
-                    <span className="text-xs text-gray-400">زیرنویس چسبیده | 1080p x265</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <button 
-                    className="py-2 px-3 rounded-lg bg-white/5"
-                    aria-label={`دانلود قسمت ${toPersianNumber(episode.number)}`}
-                    onClick={() => {
-                      const deeplink = `${episode.download_link}`;
-                      window.open(deeplink, '_blank');
-                    }}
-                  >
-                    دانلود
-                  </button>
-                   <button 
-                    className="py-2 px-3 rounded-lg bg-white/5"
-                    aria-label={`دانلود قسمت ${toPersianNumber(episode.number)}`}
-                    onClick={() => {
-                      const deeplink = `${episode.download_link}`;
-                      window.open(deeplink, '_blank');
-                    }}
-                  >
-                    زیرنویس
-                  </button>
-                  </div>
-                </div>
-              ))}
+              {episodeSubTab === 'subtitles' && (
+                <>
+                  {(anime.subtitle_packs || [])
+                    .filter(
+                      (p) => (typeof p.season_number === 'number' ? p.season_number : 1) === selectedSeason
+                    )
+                    .map((p) => (
+                      <div key={p.id} className="flex items-center justify-between p-3 bg-white/5 rounded-md">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-sm text-white">{p.title || 'زیرنویس پک‌شده'}</span>
+                          <span className="text-xs text-gray-400">زیرنویس کامل فصل {toPersianNumber(selectedSeason)}</span>
+                        </div>
+                        <button
+                          className="py-2 px-3 rounded-lg bg-white/5"
+                          aria-label="دانلود زیرنویس پک‌شده"
+                          onClick={() => {
+                            if (!p.subtitle_link) {
+                              showAlert('لینک زیرنویس پک‌شده موجود نیست')
+                              return
+                            }
+                            window.open(String(p.subtitle_link), '_blank')
+                          }}
+                        >
+                          دانلود
+                        </button>
+                      </div>
+                    ))}
+
+                  {(anime.subtitle_packs || []).filter(
+                    (p) => (typeof p.season_number === 'number' ? p.season_number : 1) === selectedSeason
+                  ).length === 0 && (
+                    <div className="text-center text-gray-400 text-sm py-4">
+                      زیرنویس پک‌شده‌ای برای این فصل ثبت نشده
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           )}
         </div>

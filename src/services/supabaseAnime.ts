@@ -14,6 +14,7 @@ export type AnimeCard = {
   description: string
   format?: string
   status: string
+  airing_status?: string
   genres: GenreItem[]
   episodes_count?: number
   studio?: string
@@ -46,7 +47,8 @@ const toAnimeCard = (row: any): AnimeCard => ({
   featuredImage: row.featured_image ?? undefined,
   description: row.synopsis ?? row.description ?? '',
   format: row.format ?? undefined,
-  status: row.format || row.status || 'ongoing',
+  status: row.status ?? row.airing_status ?? 'RELEASING',
+  airing_status: row.airing_status ?? row.status ?? undefined,
   genres: Array.isArray(row.genres)
     ? row.genres
         .map((g: any) => {
@@ -106,6 +108,25 @@ export const getAllAnime = async (): Promise<AnimeCard[]> => {
       featured_image,
       synopsis,
       format,
+      airing_status,
+      average_score,
+      episodes_count,
+      studio,
+      season,
+      year,
+      start_date,
+      end_date,
+      anime_genres(genres(slug,name_en,name_fa)),
+      created_at
+    `
+
+  const selectWithGenresWithoutAiringStatus = `
+      id,
+      title,
+      ${IMAGE_COLUMN},
+      featured_image,
+      synopsis,
+      format,
       average_score,
       episodes_count,
       studio,
@@ -118,6 +139,24 @@ export const getAllAnime = async (): Promise<AnimeCard[]> => {
     `
 
   const selectWithoutGenres = `
+      id,
+      title,
+      ${IMAGE_COLUMN},
+      featured_image,
+      synopsis,
+      format,
+      airing_status,
+      average_score,
+      episodes_count,
+      studio,
+      season,
+      year,
+      start_date,
+      end_date,
+      created_at
+    `
+
+  const selectWithoutGenresWithoutAiringStatus = `
       id,
       title,
       ${IMAGE_COLUMN},
@@ -142,17 +181,35 @@ export const getAllAnime = async (): Promise<AnimeCard[]> => {
     .order('created_at', { ascending: false })
 
   if (withGenresRes.error) {
-    const withoutGenresRes = await supabase
+    const withGenresWithoutAiringRes = await supabase
       .from('anime')
-      .select(selectWithoutGenres)
+      .select(selectWithGenresWithoutAiringStatus)
       .order('created_at', { ascending: false })
 
-    if (withoutGenresRes.error) {
-      console.error('Error fetching all anime:', withoutGenresRes.error)
-      throw withoutGenresRes.error
-    }
+    if (!withGenresWithoutAiringRes.error) {
+      data = withGenresWithoutAiringRes.data
+    } else {
+      const withoutGenresRes = await supabase
+        .from('anime')
+        .select(selectWithoutGenres)
+        .order('created_at', { ascending: false })
 
-    data = withoutGenresRes.data
+      if (withoutGenresRes.error) {
+        const withoutGenresWithoutAiringRes = await supabase
+          .from('anime')
+          .select(selectWithoutGenresWithoutAiringStatus)
+          .order('created_at', { ascending: false })
+
+        if (withoutGenresWithoutAiringRes.error) {
+          console.error('Error fetching all anime:', withoutGenresWithoutAiringRes.error)
+          throw withoutGenresWithoutAiringRes.error
+        }
+
+        data = withoutGenresWithoutAiringRes.data
+      } else {
+        data = withoutGenresRes.data
+      }
+    }
   } else {
     data = withGenresRes.data
   }
@@ -176,6 +233,47 @@ export type EpisodeItem = {
   download_link?: string
 }
 
+export type SubtitleItem = {
+  id: string | number
+  season_number?: number
+  episode_number: number
+  subtitle_link?: string
+}
+
+export type SubtitlePackItem = {
+  id: string | number
+  season_number?: number
+  title?: string
+  subtitle_link?: string
+}
+
+export const getSubtitlePacksByAnimeId = async (
+  animeId: string | number
+): Promise<SubtitlePackItem[]> => {
+  if (!hasSupabaseConfig) return []
+
+  const { data, error } = await supabase
+    .from('subtitle_packs')
+    .select('id, season_number, title, subtitle_link')
+    .eq('anime_id', animeId)
+    .order('season_number', { ascending: true })
+
+  if (error) {
+    console.warn('getSubtitlePacksByAnimeId:', error.message)
+    return []
+  }
+
+  return (data || []).map((row: any) => ({
+    id: row.id,
+    season_number: typeof row.season_number === 'number' ? row.season_number : undefined,
+    title: typeof row.title === 'string' ? row.title : undefined,
+    subtitle_link:
+      typeof row.subtitle_link === 'string' && row.subtitle_link.trim().length > 0
+        ? row.subtitle_link
+        : undefined,
+  }))
+}
+
 // دریافت لیست قسمت‌های یک انیمه از جدول episodes (هر قسمت یک لینک دانلود دارد)
 export const getEpisodesByAnimeId = async (animeId: string | number): Promise<EpisodeItem[]> => {
   if (!hasSupabaseConfig) return []
@@ -196,4 +294,32 @@ export const getEpisodesByAnimeId = async (animeId: string | number): Promise<Ep
     title: row.title || `قسمت ${row.episode_number ?? 0}`,
     download_link: row.download_link ?? undefined,
   }))
+}
+
+export const getSubtitlesByAnimeId = async (animeId: string | number): Promise<SubtitleItem[]> => {
+  if (!hasSupabaseConfig) return []
+
+  const { data, error } = await supabase
+    .from('subtitles')
+    .select('id, season_number, episode_number, title, subtitle_link')
+    .eq('anime_id', animeId)
+    .order('season_number', { ascending: true })
+    .order('episode_number', { ascending: true })
+
+  if (error) {
+    console.warn('getSubtitlesByAnimeId:', error.message)
+    return []
+  }
+
+  return (data || []).map((row: any) => {
+    return {
+      id: row.id,
+      season_number: typeof row.season_number === 'number' ? row.season_number : undefined,
+      episode_number: row.episode_number ?? row.episode ?? 0,
+      subtitle_link:
+        typeof row.subtitle_link === 'string' && row.subtitle_link.trim().length > 0
+          ? row.subtitle_link
+          : undefined,
+    } as SubtitleItem
+  })
 }

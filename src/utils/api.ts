@@ -103,6 +103,43 @@ export const fetchAnimeById = async (id: number | string) => {
 
   // لیست قسمت‌ها فقط از جدول episodes خوانده می‌شود
   const episodesList = await supa.getEpisodesByAnimeId(anime.id)
+  const subtitlesList = await supa.getSubtitlesByAnimeId(anime.id)
+  const subtitlePacksList = await supa.getSubtitlePacksByAnimeId(anime.id)
+
+  if (import.meta.env.DEV && subtitlesList.length === 0) {
+    console.warn(
+      '[fetchAnimeById] subtitlesList خالی برگشت. اگر در جدول subtitles داده دارید، احتمالاً RLS/Policy جلوی SELECT را گرفته. برای تست می‌توانید روی جدول subtitles یک policy خواندن عمومی مثل episodes بگذارید.'
+    )
+  }
+
+  const subtitleMap = new Map<string, string>()
+  for (const s of subtitlesList) {
+    const season = typeof s.season_number === 'number' ? s.season_number : 1
+    const ep = typeof s.episode_number === 'number' ? s.episode_number : 0
+    const link = s.subtitle_link
+    if (typeof link === 'string' && link.trim().length > 0) {
+      subtitleMap.set(`${season}:${ep}`, link)
+    }
+  }
+
+  let matchedSubtitleCount = 0
+
+  const mergedEpisodes = episodesList.map((e: any) => {
+    const season = typeof e.season_number === 'number' ? e.season_number : 1
+    const ep = typeof e.number === 'number' ? e.number : 0
+    const subtitle_link = subtitleMap.get(`${season}:${ep}`)
+    if (subtitle_link) matchedSubtitleCount += 1
+    return {
+      ...e,
+      subtitle_link: subtitle_link ?? undefined,
+    }
+  })
+
+  if (import.meta.env.DEV && subtitlesList.length > 0 && matchedSubtitleCount === 0) {
+    console.warn(
+      '[fetchAnimeById] subtitle rows وجود دارد اما هیچکدام با episodes match نشد. season_number/episode_number را در subtitles و episodes برای همین anime چک کنید.'
+    )
+  }
 
   return {
     id: anime.id,
@@ -112,8 +149,10 @@ export const fetchAnimeById = async (id: number | string) => {
     format: anime.format ?? undefined,
     description: anime.description,
     status: anime.status,
+    airing_status: anime.airing_status ?? undefined,
     genres: anime.genres,
-    episodes: episodesList,
+    episodes: mergedEpisodes,
+    subtitle_packs: subtitlePacksList,
     episodes_count: typeof anime.episodes_count === 'number' ? anime.episodes_count : 0,
     averageScore: typeof anime.averageScore === 'number' ? anime.averageScore : undefined,
     studios: anime.studio ? [anime.studio] : [],
