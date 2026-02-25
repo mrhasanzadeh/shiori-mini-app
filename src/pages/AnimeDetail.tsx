@@ -17,6 +17,7 @@ import alLogo from '../assets/images/anilist-logo.svg'
 
 interface Episode {
   id: string | number
+  season_number?: number
   number: number
   title: string
   download_link?: string
@@ -56,10 +57,12 @@ const AnimeDetail = () => {
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<TabType>('info')
   const [showFullDescription, setShowFullDescription] = useState(false)
+  const [selectedSeason, setSelectedSeason] = useState<number>(1)
 
   // Reset active tab when anime ID changes
   useEffect(() => {
     setActiveTab('info')
+    setSelectedSeason(1)
   }, [id])
 
   const isDonghua = String(anime?.format ?? '').trim().toUpperCase() === 'ONA (CHINESE)'
@@ -147,10 +150,18 @@ const AnimeDetail = () => {
         setLoading(true)
         const data = await loadAnimeById(id!)
         if (data) {
-          setAnime(data as Anime)
+          const nextAnime = data as Anime
+          setAnime(nextAnime)
+
+          const seasons = Array.from(
+            new Set((nextAnime.episodes || []).map((e) => (typeof e.season_number === 'number' ? e.season_number : 1)))
+          ).sort((a, b) => a - b)
+
+          setSelectedSeason(seasons[0] ?? 1)
         } else {
           setError('انیمه مورد نظر یافت نشد')
         }
+
       } catch (err) {
         setError('خطا در بارگذاری اطلاعات انیمه')
       } finally {
@@ -189,6 +200,14 @@ const AnimeDetail = () => {
     ? `${anime.description.substring(0, 150)}...`
     : anime.description
 
+  const seasons = Array.from(
+    new Set((anime.episodes || []).map((e) => (typeof e.season_number === 'number' ? e.season_number : 1)))
+  ).sort((a, b) => a - b)
+
+  const filteredEpisodes = (anime.episodes || []).filter(
+    (episode) => (typeof episode.season_number === 'number' ? episode.season_number : 1) === selectedSeason
+  )
+
   return (
     <div className="bg-gray-950 min-h-screen pb-20">
       {/* Header */}
@@ -220,7 +239,7 @@ const AnimeDetail = () => {
               
               {/* Genres pills */}
               <div className="flex flex-wrap gap-1 mt-2">
-                {anime.genres.slice(0, 3).map((genre) => (
+                {anime.genres.map((genre) => (
                   <button
                     key={genre.slug}
                     type="button"
@@ -230,9 +249,6 @@ const AnimeDetail = () => {
                     {genre.name_fa || genre.name_en || genre.slug}
                   </button>
                 ))}
-                {anime.genres.length > 3 && (
-                  <span className="text-xs text-gray-400 px-1">+{toPersianNumber(anime.genres.length - 3)}</span>
-                )}
               </div>
               
               {/* Rating and action buttons in a single row */}
@@ -397,13 +413,35 @@ const AnimeDetail = () => {
           {/* Episodes Tab */}
           {activeTab === 'episodes' && (
             <div className="space-y-2">
-              {anime.episodes.map((episode) => (
+              {seasons.length > 1 && (
+                <div className="flex gap-2 overflow-x-auto pb-2">
+                  {seasons.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setSelectedSeason(s)}
+                      className={`px-3 py-1.5 rounded-lg text-sm whitespace-nowrap ${
+                        selectedSeason === s ? 'bg-primary-500 text-white' : 'bg-white/5 text-gray-300'
+                      }`}
+                      aria-pressed={selectedSeason === s}
+                    >
+                      فصل {toPersianNumber(s)}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {filteredEpisodes.map((episode) => (
                 <div
                   key={episode.id}
                   className="flex items-center justify-between p-3 bg-white/5 rounded-md"
                 >
                   <div className='flex flex-col gap-1'>
-                    <span className="text-sm text-white">قسمت {toPersianNumber(episode.number)}</span>
+                    <span className="text-sm text-white">قسمت {toPersianNumber(episode.number)}
+                    {episode.season_number && seasons.length > 1 && (
+                      <span className="text-xs text-gray-400 ms-2">فصل {toPersianNumber(episode.season_number)}</span>
+                    )}
+                    </span>
                     <span className="text-xs text-gray-400">زیرنویس چسبیده | 1080p x265</span>
                   </div>
                   <div className="flex gap-2">

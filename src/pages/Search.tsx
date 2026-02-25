@@ -13,7 +13,7 @@ type Anime = {
   description?: string
   genres?: string[]
 }
-import shioriLogo from '../assets/images/shiori-logo.svg'
+import frieren from '../assets/images/frieren-03.webp'
 
 type EmptyStateProps = {
   image?: string
@@ -188,7 +188,7 @@ const Search = () => {
       {/* No Results */}
       {!loading && !error && filteredResults.length === 0 && (
         <EmptyState
-          image={shioriLogo}
+          image={frieren}
           title="چیزی پیدا نشد"
           subtitle="عبارت جستجوی خود را دقیق‌تر وارد کنید یا عبارت دیگری امتحان کنید."
         />
