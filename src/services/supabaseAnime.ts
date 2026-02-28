@@ -23,6 +23,7 @@ export type AnimeCard = {
   startDate?: string
   endDate?: string
   isNew?: boolean
+  isFeatured?: boolean
   episode?: string
   averageScore?: number
 }
@@ -87,6 +88,7 @@ const toAnimeCard = (row: any): AnimeCard => ({
   startDate: row.start_date ?? undefined,
   endDate: row.end_date ?? undefined,
   isNew: Boolean(row.is_new),
+  isFeatured: typeof row.is_featured === 'boolean' ? row.is_featured : undefined,
   episode: row.latest_episode ? `قسمت ${row.latest_episode}` : undefined,
   averageScore: typeof row.average_score === 'number' ? row.average_score : undefined,
 })
@@ -116,6 +118,7 @@ export const getAllAnime = async (): Promise<AnimeCard[]> => {
       year,
       start_date,
       end_date,
+      is_featured,
       anime_genres(genres(slug,name_en,name_fa)),
       created_at
     `
@@ -134,6 +137,7 @@ export const getAllAnime = async (): Promise<AnimeCard[]> => {
       year,
       start_date,
       end_date,
+      is_featured,
       anime_genres(genres(slug,name_en,name_fa)),
       created_at
     `
@@ -153,6 +157,7 @@ export const getAllAnime = async (): Promise<AnimeCard[]> => {
       year,
       start_date,
       end_date,
+      is_featured,
       created_at
     `
 
@@ -170,6 +175,7 @@ export const getAllAnime = async (): Promise<AnimeCard[]> => {
       year,
       start_date,
       end_date,
+      is_featured,
       created_at
     `
 

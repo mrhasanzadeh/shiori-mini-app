@@ -18,6 +18,7 @@ type Anime = {
   genres?: GenreItem[]
   episodes?: number
   isNew?: boolean
+  isFeatured?: boolean
   episode?: string
   averageScore?: number
   season?: string
@@ -78,7 +79,8 @@ const Home = () => {
         // Map tabs to existing API sections. Donghua currently proxies to popular.
         const sectionKey = selectedType === 'movie' ? 'movies' : selectedType === 'donghua' ? 'donghua' : 'latest'
         const data = await fetchAnimeCards(sectionKey)
-        setFeaturedAnime(data as Anime[])
+        const featuredOnly = data.filter((a) => Boolean(a.isFeatured))
+        setFeaturedAnime(featuredOnly)
       } catch (err) {
         const message = err instanceof Error ? err.message : 'خطا در بارگذاری پیشنهاد ویژه'
         setError(prev => ({ 

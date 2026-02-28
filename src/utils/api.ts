@@ -12,19 +12,28 @@ export type UiAnimeCard = {
   season?: string
   year?: number
   isNew?: boolean
+  isFeatured?: boolean
   description?: string
-  genres?: string[]
+  genres?: supa.GenreItem[]
 }
 
 import type { AnimeListItem } from '../store/animeStore'
 
-const getGenreLabel = (g: any): string | null => {
+const toGenreItem = (g: any): supa.GenreItem | null => {
   if (!g) return null
-  if (typeof g === 'string') return g
+  if (typeof g === 'string') {
+    const slug = g.trim().toLowerCase()
+    if (!slug) return null
+    return { slug, name_en: g }
+  }
   if (typeof g === 'object') {
-    if (typeof g.name_fa === 'string' && g.name_fa.trim()) return g.name_fa
-    if (typeof g.name_en === 'string' && g.name_en.trim()) return g.name_en
-    if (typeof g.slug === 'string' && g.slug.trim()) return g.slug
+    const slug = typeof g.slug === 'string' ? g.slug.trim().toLowerCase() : ''
+    if (!slug) return null
+    return {
+      slug,
+      name_en: typeof g.name_en === 'string' ? g.name_en : undefined,
+      name_fa: typeof g.name_fa === 'string' ? g.name_fa : undefined,
+    }
   }
   return null
 }
@@ -39,11 +48,17 @@ const toCacheAnime = (c: any): UiAnimeCard => ({
   season: c.season ?? undefined,
   year: typeof c.year === 'number' ? c.year : undefined,
   isNew: Boolean(c.isNew || c.is_new),
+  isFeatured:
+    typeof c.isFeatured === 'boolean'
+      ? c.isFeatured
+      : typeof c.is_featured === 'boolean'
+        ? c.is_featured
+        : undefined,
   description: c.description ?? '',
   genres: Array.isArray(c.genres)
     ? c.genres
-        .map(getGenreLabel)
-        .filter((v: any) => typeof v === 'string' && v.trim().length > 0)
+        .map(toGenreItem)
+        .filter((v: any) => v && typeof v.slug === 'string' && v.slug.trim().length > 0)
     : [],
 })
 
