@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { 
-  FavouriteIcon, 
+import {
+  FavouriteIcon,
   Clock01Icon,
   Video01Icon,
   Building01Icon,
   Calendar01Icon,
   Calendar02Icon,
+  LeftToRightListNumberIcon,
 } from 'hugeicons-react'
 import { useAnime } from '../hooks/useAnime'
 import { useTelegramApp } from '../hooks/useTelegramApp'
@@ -52,7 +53,7 @@ interface Anime {
   year?: number
   startDate: string
   endDate: string
-  score?: number;
+  score?: number
 }
 
 type TabType = 'info' | 'episodes'
@@ -78,32 +79,43 @@ const AnimeDetail = () => {
     setEpisodeSubTab('episodes')
   }, [id])
 
-  const isDonghua = String(anime?.format ?? '').trim().toUpperCase() === 'ONA (CHINESE)'
-  const isMovie = String(anime?.format ?? '').trim().toUpperCase() === 'MOVIE'
+  const isDonghua =
+    String(anime?.format ?? '')
+      .trim()
+      .toUpperCase() === 'ONA (CHINESE)'
+  const isMovie =
+    String(anime?.format ?? '')
+      .trim()
+      .toUpperCase() === 'MOVIE'
 
   const toPersianNumber = (num: number | string): string => {
-    const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
-    return String(num).replace(/[0-9]/g, (w) => persianDigits[+w]);
-  };
+    const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹']
+    return String(num).replace(/[0-9]/g, (w) => persianDigits[+w])
+  }
 
   const trangrayStatus = (status: string) => {
     const statusMap: Record<string, string> = {
-      'RELEASING': 'در حال پخش',
-      'FINISHED': 'پایان یافته',
-      'NOT_YET_RELEASED': 'هنوز پخش نشده',
-      'CANCELLED': 'لغو شده',
-      'HIATUS': 'متوقف شده'
-    };
-    return statusMap[status] || status;
-  };
+      RELEASING: 'در حال پخش',
+      FINISHED: 'پایان یافته',
+      NOT_YET_RELEASED: 'هنوز پخش نشده',
+      CANCELLED: 'لغو شده',
+      HIATUS: 'متوقف شده',
+    }
+    return statusMap[status] || status
+  }
 
   const translateSeason = (season: string): string => {
     switch (season) {
-      case 'WINTER': return 'زمستان'
-      case 'SPRING': return 'بهار'
-      case 'SUMMER': return 'تابستان'
-      case 'FALL': return 'پاییز'
-      default: return season
+      case 'WINTER':
+        return 'زمستان'
+      case 'SPRING':
+        return 'بهار'
+      case 'SUMMER':
+        return 'تابستان'
+      case 'FALL':
+        return 'پاییز'
+      default:
+        return season
     }
   }
 
@@ -117,7 +129,8 @@ const AnimeDetail = () => {
     const gy = Number(match[1])
     const gm = Number(match[2])
     const gd = Number(match[3])
-    if (!Number.isFinite(gy) || !Number.isFinite(gm) || !Number.isFinite(gd)) return toPersianNumber(raw)
+    if (!Number.isFinite(gy) || !Number.isFinite(gm) || !Number.isFinite(gd))
+      return toPersianNumber(raw)
 
     if (gy < 1700) {
       const pad2 = (n: number) => String(n).padStart(2, '0')
@@ -146,7 +159,7 @@ const AnimeDetail = () => {
         days = (days - 1) % 365
       }
       const jm = days < 186 ? 1 + Math.floor(days / 31) : 7 + Math.floor((days - 186) / 30)
-      const jd = 1 + (days < 186 ? (days % 31) : ((days - 186) % 30))
+      const jd = 1 + (days < 186 ? days % 31 : (days - 186) % 30)
       return { jy, jm, jd }
     }
 
@@ -167,14 +180,17 @@ const AnimeDetail = () => {
           setAnime(nextAnime)
 
           const seasons = Array.from(
-            new Set((nextAnime.episodes || []).map((e) => (typeof e.season_number === 'number' ? e.season_number : 1)))
+            new Set(
+              (nextAnime.episodes || []).map((e) =>
+                typeof e.season_number === 'number' ? e.season_number : 1
+              )
+            )
           ).sort((a, b) => a - b)
 
           setSelectedSeason(seasons[0] ?? 1)
         } else {
           setError('انیمه مورد نظر یافت نشد')
         }
-
       } catch (err) {
         setError('خطا در بارگذاری اطلاعات انیمه')
       } finally {
@@ -200,29 +216,30 @@ const AnimeDetail = () => {
   }
 
   if (error || !anime) {
-    return (
-      <div className="text-center text-red-500 p-4">
-        {error || 'انیمه مورد نظر یافت نشد'}
-      </div>
-    )
+    return <div className="text-center text-red-500 p-4">{error || 'انیمه مورد نظر یافت نشد'}</div>
   }
 
   // Truncate description if needed
   const shouldTruncate = anime.description.length > 150
-  const truncatedDescription = shouldTruncate && !showFullDescription
-    ? `${anime.description.substring(0, 150)}...`
-    : anime.description
+  const truncatedDescription =
+    shouldTruncate && !showFullDescription
+      ? `${anime.description.substring(0, 150)}...`
+      : anime.description
 
   const seasons = Array.from(
-    new Set((anime.episodes || []).map((e) => (typeof e.season_number === 'number' ? e.season_number : 1)))
+    new Set(
+      (anime.episodes || []).map((e) => (typeof e.season_number === 'number' ? e.season_number : 1))
+    )
   ).sort((a, b) => a - b)
 
-  const isFinished = String(anime.airing_status ?? anime.status ?? '')
-    .trim()
-    .toUpperCase() === 'FINISHED'
+  const isFinished =
+    String(anime.airing_status ?? anime.status ?? '')
+      .trim()
+      .toUpperCase() === 'FINISHED'
 
   const filteredEpisodes = (anime.episodes || []).filter(
-    (episode) => (typeof episode.season_number === 'number' ? episode.season_number : 1) === selectedSeason
+    (episode) =>
+      (typeof episode.season_number === 'number' ? episode.season_number : 1) === selectedSeason
   )
 
   return (
@@ -231,29 +248,27 @@ const AnimeDetail = () => {
       <div className="relative">
         {/* Banner image */}
         <div className="h-64 overflow-hidden absolute top-0 w-full">
-          <img 
-            src={anime.featured_image} 
-            alt="" 
+          <img
+            src={anime.featured_image}
+            alt=""
             className="w-full h-full object-cover opacity-50"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-transparent to-gray-950"></div>
         </div>
-        
+
         {/* Anime info overlay */}
         <div className="container pt-24 mx-auto px-4">
           <div className="flex flex-col items-center relative z-10">
             {/* Anime poster */}
             <div className="w-40 rounded-xl overflow-hidden border-2 border-white/10 shadow-inner">
-              <img 
-                src={anime.image} 
-                alt={anime.title} 
-                className="w-full h-full object-cover"
-              />
+              <img src={anime.image} alt={anime.title} className="w-full h-full object-cover" />
             </div>
             {/* Basic info */}
             <div className="flex-1 mt-4">
-              <h1 className="text-xl text-center font-semibold text-white line-clamp-4">{anime.title}</h1>
-              
+              <h1 className="text-xl text-center font-semibold text-white line-clamp-4">
+                {anime.title}
+              </h1>
+
               {/* Genres pills */}
               <div className="flex flex-wrap justify-center gap-1 mt-2">
                 {anime.genres.map((genre) => (
@@ -261,33 +276,43 @@ const AnimeDetail = () => {
                     key={genre.slug}
                     type="button"
                     className="px-2 py-0.5 bg-gray-800/80 rounded-full text-xs text-gray-300"
-                    onClick={() => navigate(`/search?genre=${encodeURIComponent(genre.name_fa || genre.name_en || genre.slug)}`)}
+                    onClick={() =>
+                      navigate(
+                        `/search?genre=${encodeURIComponent(genre.name_fa || genre.name_en || genre.slug)}`
+                      )
+                    }
                   >
                     {genre.name_fa || genre.name_en || genre.slug}
                   </button>
                 ))}
               </div>
-              
+
               {/* Rating and action buttons in a single row */}
               <div className="flex items-center justify-center mt-3 gap-2">
-                  <div className="flex items-center gap-2 bg-gray-800/60 rounded-lg px-1 pe-2 py-1">
-                    <img src={malLogo} className="w-6 h-6 rounded" alt="" />
-                    <span className="text-sm text-white font-medium">
-                      {typeof anime.animeListScore === 'number' ? toPersianNumber(anime.animeListScore.toFixed(1)) : '8.24'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 bg-gray-800/60 rounded-lg px-1 pe-2 py-1">
-                    <img src={alLogo} className="w-6 h-6 rounded" alt="" />
-                    <span className="text-sm text-white font-medium">
-                      {typeof anime.animeListScore === 'number' ? toPersianNumber(anime.animeListScore.toFixed(1)) : '8.24'}
-                    </span>
-                  </div>
+                <div className="flex items-center gap-2 bg-gray-800/60 rounded-lg px-1 pe-2 py-1">
+                  <img src={malLogo} className="w-6 h-6 rounded" alt="" />
+                  <span className="text-sm text-white font-medium">
+                    {typeof anime.animeListScore === 'number'
+                      ? toPersianNumber(anime.animeListScore.toFixed(1))
+                      : '8.24'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 bg-gray-800/60 rounded-lg px-1 pe-2 py-1">
+                  <img src={alLogo} className="w-6 h-6 rounded" alt="" />
+                  <span className="text-sm text-white font-medium">
+                    {typeof anime.animeListScore === 'number'
+                      ? toPersianNumber(anime.animeListScore.toFixed(1))
+                      : '8.24'}
+                  </span>
+                </div>
                 {/* Action buttons in a connected container */}
                 <div className="flex bg-gray-800/60 rounded-full">
-                  <button 
+                  <button
                     onClick={handleFavorite}
                     className="p-2 rounded-full hover:bg-gray-700/70"
-                    aria-label={isFavorite(anime.id) ? 'حذف از علاقه‌مندی‌ها' : 'افزودن به علاقه‌مندی‌ها'}
+                    aria-label={
+                      isFavorite(anime.id) ? 'حذف از علاقه‌مندی‌ها' : 'افزودن به علاقه‌مندی‌ها'
+                    }
                   >
                     {isFavorite(anime.id) ? (
                       <FavouriteIcon className="w-5 h-5 text-red-500 fill-red-500" />
@@ -301,29 +326,29 @@ const AnimeDetail = () => {
           </div>
         </div>
       </div>
-      
+
       {/* Description */}
       <div className="flex flex-col gap-2 mx-auto px-4 mt-4">
-          <p className="text-gray-400 text-sm text-center">
-            {truncatedDescription}
-          </p>
-          {shouldTruncate && (
-            <button 
-              onClick={() => setShowFullDescription(!showFullDescription)}
-              className="mt-1 text-primary-400 text-xs"
-            >
-              {showFullDescription ? 'نمایش کمتر' : 'نمایش بیشتر'}
-            </button>
-          )}
+        <p className="text-gray-400 text-sm text-center">{truncatedDescription}</p>
+        {shouldTruncate && (
+          <button
+            onClick={() => setShowFullDescription(!showFullDescription)}
+            className="mt-1 text-primary-400 text-xs"
+          >
+            {showFullDescription ? 'نمایش کمتر' : 'نمایش بیشتر'}
+          </button>
+        )}
       </div>
-      
+
       {/* Tabs */}
       <div className="container mx-auto px-4 mt-4">
         <div className="border-b border-gray-700">
           <div className="flex">
             <button
               className={`py-2 px-4 text-sm font-medium ${
-                activeTab === 'info' ? 'text-primary-400 border-b border-primary-500' : 'text-gray-400'
+                activeTab === 'info'
+                  ? 'text-primary-400 border-b border-primary-500'
+                  : 'text-gray-400'
               }`}
               onClick={() => setActiveTab('info')}
             >
@@ -331,42 +356,56 @@ const AnimeDetail = () => {
             </button>
             <button
               className={`py-2 px-4 text-sm font-medium ${
-                activeTab === 'episodes' ? 'text-primary-500 border-b border-primary-500' : 'text-gray-400'
+                activeTab === 'episodes'
+                  ? 'text-primary-500 border-b border-primary-500'
+                  : 'text-gray-400'
               }`}
               onClick={() => setActiveTab('episodes')}
             >
-              قسمت‌ها
+              بخش دانلود
             </button>
             <button
               className="py-2 px-4 text-sm font-medium text-gray-500"
               onClick={() => {}}
-              aria-disabled={true}>
-              آثار مشابه <span className="px-2 py-0.5 text-xs mr-1 font-light bg-white/20 text-white rounded-full">به‌زودی</span>
+              aria-disabled={true}
+            >
+              آثار مشابه{' '}
+              <span className="px-2 py-0.5 text-xs mr-1 font-light bg-white/20 text-white rounded-full">
+                به‌زودی
+              </span>
             </button>
           </div>
         </div>
-        
+
         {/* Tab Content */}
-        <div className='mt-4'>
+        <div className="mt-4">
           {/* Info Tab */}
           {activeTab === 'info' && (
             <div className="space-y-4">
               <div className="flex flex-col">
                 <div className="flex justify-between items-center pb-4 border-b border-b-gray-800">
                   <span className="text-gray-400 text-sm flex items-center gap-2">
-                    <Clock01Icon className="w-5 h-5 text-primary-400" />
+                    <Video01Icon className="w-5 h-5 text-primary-400" />
                     نوع
                   </span>
-                  <span className="text-white text-sm">{trangrayStatus(anime.status)}</span>
+                  <span className="text-white text-sm">{anime.format}</span>
                 </div>
                 <div className="flex justify-between items-center py-4 border-b border-b-gray-800">
                   <span className="text-gray-400 text-sm flex items-center gap-2">
-                    <Video01Icon className="w-5 h-5 text-primary-400" />
+                    <LeftToRightListNumberIcon className="w-5 h-5 text-primary-400" />
                     تعداد قسمت‌ها
                   </span>
-                  <span className="text-white text-sm">{toPersianNumber(anime.episodes_count)} قسمت</span>
+                  <span className="text-white text-sm">
+                    {toPersianNumber(anime.episodes_count)} قسمت
+                  </span>
                 </div>
-
+                <div className="flex justify-between items-center py-4 border-b border-b-gray-800">
+                  <span className="text-gray-400 text-sm flex items-center gap-2">
+                    <Clock01Icon className="w-5 h-5 text-primary-400" />
+                    وضعیت
+                  </span>
+                  <span className="text-white text-sm">{trangrayStatus(anime.status)}</span>
+                </div>
                 <div className="flex justify-between items-center py-4 border-b border-b-gray-800">
                   <span className="text-gray-400 text-sm flex items-center gap-2">
                     <Building01Icon className="w-5 h-5 text-primary-400" />
@@ -375,7 +414,8 @@ const AnimeDetail = () => {
                   <div className="flex flex-wrap gap-1">
                     {anime.studios?.map((studio, index) => (
                       <span key={studio} className="text-white text-sm">
-                        {studio}{index < anime.studios.length - 1 ? '، ' : ''}
+                        {studio}
+                        {index < anime.studios.length - 1 ? '، ' : ''}
                       </span>
                     )) || <span className="text-white  text-sm">نامشخص</span>}
                   </div>
@@ -393,10 +433,13 @@ const AnimeDetail = () => {
                         className="text-sm text-primary-300 font-medium"
                         onClick={() => {
                           const seasonKey = String(anime.season).toUpperCase()
-                          navigate(`/search?year=${anime.year}&season=${encodeURIComponent(seasonKey)}`)
+                          navigate(
+                            `/search?year=${anime.year}&season=${encodeURIComponent(seasonKey)}`
+                          )
                         }}
                       >
-                        {translateSeason(String(anime.season).toUpperCase())} {toPersianNumber(anime.year)}
+                        {translateSeason(String(anime.season).toUpperCase())}{' '}
+                        {toPersianNumber(anime.year)}
                       </button>
                     ) : (
                       <span className="text-white text-sm">{anime.season || 'نامشخص'}</span>
@@ -404,9 +447,11 @@ const AnimeDetail = () => {
                   </div>
                 )}
 
-                <div className={`flex justify-between items-center py-4 ${isMovie ? '' : 'border-b border-b-gray-800'}`}>
+                <div
+                  className={`flex justify-between items-center py-4 ${isMovie ? '' : 'border-b border-b-gray-800'}`}
+                >
                   <span className="text-gray-400 text-sm flex items-center gap-2">
-                    <Calendar01Icon className="w-5 h-5 text-primary-400" />
+                    <Calendar02Icon className="w-5 h-5 text-primary-400" />
                     {isMovie ? 'تاریخ اکران' : 'تاریخ شروع'}
                   </span>
                   <span className="text-white text-sm">{toJalaliDate(anime.startDate)}</span>
@@ -418,15 +463,13 @@ const AnimeDetail = () => {
                       <Calendar02Icon className="w-5 h-5 text-primary-400" />
                       تاریخ پایان
                     </span>
-                    <span className="text-white text-sm">
-                      {anime.status === 'RELEASING' ? 'در حال پخش' : anime.status === 'NOT_YET_RELEASED' ? 'هنوز پخش نشده' : toJalaliDate(anime.endDate)}
-                    </span>
+                    <span className="text-white text-sm">{toJalaliDate(anime.endDate)}</span>
                   </div>
                 )}
               </div>
             </div>
           )}
-          
+
           {/* Episodes Tab */}
           {activeTab === 'episodes' && (
             <div className="space-y-2">
@@ -439,7 +482,9 @@ const AnimeDetail = () => {
                         type="button"
                         onClick={() => setSelectedSeason(s)}
                         className={`px-3 py-1.5 rounded-lg text-sm whitespace-nowrap ${
-                          selectedSeason === s ? 'bg-primary-500 text-white' : 'bg-white/5 text-gray-300'
+                          selectedSeason === s
+                            ? 'bg-primary-500 text-white'
+                            : 'bg-white/5 text-gray-300'
                         }`}
                         aria-pressed={selectedSeason === s}
                       >
@@ -461,7 +506,7 @@ const AnimeDetail = () => {
                     >
                       قسمت‌ها
                     </button>
-                     <button
+                    <button
                       type="button"
                       className={`px-3 py-1.5 rounded-md text-sm whitespace-nowrap ${
                         episodeSubTab === 'subtitles' ? 'bg-white/10 text-white' : 'text-gray-300'
@@ -509,21 +554,21 @@ const AnimeDetail = () => {
                           دانلود
                         </button>
 
-                      {!isFinished && (
+                        {!isFinished && (
                           <button
-                          className="py-2 px-3 rounded-lg bg-white/5"
-                          aria-label={`دانلود زیرنویس قسمت ${toPersianNumber(episode.number)}`}
-                          onClick={() => {
-                            if (!episode.subtitle_link) {
-                              showAlert('زیرنویس برای این قسمت موجود نیست')
-                              return
-                            }
-                            window.open(String(episode.subtitle_link), '_blank')
-                          }}
-                        >
-                          زیرنویس
-                        </button>
-                      )}
+                            className="py-2 px-3 rounded-lg bg-white/5"
+                            aria-label={`دانلود زیرنویس قسمت ${toPersianNumber(episode.number)}`}
+                            onClick={() => {
+                              if (!episode.subtitle_link) {
+                                showAlert('زیرنویس برای این قسمت موجود نیست')
+                                return
+                              }
+                              window.open(String(episode.subtitle_link), '_blank')
+                            }}
+                          >
+                            زیرنویس
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -534,13 +579,20 @@ const AnimeDetail = () => {
                 <>
                   {(anime.subtitle_packs || [])
                     .filter(
-                      (p) => (typeof p.season_number === 'number' ? p.season_number : 1) === selectedSeason
+                      (p) =>
+                        (typeof p.season_number === 'number' ? p.season_number : 1) ===
+                        selectedSeason
                     )
                     .map((p) => (
-                      <div key={p.id} className="flex items-center justify-between p-3 bg-white/5 rounded-md">
+                      <div
+                        key={p.id}
+                        className="flex items-center justify-between p-3 bg-white/5 rounded-md"
+                      >
                         <div className="flex flex-col gap-1">
                           <span className="text-sm text-white">{p.title || 'زیرنویس پک‌شده'}</span>
-                          <span className="text-xs text-gray-400">زیرنویس کامل فصل {toPersianNumber(selectedSeason)}</span>
+                          <span className="text-xs text-gray-400">
+                            زیرنویس کامل فصل {toPersianNumber(selectedSeason)}
+                          </span>
                         </div>
                         <button
                           className="py-2 px-3 rounded-lg bg-white/5"
@@ -559,7 +611,8 @@ const AnimeDetail = () => {
                     ))}
 
                   {(anime.subtitle_packs || []).filter(
-                    (p) => (typeof p.season_number === 'number' ? p.season_number : 1) === selectedSeason
+                    (p) =>
+                      (typeof p.season_number === 'number' ? p.season_number : 1) === selectedSeason
                   ).length === 0 && (
                     <div className="text-center text-gray-400 text-sm py-4">
                       زیرنویس پک‌شده‌ای برای این فصل ثبت نشده
