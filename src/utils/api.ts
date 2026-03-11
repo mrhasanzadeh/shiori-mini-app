@@ -121,6 +121,13 @@ export const fetchAnimeById = async (id: number | string) => {
   const subtitlesList = await supa.getSubtitlesByAnimeId(anime.id)
   const subtitlePacksList = await supa.getSubtitlePacksByAnimeId(anime.id)
 
+  let studioNames: string[] = []
+  try {
+    studioNames = await supa.getAnimeStudioNames(anime.id)
+  } catch {
+    studioNames = []
+  }
+
   if (import.meta.env.DEV && subtitlesList.length === 0) {
     console.warn(
       '[fetchAnimeById] subtitlesList خالی برگشت. اگر در جدول subtitles داده دارید، احتمالاً RLS/Policy جلوی SELECT را گرفته. برای تست می‌توانید روی جدول subtitles یک policy خواندن عمومی مثل episodes بگذارید.'
@@ -170,7 +177,7 @@ export const fetchAnimeById = async (id: number | string) => {
     subtitle_packs: subtitlePacksList,
     episodes_count: typeof anime.episodes_count === 'number' ? anime.episodes_count : 0,
     averageScore: typeof anime.averageScore === 'number' ? anime.averageScore : undefined,
-    studios: anime.studio ? [anime.studio] : [],
+    studios: studioNames.length > 0 ? studioNames : anime.studio ? [anime.studio] : [],
     producers: [],
     season: anime.season ?? '',
     year: typeof anime.year === 'number' ? anime.year : undefined,

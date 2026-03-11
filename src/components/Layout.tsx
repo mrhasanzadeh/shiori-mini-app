@@ -1,13 +1,13 @@
 import { ReactNode, useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { 
-  Home01Icon, 
+import {
+  Home01Icon,
   Calendar01Icon,
   Search01Icon,
   UserIcon,
   FavouriteIcon,
   ArrowRight01Icon,
-  RefreshIcon
+  RefreshIcon,
 } from 'hugeicons-react'
 import logo from '../assets/images/shiori-logo.svg'
 
@@ -33,25 +33,109 @@ const Layout = ({ children }: LayoutProps) => {
     return location.pathname === path
   }
 
-  const isAnimeDetailPage = location.pathname.includes('/anime/')
+  const isAnimeDetailPage = location.pathname.startsWith('/anime/')
+  const isAdminPage = location.pathname === '/admin' || location.pathname.startsWith('/admin/')
+
+  if (isAdminPage) {
+    return (
+      <div className="min-h-screen bg-gray-950 text-white">
+        <header className="sticky top-0 z-40 border-b border-white/10 bg-gray-950/80 backdrop-blur">
+          <div className="px-8 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Link to="/" className="flex items-center justify-center gap-1 text-white">
+                <img src={logo} alt="logo" className="w-6 h-6" />
+                <span className="text-white text-xl font-bold">شیوری</span>
+              </Link>
+              <div className="text-gray-500">/</div>
+              <Link to="/admin" className="text-white font-semibold">
+                پنل ادمین
+              </Link>
+            </div>
+
+            <button
+              onClick={() => navigate(-1)}
+              className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors duration-200"
+              aria-label="بازگشت"
+            >
+              <ArrowRight01Icon className="w-5 h-5" />
+              بازگشت
+            </button>
+          </div>
+        </header>
+
+        <div className="flex">
+          <aside className="w-72 shrink-0 border-r border-white/10 min-h-[calc(100vh-73px)] sticky top-[73px]">
+            <div className="p-6 space-y-2">
+              <Link
+                to="/admin"
+                className={`block px-4 py-3 rounded-xl border transition-colors ${
+                  isActive('/admin')
+                    ? 'bg-white/10 border-white/20 text-white'
+                    : 'bg-transparent border-white/10 text-gray-300 hover:bg-white/5'
+                }`}
+              >
+                داشبورد
+              </Link>
+              <Link
+                to="/admin/anime"
+                className={`block px-4 py-3 rounded-xl border transition-colors ${
+                  location.pathname.startsWith('/admin/anime')
+                    ? 'bg-white/10 border-white/20 text-white'
+                    : 'bg-transparent border-white/10 text-gray-300 hover:bg-white/5'
+                }`}
+              >
+                انیمه‌ها
+              </Link>
+              <Link
+                to="/admin/genres"
+                className={`block px-4 py-3 rounded-xl border transition-colors ${
+                  location.pathname.startsWith('/admin/genres')
+                    ? 'bg-white/10 border-white/20 text-white'
+                    : 'bg-transparent border-white/10 text-gray-300 hover:bg-white/5'
+                }`}
+              >
+                ژانرها
+              </Link>
+              <Link
+                to="/admin/studios"
+                className={`block px-4 py-3 rounded-xl border transition-colors ${
+                  location.pathname.startsWith('/admin/studios')
+                    ? 'bg-white/10 border-white/20 text-white'
+                    : 'bg-transparent border-white/10 text-gray-300 hover:bg-white/5'
+                }`}
+              >
+                استودیوها
+              </Link>
+            </div>
+          </aside>
+
+          <main className="flex-1 p-8">
+            <div className="max-w-6xl">{children}</div>
+          </main>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-950">
-      <header className={`fixed top-0 left-0 right-0 z-50 transition-colors duration-200 ${
-        isScrolled 
-          ? 'bg-gray-950' 
-          : isAnimeDetailPage 
-            ? 'bg-transparent' 
-            : 'bg-gradient-to-b from-gray-950/90 via-gray-950/60 to-transparent'
-      }`}>
+      <header
+        className={`fixed top-0 left-0 right-0 z-50 transition-colors duration-200 ${
+          isScrolled
+            ? 'bg-gray-950'
+            : isAnimeDetailPage
+              ? 'bg-transparent'
+              : 'bg-gradient-to-b from-gray-950/90 via-gray-950/60 to-transparent'
+        }`}
+      >
         <div className="container py-4">
           <div className="flex items-center justify-between">
             <Link to="/" className="flex items-center justify-center gap-1 text-white">
-              <img src={logo} alt="logo" className='w-6 h-6' />
-            <span className='text-white text-xl font-bold'>شیوری</span>
+              <img src={logo} alt="logo" className="w-6 h-6" />
+              <span className="text-white text-xl font-bold">شیوری</span>
             </Link>
             {location.pathname === '/' ? (
-              <button 
+              <button
                 onClick={() => window.location.reload()}
                 className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors duration-200"
                 aria-label="بارگذاری مجدد"
@@ -59,7 +143,7 @@ const Layout = ({ children }: LayoutProps) => {
                 <RefreshIcon className="w-6 h-6" />
               </button>
             ) : (
-              <button 
+              <button
                 onClick={() => navigate(-1)}
                 className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors duration-200"
                 aria-label="بازگشت"
@@ -71,9 +155,7 @@ const Layout = ({ children }: LayoutProps) => {
         </div>
       </header>
 
-      <main className={`flex-1 ${!isAnimeDetailPage ? 'pt-16' : ''}`}>
-        {children}
-      </main>
+      <main className={`flex-1 ${!isAnimeDetailPage ? 'pt-16' : ''}`}>{children}</main>
 
       <nav className="fixed bottom-0 left-0 right-0 bg-gray-950 z-50">
         <div className="container">
@@ -135,4 +217,4 @@ const Layout = ({ children }: LayoutProps) => {
   )
 }
 
-export default Layout 
+export default Layout

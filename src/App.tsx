@@ -2,6 +2,7 @@ import { Routes, Route } from 'react-router-dom'
 import { useEffect, lazy, Suspense } from 'react'
 import WebApp from '@twa-dev/sdk'
 import Layout from './components/Layout'
+import AdminGate from './components/AdminGate'
 import { useTheme } from './utils/theme'
 import { useTelegramApp } from './hooks/useTelegramApp'
 
@@ -14,6 +15,12 @@ const MyList = lazy(() => import('./pages/MyList'))
 const ListDetail = lazy(() => import('./pages/ListDetail'))
 const Profile = lazy(() => import('./pages/Profile'))
 const Notifications = lazy(() => import('./pages/Notifications'))
+
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'))
+const AdminAnimeList = lazy(() => import('./pages/AdminAnimeList'))
+const AdminAnimeEdit = lazy(() => import('./pages/AdminAnimeEdit'))
+const AdminGenres = lazy(() => import('./pages/AdminGenres'))
+const AdminStudios = lazy(() => import('./pages/AdminStudios'))
 
 function App() {
   const { isReady } = useTelegramApp()
@@ -36,11 +43,13 @@ function App() {
 
   return (
     <Layout>
-      <Suspense fallback={
-        <div className="flex items-center justify-center h-screen">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
-        </div>
-      }>
+      <Suspense
+        fallback={
+          <div className="flex items-center justify-center h-screen">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+          </div>
+        }
+      >
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/anime/:id" element={<AnimeDetail />} />
@@ -50,10 +59,51 @@ function App() {
           <Route path="/lists/:id" element={<ListDetail />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/notifications" element={<Notifications />} />
+
+          <Route
+            path="/admin"
+            element={
+              <AdminGate>
+                <AdminDashboard />
+              </AdminGate>
+            }
+          />
+          <Route
+            path="/admin/anime"
+            element={
+              <AdminGate>
+                <AdminAnimeList />
+              </AdminGate>
+            }
+          />
+          <Route
+            path="/admin/anime/:id"
+            element={
+              <AdminGate>
+                <AdminAnimeEdit />
+              </AdminGate>
+            }
+          />
+          <Route
+            path="/admin/genres"
+            element={
+              <AdminGate>
+                <AdminGenres />
+              </AdminGate>
+            }
+          />
+          <Route
+            path="/admin/studios"
+            element={
+              <AdminGate>
+                <AdminStudios />
+              </AdminGate>
+            }
+          />
         </Routes>
       </Suspense>
     </Layout>
   )
 }
 
-export default App 
+export default App

@@ -104,19 +104,14 @@ const AnimeDetail = () => {
     return statusMap[status] || status
   }
 
-  const translateSeason = (season: string): string => {
-    switch (season) {
-      case 'WINTER':
-        return 'زمستان'
-      case 'SPRING':
-        return 'بهار'
-      case 'SUMMER':
-        return 'تابستان'
-      case 'FALL':
-        return 'پاییز'
-      default:
-        return season
+  const translateSeason = (season: string) => {
+    const seasonMap: Record<string, string> = {
+      WINTER: 'زمستان',
+      SPRING: 'بهار',
+      SUMMER: 'تابستان',
+      FALL: 'پاییز',
     }
+    return seasonMap[String(season || '').toUpperCase()] || season
   }
 
   const toJalaliDate = (value?: string) => {
@@ -357,7 +352,7 @@ const AnimeDetail = () => {
             <button
               className={`py-2 px-4 text-sm font-medium ${
                 activeTab === 'episodes'
-                  ? 'text-primary-500 border-b border-primary-500'
+                  ? 'text-primary-400 border-b border-primary-500'
                   : 'text-gray-400'
               }`}
               onClick={() => setActiveTab('episodes')}
@@ -494,7 +489,7 @@ const AnimeDetail = () => {
                   </div>
                 )}
 
-                {isFinished && (
+                {!isMovie && isFinished && (
                   <div className="flex gap-1 pb-2">
                     <button
                       type="button"
@@ -520,7 +515,7 @@ const AnimeDetail = () => {
                 )}
               </div>
 
-              {episodeSubTab === 'episodes' && (
+              {(isMovie || episodeSubTab === 'episodes') && (
                 <>
                   {filteredEpisodes.map((episode) => (
                     <div
@@ -554,7 +549,7 @@ const AnimeDetail = () => {
                           دانلود
                         </button>
 
-                        {!isFinished && (
+                        {(!isFinished || isMovie) && (
                           <button
                             className="py-2 px-3 rounded-lg bg-white/5"
                             aria-label={`دانلود زیرنویس قسمت ${toPersianNumber(episode.number)}`}
@@ -575,7 +570,7 @@ const AnimeDetail = () => {
                 </>
               )}
 
-              {episodeSubTab === 'subtitles' && (
+              {!isMovie && episodeSubTab === 'subtitles' && (
                 <>
                   {(anime.subtitle_packs || [])
                     .filter(

@@ -46,12 +46,7 @@ const SkeletonCard = () => (
 // Skeleton Slider Component
 const SkeletonSlider = () => (
   <div className="relative">
-    <Swiper
-      modules={[FreeMode]}
-      spaceBetween={16}
-      slidesPerView="auto"
-      freeMode={true}
-    >
+    <Swiper modules={[FreeMode]} spaceBetween={16} slidesPerView="auto" freeMode={true}>
       {[...Array(5)].map((_, index) => (
         <SwiperSlide key={index} className="!w-40">
           <SkeletonCard />
@@ -66,30 +61,31 @@ const Home = () => {
   const [error, setError] = useState<Record<string, string | null>>({})
   const [sectionData, setSectionData] = useState<Record<string, Anime[]>>({})
   const [selectedType, setSelectedType] = useState<'anime' | 'movie' | 'donghua'>('anime')
-  
+
   const [featuredAnime, setFeaturedAnime] = useState<Anime[]>([])
   const featuredLoading = loading['featured'] || false
 
   useEffect(() => {
     const loadFeaturedAnime = async () => {
       try {
-        setLoading(prev => ({ ...prev, featured: true }))
-        setError(prev => ({ ...prev, featured: null }))
+        setLoading((prev) => ({ ...prev, featured: true }))
+        setError((prev) => ({ ...prev, featured: null }))
 
         // Map tabs to existing API sections. Donghua currently proxies to popular.
-        const sectionKey = selectedType === 'movie' ? 'movies' : selectedType === 'donghua' ? 'donghua' : 'latest'
+        const sectionKey =
+          selectedType === 'movie' ? 'movies' : selectedType === 'donghua' ? 'donghua' : 'latest'
         const data = await fetchAnimeCards(sectionKey)
         const featuredOnly = data.filter((a) => Boolean(a.isFeatured))
         setFeaturedAnime(featuredOnly)
       } catch (err) {
         const message = err instanceof Error ? err.message : 'خطا در بارگذاری پیشنهاد ویژه'
-        setError(prev => ({ 
-          ...prev, 
-          featured: message 
+        setError((prev) => ({
+          ...prev,
+          featured: message,
         }))
         console.error('Failed to load featured anime:', err)
       } finally {
-        setLoading(prev => ({ ...prev, featured: false }))
+        setLoading((prev) => ({ ...prev, featured: false }))
       }
     }
 
@@ -104,11 +100,16 @@ const Home = () => {
 
   const translateSeason = (season: string): string => {
     switch (season) {
-      case 'WINTER': return 'زمستان'
-      case 'SPRING': return 'بهار'
-      case 'SUMMER': return 'تابستان'
-      case 'FALL': return 'پاییز'
-      default: return season
+      case 'WINTER':
+        return 'زمستان'
+      case 'SPRING':
+        return 'بهار'
+      case 'SUMMER':
+        return 'تابستان'
+      case 'FALL':
+        return 'پاییز'
+      default:
+        return season
     }
   }
 
@@ -121,57 +122,59 @@ const Home = () => {
     return 'FALL'
   })()
   const currentSeasonFa = translateSeason(scheduleInfo.currentSeason || fallbackSeason)
-  const currentYearFa = toPersianNumber((scheduleInfo.currentYear || new Date().getFullYear()).toString())
+  const currentYearFa = toPersianNumber(
+    (scheduleInfo.currentYear || new Date().getFullYear()).toString()
+  )
   const currentSeasonKey = (scheduleInfo.currentSeason || fallbackSeason).toUpperCase()
   const currentYearNumber = scheduleInfo.currentYear || new Date().getFullYear()
 
   const sections: SliderSection[] = [
-    { 
-      id: 'latest', 
+    {
+      id: 'latest',
       title: ` ${currentSeasonFa} ${currentYearFa}`,
       fetchData: () => fetchAnimeCards('latest') as Promise<Anime[]>,
-      setCache: () => {}
+      setCache: () => {},
     },
-    { 
-      id: 'popular', 
+    {
+      id: 'popular',
       title: 'محبوب‌ترین‌ها',
       fetchData: () => fetchAnimeCards('popular') as Promise<Anime[]>,
-      setCache: () => {}
+      setCache: () => {},
     },
-    { 
-      id: 'donghua', 
+    {
+      id: 'donghua',
       title: 'دونگهوا',
       fetchData: () => fetchAnimeCards('donghua') as Promise<Anime[]>,
-      setCache: () => {}
+      setCache: () => {},
     },
-    { 
-      id: 'movies', 
+    {
+      id: 'movies',
       title: 'انیمه‌های سینمایی',
       fetchData: () => fetchAnimeCards('movies') as Promise<Anime[]>,
-      setCache: () => {}
-    }
+      setCache: () => {},
+    },
   ]
 
   useEffect(() => {
     const loadAnime = async (section: SliderSection) => {
       try {
-        setLoading(prev => ({ ...prev, [section.id]: true }))
-        setError(prev => ({ ...prev, [section.id]: null }))
+        setLoading((prev) => ({ ...prev, [section.id]: true }))
+        setError((prev) => ({ ...prev, [section.id]: null }))
         const data = await section.fetchData()
-        setSectionData(prev => ({ ...prev, [section.id]: data }))
+        setSectionData((prev) => ({ ...prev, [section.id]: data }))
       } catch (err) {
         const message = err instanceof Error ? err.message : 'خطا در بارگذاری لیست انیمه‌ها'
-        setError(prev => ({ 
-          ...prev, 
-          [section.id]: message 
+        setError((prev) => ({
+          ...prev,
+          [section.id]: message,
         }))
         console.error('Failed to load anime list:', err)
       } finally {
-        setLoading(prev => ({ ...prev, [section.id]: false }))
+        setLoading((prev) => ({ ...prev, [section.id]: false }))
       }
     }
 
-    sections.forEach(section => loadAnime(section))
+    sections.forEach((section) => loadAnime(section))
   }, [])
 
   const renderSlider = (section: SliderSection) => {
@@ -193,11 +196,7 @@ const Home = () => {
     }
 
     if (hasError && animeList.length === 0) {
-      return (
-        <div className="text-center text-red-500 p-4">
-          {hasError}
-        </div>
-      )
+      return <div className="text-center text-red-500 p-4">{hasError}</div>
     }
 
     if (!isLoading && !hasError && animeList.length === 0) {
@@ -205,7 +204,8 @@ const Home = () => {
         <div className="text-center text-gray-400 p-4 text-sm">
           <p>انیمه‌ای لود نشد.</p>
           <p className="mt-2 text-xs max-w-xs mx-auto">
-            اگر در Supabase داده دارید، در SQL Editor این را اجرا کنید: Enable RLS و سپس policy با نام Allow public read برای SELECT روی جدول anime.
+            اگر در Supabase داده دارید، در SQL Editor این را اجرا کنید: Enable RLS و سپس policy با
+            نام Allow public read برای SELECT روی جدول anime.
           </p>
         </div>
       )
@@ -213,12 +213,7 @@ const Home = () => {
 
     return (
       <div className="relative">
-        <Swiper
-          modules={[FreeMode]}
-          spaceBetween={16}
-          slidesPerView="auto"
-          freeMode={true}
-        >
+        <Swiper modules={[FreeMode]} spaceBetween={8} slidesPerView="auto" freeMode={true}>
           {animeList.map((anime) => (
             <SwiperSlide key={anime.id} className="!w-40">
               <Link
@@ -227,7 +222,7 @@ const Home = () => {
                 aria-label={`مشاهده ${anime.title}`}
               >
                 <div className="card">
-                  <div className="relative aspect-[2/3] overflow-hidden rounded-xl border-2 border-t-white/10 border-r-white/10 border-l-white/10 border-b-white/5">
+                  <div className="relative aspect-[2/3] overflow-hidden rounded-xl border-2 border-white/10 border-b-white/5">
                     <img
                       src={anime.image}
                       alt={anime.title}
@@ -235,13 +230,11 @@ const Home = () => {
                       loading="lazy"
                     />
                   </div>
-                  <div className="mt-3">
+                  <div className="mt-3 text-center">
                     <h3 className="text-sm font-medium line-clamp-1 text-gray-100">
                       {anime.title}
                     </h3>
-                    <p className="text-xs text-gray-400 mt-[2px]">
-                      زیرنویس چسبیده | 1080p
-                    </p>
+                    <p className="text-xs text-gray-400 mt-[2px]">زیرنویس چسبیده | 1080p</p>
                   </div>
                 </div>
               </Link>
@@ -310,10 +303,15 @@ const Home = () => {
 
                     <div className="absolute h-1/2 -bottom-1 left-0 right-0 bg-gradient-to-t from-gray-950 to-transparent" />
                     <div className="absolute bottom-0 left-0 right-0 px-4 pb-2">
-                      <h2 className="text-lg font-bold text-white line-clamp-1 mb-1">{anime.title}</h2>
+                      <h2 className="text-lg font-bold text-white line-clamp-1 mb-1">
+                        {anime.title}
+                      </h2>
                       <div className="flex items-center gap-1 mb-2">
                         {(anime.genres || []).slice(0, 4).map((g) => (
-                          <span key={g.slug} className="px-2 py-0.5 text-xs rounded-md bg-gray-800/80 text-gray-100 border border-white/10">
+                          <span
+                            key={g.slug}
+                            className="px-2 py-0.5 text-xs rounded-md bg-gray-800/80 text-gray-100 border border-white/10"
+                          >
                             {g.name_fa || g.name_en || g.slug}
                           </span>
                         ))}
@@ -334,9 +332,7 @@ const Home = () => {
         {sections.map((section) => (
           <div key={section.id} className="space-y-6 px-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-gray-100">
-                {section.title}
-              </h2>
+              <h2 className="text-xl font-semibold text-gray-100">{section.title}</h2>
               <div className="flex items-center gap-2 text-primary-400">
                 <Link
                   to="/search"
@@ -356,4 +352,4 @@ const Home = () => {
   )
 }
 
-export default Home 
+export default Home
