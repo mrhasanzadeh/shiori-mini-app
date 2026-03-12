@@ -22,6 +22,8 @@ export type AnimeCard = {
   year?: number
   startDate?: string
   endDate?: string
+  has_special_season?: boolean
+  special_season_insert_after?: number | null
   isNew?: boolean
   isFeatured?: boolean
   episode?: string
@@ -50,6 +52,14 @@ const toAnimeCard = (row: any): AnimeCard => ({
   format: row.format ?? undefined,
   status: row.status ?? row.airing_status ?? 'RELEASING',
   airing_status: row.airing_status ?? row.status ?? undefined,
+  has_special_season:
+    typeof row.has_special_season === 'boolean' ? row.has_special_season : undefined,
+  special_season_insert_after:
+    typeof row.special_season_insert_after === 'number'
+      ? row.special_season_insert_after
+      : row.special_season_insert_after === null
+        ? null
+        : undefined,
   genres: Array.isArray(row.genres)
     ? row.genres
         .map((g: any) => {
@@ -118,8 +128,47 @@ export const getAllAnime = async (): Promise<AnimeCard[]> => {
       year,
       start_date,
       end_date,
+      has_special_season,
+      special_season_insert_after,
       is_featured,
       anime_genres(genres(slug,name_en,name_fa)),
+      created_at
+    `
+
+  const selectWithGenresWithoutAiringStatusAndSpecial = `
+      id,
+      title,
+      ${IMAGE_COLUMN},
+      featured_image,
+      synopsis,
+      format,
+      average_score,
+      episodes_count,
+      studio,
+      season,
+      year,
+      start_date,
+      end_date,
+      is_featured,
+      anime_genres(genres(slug,name_en,name_fa)),
+      created_at
+    `
+
+  const selectWithoutGenresWithoutAiringStatusAndSpecial = `
+      id,
+      title,
+      ${IMAGE_COLUMN},
+      featured_image,
+      synopsis,
+      format,
+      average_score,
+      episodes_count,
+      studio,
+      season,
+      year,
+      start_date,
+      end_date,
+      is_featured,
       created_at
     `
 
@@ -137,6 +186,8 @@ export const getAllAnime = async (): Promise<AnimeCard[]> => {
       year,
       start_date,
       end_date,
+      has_special_season,
+      special_season_insert_after,
       is_featured,
       anime_genres(genres(slug,name_en,name_fa)),
       created_at
@@ -157,6 +208,8 @@ export const getAllAnime = async (): Promise<AnimeCard[]> => {
       year,
       start_date,
       end_date,
+      has_special_season,
+      special_season_insert_after,
       is_featured,
       created_at
     `
@@ -175,6 +228,8 @@ export const getAllAnime = async (): Promise<AnimeCard[]> => {
       year,
       start_date,
       end_date,
+      has_special_season,
+      special_season_insert_after,
       is_featured,
       created_at
     `
@@ -195,25 +250,46 @@ export const getAllAnime = async (): Promise<AnimeCard[]> => {
     if (!withGenresWithoutAiringRes.error) {
       data = withGenresWithoutAiringRes.data
     } else {
-      const withoutGenresRes = await supabase
+      const withGenresWithoutAiringAndSpecialRes = await supabase
         .from('anime')
-        .select(selectWithoutGenres)
+        .select(selectWithGenresWithoutAiringStatusAndSpecial)
         .order('created_at', { ascending: false })
 
-      if (withoutGenresRes.error) {
-        const withoutGenresWithoutAiringRes = await supabase
+      if (!withGenresWithoutAiringAndSpecialRes.error) {
+        data = withGenresWithoutAiringAndSpecialRes.data
+      } else {
+        const withoutGenresRes = await supabase
           .from('anime')
-          .select(selectWithoutGenresWithoutAiringStatus)
+          .select(selectWithoutGenres)
           .order('created_at', { ascending: false })
 
-        if (withoutGenresWithoutAiringRes.error) {
-          console.error('Error fetching all anime:', withoutGenresWithoutAiringRes.error)
-          throw withoutGenresWithoutAiringRes.error
-        }
+        if (withoutGenresRes.error) {
+          const withoutGenresWithoutAiringRes = await supabase
+            .from('anime')
+            .select(selectWithoutGenresWithoutAiringStatus)
+            .order('created_at', { ascending: false })
 
-        data = withoutGenresWithoutAiringRes.data
-      } else {
-        data = withoutGenresRes.data
+          if (!withoutGenresWithoutAiringRes.error) {
+            data = withoutGenresWithoutAiringRes.data
+          } else {
+            const withoutGenresWithoutAiringAndSpecialRes = await supabase
+              .from('anime')
+              .select(selectWithoutGenresWithoutAiringStatusAndSpecial)
+              .order('created_at', { ascending: false })
+
+            if (withoutGenresWithoutAiringAndSpecialRes.error) {
+              console.error(
+                'Error fetching all anime:',
+                withoutGenresWithoutAiringAndSpecialRes.error
+              )
+              throw withoutGenresWithoutAiringAndSpecialRes.error
+            }
+
+            data = withoutGenresWithoutAiringAndSpecialRes.data
+          }
+        } else {
+          data = withoutGenresRes.data
+        }
       }
     }
   } else {
@@ -445,20 +521,21 @@ export type AnimeAdminRow = {
   studio?: string | null
   start_date?: string | null
   end_date?: string | null
+  has_special_season?: boolean | null
+  special_season_insert_after?: number | null
 }
 
 export const getAnimeAdminById = async (animeId: string | number): Promise<AnimeAdminRow> => {
   if (!hasSupabaseConfig) throw new Error('Supabase config missing')
 
   const select =
-    `id, title, synopsis, format, season, year, featured_image, ${IMAGE_COLUMN}, is_featured, airing_status, average_score, episodes_count, studio, start_date, end_date` as any as string
+    `id, title, synopsis, format, season, year, featured_image, ${IMAGE_COLUMN}, is_featured, airing_status, average_score, episodes_count, studio, start_date, end_date, has_special_season, special_season_insert_after` as any as string
 
   const { data, error } = await (supabase
     .from('anime')
     .select(select)
     .eq('id', animeId)
     .single() as any)
-
   if (error) throw error
 
   const row: any = data
@@ -481,6 +558,14 @@ export const getAnimeAdminById = async (animeId: string | number): Promise<Anime
     studio: row.studio ?? null,
     start_date: row.start_date ?? null,
     end_date: row.end_date ?? null,
+    has_special_season:
+      typeof row.has_special_season === 'boolean'
+        ? row.has_special_season
+        : (row.has_special_season ?? null),
+    special_season_insert_after:
+      typeof row.special_season_insert_after === 'number'
+        ? row.special_season_insert_after
+        : (row.special_season_insert_after ?? null),
   }
 }
 
@@ -500,6 +585,8 @@ export const upsertAnimeAdmin = async (payload: {
   studio?: string | null
   start_date?: string | null
   end_date?: string | null
+  has_special_season?: boolean
+  special_season_insert_after?: number | null
 }): Promise<{ id: number | string }> => {
   if (!hasSupabaseConfig) throw new Error('Supabase config missing')
 
@@ -519,6 +606,9 @@ export const upsertAnimeAdmin = async (payload: {
   if (payload.studio !== undefined) row.studio = payload.studio
   if (payload.start_date !== undefined) row.start_date = payload.start_date
   if (payload.end_date !== undefined) row.end_date = payload.end_date
+  if (payload.has_special_season !== undefined) row.has_special_season = payload.has_special_season
+  if (payload.special_season_insert_after !== undefined)
+    row.special_season_insert_after = payload.special_season_insert_after
 
   row[IMAGE_COLUMN] = payload.cover_image
   if (payload.id !== undefined && payload.id !== null) row.id = payload.id

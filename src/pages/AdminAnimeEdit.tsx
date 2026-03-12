@@ -15,6 +15,8 @@ import {
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 import { format as formatDate } from 'date-fns'
 
 type DraftAnime = {
@@ -33,12 +35,13 @@ type DraftAnime = {
   studio: string
   start_date: string
   end_date: string
+  has_special_season: boolean
+  special_season_insert_after: string
 }
 
 type EpisodeDraft = {
   season_number: number
   episode_number: number
-  title: string
   download_link: string
 }
 
@@ -85,6 +88,8 @@ const AdminAnimeEdit = () => {
     studio: '',
     start_date: '',
     end_date: '',
+    has_special_season: false,
+    special_season_insert_after: '',
   })
 
   const [episodes, setEpisodes] = useState<supa.EpisodeAdminRow[]>([])
@@ -98,7 +103,6 @@ const AdminAnimeEdit = () => {
   const [episodeDraft, setEpisodeDraft] = useState<EpisodeDraft>({
     season_number: 1,
     episode_number: 1,
-    title: '',
     download_link: '',
   })
 
@@ -113,6 +117,8 @@ const AdminAnimeEdit = () => {
     title: '',
     subtitle_link: '',
   })
+
+  const [seasonsCount, setSeasonsCount] = useState<string>('')
 
   const EMPTY_SELECT_VALUE = '__EMPTY__'
 
@@ -153,19 +159,138 @@ const AdminAnimeEdit = () => {
     return dt
   }
 
+  const seasonNumberToSelectValue = (n: number): string =>
+    n === 0 ? 'SPECIAL' : n === -1 ? 'OVA' : String(n)
+
+  const parseSeasonSelectValue = (value: string): number => {
+    const v = String(value || '')
+      .trim()
+      .toUpperCase()
+    if (v === 'SPECIAL') return 0
+    if (v === 'OVA') return -1
+    const num = Number(v)
+    if (Number.isNaN(num)) return 1
+    return num
+  }
+
+  const seasonsCountNumber = useMemo(() => {
+    const n = Number(String(seasonsCount || '').trim())
+    if (Number.isNaN(n) || n <= 0) return 0
+    return Math.floor(n)
+  }, [seasonsCount])
+
+  const seasonNumberLabel = (n: number): string =>
+    n === 0 ? 'Special' : n === -1 ? 'OVA' : `فصل ${String(n)}`
+
+  const orderedSeasonsForList = useMemo(() => {
+    const inferredMaxSeason = Math.max(
+      0,
+      ...episodes
+        .map((e) => (typeof e.season_number === 'number' ? e.season_number : 1))
+        .filter((s) => s > 0)
+    )
+    const baseCount = Math.max(seasonsCountNumber, inferredMaxSeason)
+    const base = Array.from({ length: baseCount }, (_, i) => i + 1)
+    const hasSpecialInEpisodes = episodes.some(
+      (e) => (typeof e.season_number === 'number' ? e.season_number : 1) === 0
+    )
+    const hasOvaInEpisodes = episodes.some(
+      (e) => (typeof e.season_number === 'number' ? e.season_number : 1) === -1
+    )
+
+    const extras: number[] = []
+    if (Boolean(draft.has_special_season) || hasSpecialInEpisodes) extras.push(0)
+    if (hasOvaInEpisodes) extras.push(-1)
+
+    if (extras.length === 0) return base
+
+    const insertAfter = draft.special_season_insert_after.trim()
+      ? Number(draft.special_season_insert_after)
+      : null
+
+    const order = base.slice()
+    if (insertAfter === null || Number.isNaN(insertAfter)) {
+      order.push(...extras)
+      return order
+    }
+    const idx = order.indexOf(insertAfter)
+    if (idx >= 0) order.splice(idx + 1, 0, ...extras)
+    else order.push(...extras)
+    return order
+  }, [draft.has_special_season, draft.special_season_insert_after, episodes, seasonsCountNumber])
+
+  const hasExtraSeasonForUi = useMemo(() => {
+    const hasSpecialInEpisodes = episodes.some(
+      (e) => (typeof e.season_number === 'number' ? e.season_number : 1) === 0
+    )
+    const hasOvaInEpisodes = episodes.some(
+      (e) => (typeof e.season_number === 'number' ? e.season_number : 1) === -1
+    )
+    return Boolean(draft.has_special_season) || hasSpecialInEpisodes || hasOvaInEpisodes
+  }, [draft.has_special_season, episodes])
+
+  const seasonRankForList = useMemo(() => {
+    const rank = new Map<number, number>()
+    orderedSeasonsForList.forEach((s, idx) => rank.set(s, idx))
+    return rank
+  }, [orderedSeasonsForList])
+
+  const episodesForList = useMemo(() => {
+    return episodes.slice().sort((a, b) => {
+      const sa = typeof a.season_number === 'number' ? a.season_number : 1
+      const sb = typeof b.season_number === 'number' ? b.season_number : 1
+      const ra = seasonRankForList.get(sa) ?? Number.MAX_SAFE_INTEGER
+      const rb = seasonRankForList.get(sb) ?? Number.MAX_SAFE_INTEGER
+      if (ra !== rb) return ra - rb
+      const ea = typeof a.episode_number === 'number' ? a.episode_number : 0
+      const eb = typeof b.episode_number === 'number' ? b.episode_number : 0
+      if (ea !== eb) return ea - eb
+      return String(a.id).localeCompare(String(b.id))
+    })
+  }, [episodes, seasonRankForList])
+
+  const subtitlesForList = useMemo(() => {
+    return subtitles.slice().sort((a, b) => {
+      const sa = typeof a.season_number === 'number' ? a.season_number : 1
+      const sb = typeof b.season_number === 'number' ? b.season_number : 1
+      const ra = seasonRankForList.get(sa) ?? Number.MAX_SAFE_INTEGER
+      const rb = seasonRankForList.get(sb) ?? Number.MAX_SAFE_INTEGER
+      if (ra !== rb) return ra - rb
+      const ea = typeof a.episode_number === 'number' ? a.episode_number : 0
+      const eb = typeof b.episode_number === 'number' ? b.episode_number : 0
+      if (ea !== eb) return ea - eb
+      return String(a.id).localeCompare(String(b.id))
+    })
+  }, [seasonRankForList, subtitles])
+
+  const nextEpisodeNumberBySeason = useMemo(() => {
+    const map = new Map<number, number>()
+    for (const e of episodes) {
+      const s = typeof e.season_number === 'number' ? e.season_number : 1
+      const ep = typeof e.episode_number === 'number' ? e.episode_number : 0
+      const prev = map.get(s) ?? 0
+      if (ep > prev) map.set(s, ep)
+    }
+    return map
+  }, [episodes])
+
+  const getNextEpisodeNumberForSeason = (seasonNumber: number): number => {
+    const max = nextEpisodeNumberBySeason.get(seasonNumber) ?? 0
+    return Math.max(1, max + 1)
+  }
+
   const onEditEpisode = (row: supa.EpisodeAdminRow) => {
     setEditingEpisodeId(row.id)
     setEpisodeDraft({
       season_number: typeof row.season_number === 'number' ? row.season_number : 1,
       episode_number: typeof row.episode_number === 'number' ? row.episode_number : 1,
-      title: row.title ?? '',
       download_link: row.download_link ?? '',
     })
   }
 
   const onCancelEditEpisode = () => {
     setEditingEpisodeId(null)
-    setEpisodeDraft((p) => ({ ...p, title: '', download_link: '' }))
+    setEpisodeDraft((p) => ({ ...p, download_link: '' }))
   }
 
   const onSaveEpisodeEdit = async () => {
@@ -184,16 +309,22 @@ const AdminAnimeEdit = () => {
         id: editingEpisodeId,
         season_number: episodeDraft.season_number,
         episode_number: episodeDraft.episode_number,
-        title: episodeDraft.title.trim() || null,
+        title: null,
         download_link: episodeDraft.download_link.trim() || null,
       })
       setEditingEpisodeId(null)
-      setEpisodeDraft((p) => ({ ...p, title: '', download_link: '' }))
+      setEpisodeDraft((p) => ({ ...p, download_link: '' }))
       const eps = await supa.getEpisodesAdminByAnimeId(animeId)
       setEpisodes(eps)
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'خطا در ویرایش قسمت'
-      showError(msg)
+      const code = typeof (e as any)?.code === 'string' ? (e as any).code : null
+      if (code === '23505') {
+        const suggested = getNextEpisodeNumberForSeason(episodeDraft.season_number)
+        showError(`شماره قسمت تکراری است. پیشنهاد: قسمت ${suggested}`)
+      } else {
+        const msg = e instanceof Error ? e.message : 'خطا در ویرایش قسمت'
+        showError(msg)
+      }
     } finally {
       setSaving(false)
     }
@@ -415,6 +546,14 @@ const AdminAnimeEdit = () => {
     setSelectedGenreSlugs(new Set(aGenres))
     setSelectedStudioSlugs(new Set(aStudios))
 
+    const inferredSeasonsCount = Math.max(
+      0,
+      ...eps
+        .map((x) => (typeof x.season_number === 'number' ? x.season_number : 1))
+        .filter((x) => x > 0)
+    )
+    setSeasonsCount(inferredSeasonsCount ? String(inferredSeasonsCount) : '')
+
     setDraft({
       id: a.id,
       title: a.title ?? '',
@@ -441,6 +580,11 @@ const AdminAnimeEdit = () => {
       studio: a.studio ?? '',
       start_date: a.start_date ?? '',
       end_date: a.end_date ?? '',
+      has_special_season: Boolean(a.has_special_season),
+      special_season_insert_after:
+        typeof a.special_season_insert_after === 'number'
+          ? String(a.special_season_insert_after)
+          : '',
     })
   }
 
@@ -494,6 +638,14 @@ const AdminAnimeEdit = () => {
       setSaving(true)
       setToast(null)
 
+      const hasSpecialByData = episodes.some(
+        (e) => (typeof e.season_number === 'number' ? e.season_number : 1) === 0
+      )
+      const hasOvaByData = episodes.some(
+        (e) => (typeof e.season_number === 'number' ? e.season_number : 1) === -1
+      )
+      const hasExtraSeason = Boolean(draft.has_special_season) || hasSpecialByData || hasOvaByData
+
       const upserted = await supa.upsertAnimeAdmin({
         id: isNew ? undefined : draft.id,
         title: draft.title.trim(),
@@ -510,6 +662,12 @@ const AdminAnimeEdit = () => {
         studio: draft.studio.trim() || null,
         start_date: draft.start_date.trim() || null,
         end_date: draft.end_date.trim() || null,
+        has_special_season: hasExtraSeason,
+        special_season_insert_after: hasExtraSeason
+          ? draft.special_season_insert_after.trim()
+            ? Number(draft.special_season_insert_after)
+            : null
+          : null,
       })
 
       const animeId = upserted.id
@@ -538,6 +696,20 @@ const AdminAnimeEdit = () => {
 
     const animeId = (anime?.id ?? draft.id) as string | number
 
+    const exists = episodes.some(
+      (e) =>
+        (typeof e.season_number === 'number' ? e.season_number : 1) ===
+          episodeDraft.season_number &&
+        (typeof e.episode_number === 'number' ? e.episode_number : 0) ===
+          episodeDraft.episode_number
+    )
+    if (exists) {
+      const suggested = getNextEpisodeNumberForSeason(episodeDraft.season_number)
+      setEpisodeDraft((p) => ({ ...p, episode_number: suggested }))
+      showError(`این شماره قسمت برای این فصل قبلاً ثبت شده. پیشنهاد: قسمت ${suggested}`)
+      return
+    }
+
     try {
       setSaving(true)
       setToast(null)
@@ -545,15 +717,22 @@ const AdminAnimeEdit = () => {
         anime_id: animeId,
         season_number: episodeDraft.season_number,
         episode_number: episodeDraft.episode_number,
-        title: episodeDraft.title.trim() || null,
+        title: null,
         download_link: episodeDraft.download_link.trim() || null,
       })
-      setEpisodeDraft((p) => ({ ...p, title: '', download_link: '' }))
+      setEpisodeDraft((p) => ({ ...p, download_link: '' }))
       const eps = await supa.getEpisodesAdminByAnimeId(animeId)
       setEpisodes(eps)
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'خطا در افزودن قسمت'
-      showError(msg)
+      const code = typeof (e as any)?.code === 'string' ? (e as any).code : null
+      if (code === '23505') {
+        const suggested = getNextEpisodeNumberForSeason(episodeDraft.season_number)
+        setEpisodeDraft((p) => ({ ...p, episode_number: suggested }))
+        showError(`این شماره قسمت برای این فصل قبلاً ثبت شده. پیشنهاد: قسمت ${suggested}`)
+      } else {
+        const msg = e instanceof Error ? e.message : 'خطا در افزودن قسمت'
+        showError(msg)
+      }
     } finally {
       setSaving(false)
     }
@@ -872,23 +1051,101 @@ const AdminAnimeEdit = () => {
                 <CardHeader>
                   <CardTitle>قسمت‌ها</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="flex flex-col gap-3">
+                  <div>
+                    <div className="text-gray-300 text-xs mb-1">تعداد فصل‌ها</div>
+                    <Input
+                      value={seasonsCount}
+                      onChange={(e) => setSeasonsCount(e.target.value)}
+                      placeholder="مثلاً: 3"
+                    />
+                  </div>
+                  <div className="rounded-md border border-white/10 bg-gray-950/20 p-3">
+                    <div className="flex items-center justify-between gap-4">
+                      <Label className="text-white text-sm">دارای Special/OVA</Label>
+                      <Switch
+                        checked={Boolean(draft.has_special_season)}
+                        onCheckedChange={(v) =>
+                          setDraft((p) => ({
+                            ...p,
+                            has_special_season: Boolean(v),
+                            special_season_insert_after: p.special_season_insert_after,
+                          }))
+                        }
+                      />
+                    </div>
+
+                    {hasExtraSeasonForUi && (
+                      <div className="mt-3">
+                        <div className="text-gray-300 text-xs mb-1">جایگاه تب Special/OVA</div>
+                        <Select
+                          value={draft.special_season_insert_after || EMPTY_SELECT_VALUE}
+                          onValueChange={(v) =>
+                            setDraft((p) => ({
+                              ...p,
+                              special_season_insert_after: v === EMPTY_SELECT_VALUE ? '' : v,
+                            }))
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="انتخاب..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={EMPTY_SELECT_VALUE}>آخر لیست</SelectItem>
+                            {Array.from({ length: seasonsCountNumber }, (_, i) => i + 1).map(
+                              (s) => (
+                                <SelectItem key={String(s)} value={String(s)}>
+                                  بعد از فصل {String(s)}
+                                </SelectItem>
+                              )
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                  </div>
                   <div className="text-white text-sm font-semibold">
                     {editingEpisodeId ? 'ویرایش قسمت' : 'افزودن قسمت'}
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div>
                       <div className="text-gray-300 text-xs mb-1">شماره فصل</div>
-                      <Input
-                        value={String(episodeDraft.season_number)}
-                        onChange={(e) =>
-                          setEpisodeDraft((p) => ({
-                            ...p,
-                            season_number: Number(e.target.value || 1),
-                          }))
+                      <Select
+                        value={seasonNumberToSelectValue(episodeDraft.season_number)}
+                        onValueChange={(v) =>
+                          setEpisodeDraft((p) => {
+                            const nextSeason = parseSeasonSelectValue(v)
+
+                            if (nextSeason > 0) {
+                              const currentCount = seasonsCountNumber
+                              if (nextSeason > currentCount) setSeasonsCount(String(nextSeason))
+                            }
+
+                            const nextEpisodeNumber = editingEpisodeId
+                              ? p.episode_number
+                              : getNextEpisodeNumberForSeason(nextSeason)
+
+                            return {
+                              ...p,
+                              season_number: nextSeason,
+                              episode_number: nextEpisodeNumber,
+                            }
+                          })
                         }
-                        placeholder="مثلاً: 1"
-                      />
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="انتخاب..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: seasonsCountNumber }, (_, i) => i + 1).map((s) => (
+                            <SelectItem key={String(s)} value={String(s)}>
+                              فصل {String(s)}
+                            </SelectItem>
+                          ))}
+                          <SelectItem value="SPECIAL">Special</SelectItem>
+                          <SelectItem value="OVA">OVA</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div>
                       <div className="text-gray-300 text-xs mb-1">شماره قسمت</div>
@@ -903,14 +1160,6 @@ const AdminAnimeEdit = () => {
                         placeholder="مثلاً: 1"
                       />
                     </div>
-                  </div>
-                  <div className="mt-2">
-                    <div className="text-gray-300 text-xs mb-1">عنوان قسمت (اختیاری)</div>
-                    <Input
-                      value={episodeDraft.title}
-                      onChange={(e) => setEpisodeDraft((p) => ({ ...p, title: e.target.value }))}
-                      placeholder="مثلاً: شروع ماجرا"
-                    />
                   </div>
                   <div className="mt-2">
                     <div className="text-gray-300 text-xs mb-1">لینک دانلود (اختیاری)</div>
@@ -956,26 +1205,27 @@ const AdminAnimeEdit = () => {
                     )}
                   </div>
 
-                  <div className="mt-4 space-y-2">
-                    {episodes.map((e) => (
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    {episodesForList.map((e) => (
                       <div
                         key={String(e.id)}
-                        className="p-3 rounded-2xl border border-white/10 bg-gray-950/20 flex items-center justify-between"
+                        className="p-3 rounded-xl border border-white/10 bg-gray-950/20 flex items-center justify-between"
                       >
                         <div className="flex flex-col gap-1">
                           <div className="text-white text-sm">
-                            S{e.season_number ?? 1} - E{e.episode_number ?? 0}
+                            {seasonNumberLabel(
+                              typeof e.season_number === 'number' ? e.season_number : 1
+                            )}{' '}
+                            - قسمت {e.episode_number ?? 0}
                           </div>
-                          <div className="text-gray-400 text-xs mt-1 line-clamp-1">
-                            {e.download_link || '---'}
-                          </div>
+                          <div className="text-gray-400 text-xs">{e.download_link || '---'}</div>
                         </div>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="flex gap-2">
                           <Button
                             type="button"
                             variant="secondary"
                             size="sm"
-                            className="w-full border border-white/20 bg-gray-800/20 text-white/80 hover:bg-gray-800/40"
+                            className="w-fit border border-white/20 bg-gray-800/20 text-white/80 hover:bg-gray-800/40"
                             onClick={() => onEditEpisode(e)}
                           >
                             ویرایش
@@ -984,7 +1234,7 @@ const AdminAnimeEdit = () => {
                             type="button"
                             variant="destructive"
                             size="sm"
-                            className="w-full bg-red-500/20 text-red-500 hover:bg-red-500/30"
+                            className="w-fit bg-red-500/20 text-red-500 hover:bg-red-500/30"
                             onClick={() => onDeleteEpisode(e)}
                           >
                             حذف
@@ -1012,16 +1262,28 @@ const AdminAnimeEdit = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
                     <div>
                       <div className="text-gray-300 text-xs mb-1">شماره فصل</div>
-                      <Input
-                        value={String(subtitleDraft.season_number)}
-                        onChange={(e) =>
+                      <Select
+                        value={seasonNumberToSelectValue(subtitleDraft.season_number)}
+                        onValueChange={(v) =>
                           setSubtitleDraft((p) => ({
                             ...p,
-                            season_number: Number(e.target.value || 1),
+                            season_number: parseSeasonSelectValue(v),
                           }))
                         }
-                        placeholder="مثلاً: 1"
-                      />
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="انتخاب..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: seasonsCountNumber }, (_, i) => i + 1).map((s) => (
+                            <SelectItem key={String(s)} value={String(s)}>
+                              فصل {String(s)}
+                            </SelectItem>
+                          ))}
+                          <SelectItem value="SPECIAL">Special</SelectItem>
+                          <SelectItem value="OVA">OVA</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div>
                       <div className="text-gray-300 text-xs mb-1">شماره قسمت</div>
@@ -1079,14 +1341,17 @@ const AdminAnimeEdit = () => {
                   </div>
 
                   <div className="mt-4 space-y-2">
-                    {subtitles.map((s) => (
+                    {subtitlesForList.map((s) => (
                       <div
                         key={String(s.id)}
                         className="p-3 rounded-2xl border border-white/10 bg-gray-950/20 flex items-center justify-between"
                       >
                         <div className="flex flex-col gap-1">
                           <div className="text-white text-sm">
-                            S{s.season_number ?? 1} - E{s.episode_number ?? 0}
+                            {seasonNumberLabel(
+                              typeof s.season_number === 'number' ? s.season_number : 1
+                            )}{' '}
+                            - E{s.episode_number ?? 0}
                           </div>
                           <div className="text-gray-400 text-xs mt-1 line-clamp-1">
                             {s.subtitle_link || '---'}
@@ -1126,16 +1391,30 @@ const AdminAnimeEdit = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
                       <div>
                         <div className="text-gray-300 text-xs mb-1">شماره فصل</div>
-                        <Input
-                          value={String(subtitlePackDraft.season_number)}
-                          onChange={(e) =>
+                        <Select
+                          value={seasonNumberToSelectValue(subtitlePackDraft.season_number)}
+                          onValueChange={(v) =>
                             setSubtitlePackDraft((p) => ({
                               ...p,
-                              season_number: Number(e.target.value || 1),
+                              season_number: parseSeasonSelectValue(v),
                             }))
                           }
-                          placeholder="مثلاً: 1"
-                        />
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="انتخاب..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Array.from({ length: seasonsCountNumber }, (_, i) => i + 1).map(
+                              (s) => (
+                                <SelectItem key={String(s)} value={String(s)}>
+                                  فصل {String(s)}
+                                </SelectItem>
+                              )
+                            )}
+                            <SelectItem value="SPECIAL">Special</SelectItem>
+                            <SelectItem value="OVA">OVA</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div>
                         <div className="text-gray-300 text-xs mb-1">عنوان (اختیاری)</div>

@@ -18,6 +18,8 @@ interface AnimeDetails {
   featured_image: string
   description: string
   status: string
+  has_special_season?: boolean
+  special_season_insert_after?: number | null
   genres: GenreItem[]
   episodes: Episode[]
   episodes_count?: number

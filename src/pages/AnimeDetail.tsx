@@ -41,6 +41,8 @@ interface Anime {
   description: string
   status: string
   airing_status?: string
+  has_special_season?: boolean
+  special_season_insert_after?: number | null
   genres: GenreItem[]
   episodes: Episode[]
   subtitle_packs?: SubtitlePack[]
@@ -174,15 +176,46 @@ const AnimeDetail = () => {
           const nextAnime = data as Anime
           setAnime(nextAnime)
 
-          const seasons = Array.from(
+          const baseSeasons = Array.from(
             new Set(
-              (nextAnime.episodes || []).map((e) =>
-                typeof e.season_number === 'number' ? e.season_number : 1
-              )
+              (nextAnime.episodes || [])
+                .map((e) => (typeof e.season_number === 'number' ? e.season_number : 1))
+                .filter((s) => s > 0)
             )
           ).sort((a, b) => a - b)
 
-          setSelectedSeason(seasons[0] ?? 1)
+          const hasSpecialByData = (nextAnime.episodes || []).some(
+            (e) => (typeof e.season_number === 'number' ? e.season_number : 1) === 0
+          )
+
+          const hasOvaByData = (nextAnime.episodes || []).some(
+            (e) => (typeof e.season_number === 'number' ? e.season_number : 1) === -1
+          )
+
+          const hasExtraSeason =
+            Boolean(nextAnime.has_special_season) || hasSpecialByData || hasOvaByData
+
+          const insertAfter =
+            typeof nextAnime.special_season_insert_after === 'number'
+              ? nextAnime.special_season_insert_after
+              : null
+
+          const seasonOrder = baseSeasons.slice()
+          if (hasExtraSeason) {
+            const extras: number[] = []
+            if (hasSpecialByData || Boolean(nextAnime.has_special_season)) extras.push(0)
+            if (hasOvaByData) extras.push(-1)
+
+            if (insertAfter === null) {
+              seasonOrder.push(...extras)
+            } else {
+              const idx = seasonOrder.indexOf(insertAfter)
+              if (idx >= 0) seasonOrder.splice(idx + 1, 0, ...extras)
+              else seasonOrder.push(...extras)
+            }
+          }
+
+          setSelectedSeason(seasonOrder[0] ?? 1)
         } else {
           setError('انیمه مورد نظر یافت نشد')
         }
@@ -221,11 +254,42 @@ const AnimeDetail = () => {
       ? `${anime.description.substring(0, 150)}...`
       : anime.description
 
-  const seasons = Array.from(
+  const baseSeasons = Array.from(
     new Set(
-      (anime.episodes || []).map((e) => (typeof e.season_number === 'number' ? e.season_number : 1))
+      (anime.episodes || [])
+        .map((e) => (typeof e.season_number === 'number' ? e.season_number : 1))
+        .filter((s) => s > 0)
     )
   ).sort((a, b) => a - b)
+
+  const hasSpecialByData = (anime.episodes || []).some(
+    (e) => (typeof e.season_number === 'number' ? e.season_number : 1) === 0
+  )
+  const hasOvaByData = (anime.episodes || []).some(
+    (e) => (typeof e.season_number === 'number' ? e.season_number : 1) === -1
+  )
+
+  const hasExtraSeason = Boolean(anime.has_special_season) || hasSpecialByData || hasOvaByData
+  const insertAfter =
+    typeof anime.special_season_insert_after === 'number' ? anime.special_season_insert_after : null
+
+  const seasons = (() => {
+    const order = baseSeasons.slice()
+    if (!hasExtraSeason) return order
+
+    const extras: number[] = []
+    if (hasSpecialByData || Boolean(anime.has_special_season)) extras.push(0)
+    if (hasOvaByData) extras.push(-1)
+
+    if (insertAfter === null) {
+      order.push(...extras)
+      return order
+    }
+    const idx = order.indexOf(insertAfter)
+    if (idx >= 0) order.splice(idx + 1, 0, ...extras)
+    else order.push(...extras)
+    return order
+  })()
 
   const isFinished =
     String(anime.airing_status ?? anime.status ?? '')
@@ -483,7 +547,7 @@ const AnimeDetail = () => {
                         }`}
                         aria-pressed={selectedSeason === s}
                       >
-                        فصل {toPersianNumber(s)}
+                        {s === 0 ? 'Special' : s === -1 ? 'OVA' : `فصل ${toPersianNumber(s)}`}
                       </button>
                     ))}
                   </div>
@@ -525,9 +589,13 @@ const AnimeDetail = () => {
                       <div className="flex flex-col gap-1">
                         <span className="text-sm text-white">
                           قسمت {toPersianNumber(episode.number)}
-                          {episode.season_number && seasons.length > 1 && (
+                          {typeof episode.season_number === 'number' && seasons.length > 1 && (
                             <span className="text-xs text-gray-400 ms-2">
-                              فصل {toPersianNumber(episode.season_number)}
+                              {episode.season_number === 0
+                                ? 'Special'
+                                : episode.season_number === -1
+                                  ? 'OVA'
+                                  : `فصل ${toPersianNumber(episode.season_number)}`}
                             </span>
                           )}
                         </span>
@@ -586,7 +654,12 @@ const AnimeDetail = () => {
                         <div className="flex flex-col gap-1">
                           <span className="text-sm text-white">{p.title || 'زیرنویس پک‌شده'}</span>
                           <span className="text-xs text-gray-400">
-                            زیرنویس کامل فصل {toPersianNumber(selectedSeason)}
+                            زیرنویس کامل{' '}
+                            {selectedSeason === 0
+                              ? 'Special'
+                              : selectedSeason === -1
+                                ? 'OVA'
+                                : `فصل ${toPersianNumber(selectedSeason)}`}
                           </span>
                         </div>
                         <button

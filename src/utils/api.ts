@@ -172,6 +172,14 @@ export const fetchAnimeById = async (id: number | string) => {
     description: anime.description,
     status: anime.status,
     airing_status: anime.airing_status ?? undefined,
+    has_special_season:
+      typeof anime.has_special_season === 'boolean' ? anime.has_special_season : undefined,
+    special_season_insert_after:
+      typeof anime.special_season_insert_after === 'number'
+        ? anime.special_season_insert_after
+        : anime.special_season_insert_after === null
+          ? null
+          : undefined,
     genres: anime.genres,
     episodes: mergedEpisodes,
     subtitle_packs: subtitlePacksList,
