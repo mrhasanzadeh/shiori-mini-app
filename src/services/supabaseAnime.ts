@@ -22,8 +22,6 @@ export type AnimeCard = {
   year?: number
   startDate?: string
   endDate?: string
-  has_special_season?: boolean
-  special_season_insert_after?: number | null
   isNew?: boolean
   isFeatured?: boolean
   episode?: string
@@ -32,6 +30,26 @@ export type AnimeCard = {
 
 // نام ستون تصویر در جدول anime — از .env می‌خوانیم؛ پیش‌فرض: cover_image
 const IMAGE_COLUMN = (import.meta.env.VITE_ANIME_IMAGE_COLUMN as string) || 'cover_image'
+
+const ANIME_CARD_SELECT_WITH_GENRES = `
+      id,
+      title,
+      ${IMAGE_COLUMN},
+      featured_image,
+      synopsis,
+      format,
+      airing_status,
+      average_score,
+      episodes_count,
+      studio,
+      season,
+      year,
+      start_date,
+      end_date,
+      is_featured,
+      anime_genres(genres(slug,name_en,name_fa)),
+      created_at
+    `
 
 const getImageUrl = (row: any): string =>
   row[IMAGE_COLUMN] ??
@@ -52,14 +70,6 @@ const toAnimeCard = (row: any): AnimeCard => ({
   format: row.format ?? undefined,
   status: row.status ?? row.airing_status ?? 'RELEASING',
   airing_status: row.airing_status ?? row.status ?? undefined,
-  has_special_season:
-    typeof row.has_special_season === 'boolean' ? row.has_special_season : undefined,
-  special_season_insert_after:
-    typeof row.special_season_insert_after === 'number'
-      ? row.special_season_insert_after
-      : row.special_season_insert_after === null
-        ? null
-        : undefined,
   genres: Array.isArray(row.genres)
     ? row.genres
         .map((g: any) => {
@@ -113,27 +123,7 @@ export const getAllAnime = async (): Promise<AnimeCard[]> => {
     )
   }
 
-  const selectWithGenres = `
-      id,
-      title,
-      ${IMAGE_COLUMN},
-      featured_image,
-      synopsis,
-      format,
-      airing_status,
-      average_score,
-      episodes_count,
-      studio,
-      season,
-      year,
-      start_date,
-      end_date,
-      has_special_season,
-      special_season_insert_after,
-      is_featured,
-      anime_genres(genres(slug,name_en,name_fa)),
-      created_at
-    `
+  const selectWithGenres = ANIME_CARD_SELECT_WITH_GENRES
 
   const selectWithGenresWithoutAiringStatusAndSpecial = `
       id,
@@ -186,8 +176,6 @@ export const getAllAnime = async (): Promise<AnimeCard[]> => {
       year,
       start_date,
       end_date,
-      has_special_season,
-      special_season_insert_after,
       is_featured,
       anime_genres(genres(slug,name_en,name_fa)),
       created_at
@@ -208,8 +196,6 @@ export const getAllAnime = async (): Promise<AnimeCard[]> => {
       year,
       start_date,
       end_date,
-      has_special_season,
-      special_season_insert_after,
       is_featured,
       created_at
     `
@@ -228,8 +214,6 @@ export const getAllAnime = async (): Promise<AnimeCard[]> => {
       year,
       start_date,
       end_date,
-      has_special_season,
-      special_season_insert_after,
       is_featured,
       created_at
     `
@@ -309,7 +293,6 @@ export const getAllAnime = async (): Promise<AnimeCard[]> => {
 // نوع هر قسمت برای نمایش در تب «قسمت‌ها»
 export type EpisodeItem = {
   id: string | number
-  season_number?: number
   number: number
   title: string
   download_link?: string
@@ -317,28 +300,421 @@ export type EpisodeItem = {
 
 export type SubtitleItem = {
   id: string | number
-  season_number?: number
   episode_number: number
   subtitle_link?: string
 }
 
 export type SubtitlePackItem = {
   id: string | number
-  season_number?: number
   title?: string
   subtitle_link?: string
 }
 
+export type TranslatorItem = {
+  id: string | number
+  name: string
+  slug: string
+  avatar_url?: string | null
+  cover_url?: string | null
+  bio?: string | null
+  experience?: string | null
+}
+
+export type TranslatorAnimeLink = {
+  id: string | number
+  anime_id: string | number
+  translator_id: string | number
+  role?: string | null
+  translator: TranslatorItem
+}
+
+export type TranslatorFavoriteGenre = {
+  genre_slug: string
+  name_en?: string | null
+  name_fa?: string | null
+}
+
+export const getTranslatorBySlug = async (slug: string): Promise<TranslatorItem | null> => {
+  if (!hasSupabaseConfig) return null
+
+  const safeSlug = String(slug || '').trim()
+  if (!safeSlug) return null
+
+  const selectFields = 'id, name, slug, avatar_url, cover_url, bio, experience'
+  let data: any = null
+  let error: any = null
+
+  ;({ data, error } = await supabase
+    .from('translators')
+    .select(selectFields)
+    .eq('slug', safeSlug)
+    .maybeSingle())
+
+  if (error) {
+    const msg = String(error?.message ?? '')
+    if (String(error?.code ?? '') === '42703' || msg.toLowerCase().includes('column')) {
+      ;({ data, error } = await supabase
+        .from('translators')
+        .select('id, name, slug, avatar_url, bio')
+        .eq('slug', safeSlug)
+        .maybeSingle())
+    }
+  }
+
+  if (error) {
+    console.warn('getTranslatorBySlug:', error.message)
+    return null
+  }
+
+  if (!data) return null
+
+  return {
+    id: data.id,
+    name: String(data.name ?? '').trim() || '---',
+    slug: String(data.slug ?? '').trim(),
+    avatar_url: typeof data.avatar_url === 'string' ? data.avatar_url : (data.avatar_url ?? null),
+    cover_url: typeof data.cover_url === 'string' ? data.cover_url : (data.cover_url ?? null),
+    bio: typeof data.bio === 'string' ? data.bio : (data.bio ?? null),
+    experience: typeof data.experience === 'string' ? data.experience : (data.experience ?? null),
+  }
+}
+
+export const updateTranslatorExperienceBySlug = async (
+  slug: string,
+  experience: string | null
+): Promise<{ experience: string | null }> => {
+  if (!hasSupabaseConfig) throw new Error('Supabase config missing')
+
+  const safeSlug = String(slug || '').trim()
+  if (!safeSlug) throw new Error('Translator slug missing')
+
+  const { data, error } = await supabase
+    .from('translators')
+    .update({ experience })
+    .eq('slug', safeSlug)
+    .select('experience')
+    .maybeSingle()
+
+  if (error) {
+    const msg = String(error?.message ?? '')
+    if (String(error?.code ?? '') === '42703' || msg.toLowerCase().includes('column')) {
+      throw new Error(
+        'ستون experience در جدول translators پیدا نشد. لطفاً یک ستون متنی به نام experience اضافه کنید و سپس دوباره تلاش کنید.'
+      )
+    }
+    throw error
+  }
+
+  return {
+    experience: typeof data?.experience === 'string' ? data.experience : (data?.experience ?? null),
+  }
+}
+
+export const getTranslatorLinksByAnimeId = async (
+  animeId: string | number
+): Promise<TranslatorAnimeLink[]> => {
+  if (!hasSupabaseConfig) return []
+
+  const { data, error } = await supabase
+    .from('translator_anime')
+    .select('id, anime_id, translator_id, role, translators(id,name,slug,avatar_url,bio)')
+    .eq('anime_id', animeId)
+    .order('id', { ascending: true })
+
+  if (error) {
+    console.warn('getTranslatorLinksByAnimeId:', error.message)
+    return []
+  }
+
+  const mapped = (data || []).map((row: any): TranslatorAnimeLink | null => {
+    const t = row?.translators
+    if (!t) return null
+    const translator: TranslatorItem = {
+      id: t.id,
+      name: String(t.name ?? '').trim() || '---',
+      slug: String(t.slug ?? '').trim(),
+      avatar_url: typeof t.avatar_url === 'string' ? t.avatar_url : (t.avatar_url ?? null),
+      bio: typeof t.bio === 'string' ? t.bio : (t.bio ?? null),
+    }
+
+    return {
+      id: row.id,
+      anime_id: row.anime_id,
+      translator_id: row.translator_id,
+      role: typeof row.role === 'string' ? row.role : (row.role ?? null),
+      translator,
+    }
+  })
+
+  return mapped.filter((x): x is TranslatorAnimeLink =>
+    Boolean(x && x.translator && typeof x.translator.slug === 'string')
+  )
+}
+
+export const getTranslatorFavoriteGenresBySlug = async (
+  slug: string
+): Promise<TranslatorFavoriteGenre[]> => {
+  if (!hasSupabaseConfig) return []
+
+  const safeSlug = String(slug || '').trim()
+  if (!safeSlug) return []
+
+  const { data, error } = await supabase
+    .from('translator_genres')
+    .select('genre_slug, genres(slug,name_en,name_fa), translators!inner(slug)')
+    .eq('translators.slug', safeSlug)
+    .order('genre_slug', { ascending: true })
+
+  if (error) {
+    console.warn('getTranslatorFavoriteGenresBySlug:', error.message)
+    return []
+  }
+
+  const mapped = (data || []).map((row: any): TranslatorFavoriteGenre | null => {
+    const g = row?.genres
+    const slugVal = typeof row?.genre_slug === 'string' ? row.genre_slug : g?.slug
+    if (typeof slugVal !== 'string' || slugVal.trim().length === 0) return null
+    return {
+      genre_slug: String(slugVal).trim(),
+      name_en: typeof g?.name_en === 'string' ? g.name_en : (g?.name_en ?? null),
+      name_fa: typeof g?.name_fa === 'string' ? g.name_fa : (g?.name_fa ?? null),
+    }
+  })
+
+  return mapped.filter((x): x is TranslatorFavoriteGenre =>
+    Boolean(x && typeof x.genre_slug === 'string')
+  )
+}
+
+export const getAnimeCardsByTranslatorSlug = async (slug: string): Promise<AnimeCard[]> => {
+  if (!hasSupabaseConfig) return []
+
+  const safeSlug = String(slug || '').trim()
+  if (!safeSlug) return []
+
+  const select = `
+    anime(
+      id,
+      title,
+      ${IMAGE_COLUMN},
+      featured_image,
+      synopsis,
+      format,
+      airing_status,
+      average_score,
+      episodes_count,
+      studio,
+      season,
+      year,
+      start_date,
+      end_date,
+      is_featured,
+      anime_genres(genres(slug,name_en,name_fa)),
+      created_at
+    ),
+    translators!inner(slug)
+  `
+
+  const { data, error } = await supabase
+    .from('translator_anime')
+    .select(select)
+    .eq('translators.slug', safeSlug)
+
+  if (error) {
+    console.warn('getAnimeCardsByTranslatorSlug:', error.message)
+    return []
+  }
+
+  const rows = (data || [])
+    .map((row: any) => row?.anime)
+    .filter((a: any) => a && (typeof a.id === 'number' || typeof a.id === 'string'))
+
+  return rows.map((a: any) => toAnimeCard(a))
+}
+
+export type TranslatorAdminItem = {
+  id?: string | number
+  name: string
+  slug: string
+  avatar_url?: string | null
+  cover_url?: string | null
+  bio?: string | null
+  experience?: string | null
+}
+
+export const getAllTranslatorsAdmin = async (): Promise<TranslatorAdminItem[]> => {
+  if (!hasSupabaseConfig) return []
+  let data: any = null
+  let error: any = null
+
+  ;({ data, error } = await supabase
+    .from('translators')
+    .select('id, name, slug, avatar_url, cover_url, bio, experience')
+    .order('name', { ascending: true }))
+
+  if (error) {
+    const msg = String(error?.message ?? '')
+    if (String(error?.code ?? '') === '42703' || msg.toLowerCase().includes('column')) {
+      ;({ data, error } = await supabase
+        .from('translators')
+        .select('id, name, slug, avatar_url, bio, experience')
+        .order('name', { ascending: true }))
+    }
+  }
+
+  if (error) {
+    console.warn('getAllTranslatorsAdmin:', error.message)
+    return []
+  }
+
+  return (data || []).map((row: any) => ({
+    id: typeof row.id === 'string' || typeof row.id === 'number' ? row.id : undefined,
+    name: String(row.name ?? '').trim(),
+    slug: String(row.slug ?? '').trim(),
+    avatar_url: typeof row.avatar_url === 'string' ? row.avatar_url : (row.avatar_url ?? null),
+    cover_url: typeof row.cover_url === 'string' ? row.cover_url : (row.cover_url ?? null),
+    bio: typeof row.bio === 'string' ? row.bio : (row.bio ?? null),
+    experience: typeof row.experience === 'string' ? row.experience : (row.experience ?? null),
+  }))
+}
+
+export const upsertTranslatorAdmin = async (payload: {
+  id?: string | number
+  name: string
+  slug: string
+  avatar_url: string | null
+  cover_url?: string | null
+  bio: string | null
+  experience?: string | null
+}): Promise<TranslatorAdminItem> => {
+  if (!hasSupabaseConfig) throw new Error('Supabase config missing')
+
+  const row: any = {
+    name: payload.name,
+    slug: payload.slug,
+    avatar_url: payload.avatar_url,
+    bio: payload.bio,
+  }
+  if (payload.cover_url !== undefined) row.cover_url = payload.cover_url
+  if (payload.experience !== undefined) row.experience = payload.experience
+  if (payload.id !== undefined && payload.id !== null && String(payload.id).length > 0) {
+    row.id = payload.id
+  }
+
+  let data: any = null
+  let error: any = null
+
+  ;({ data, error } = await supabase
+    .from('translators')
+    .upsert(row, { onConflict: row.id ? 'id' : 'slug' })
+    .select('id, name, slug, avatar_url, cover_url, bio, experience')
+    .single())
+
+  if (error) {
+    const msg = String(error?.message ?? '')
+    if (String(error?.code ?? '') === '42703' || msg.toLowerCase().includes('column')) {
+      ;({ data, error } = await supabase
+        .from('translators')
+        .upsert(row, { onConflict: row.id ? 'id' : 'slug' })
+        .select('id, name, slug, avatar_url, bio, experience')
+        .single())
+    }
+  }
+
+  if (error) throw error
+
+  return {
+    id: typeof data?.id === 'string' || typeof data?.id === 'number' ? data.id : undefined,
+    name: String(data?.name ?? '').trim(),
+    slug: String(data?.slug ?? '').trim(),
+    avatar_url: typeof data?.avatar_url === 'string' ? data.avatar_url : (data?.avatar_url ?? null),
+    cover_url: typeof data?.cover_url === 'string' ? data.cover_url : (data?.cover_url ?? null),
+    bio: typeof data?.bio === 'string' ? data.bio : (data?.bio ?? null),
+    experience: typeof data?.experience === 'string' ? data.experience : (data?.experience ?? null),
+  }
+}
+
+export const deleteTranslatorAdmin = async (translatorId: string | number): Promise<void> => {
+  if (!hasSupabaseConfig) throw new Error('Supabase config missing')
+  const { error } = await supabase.from('translators').delete().eq('id', translatorId)
+  if (error) throw error
+}
+
+export type TranslatorAnimeAdminLink = {
+  id: string | number
+  anime_id: string | number
+  translator_id: string | number
+  role?: string | null
+  translator: TranslatorAdminItem
+}
+
+export const getTranslatorAnimeLinksAdminByAnimeId = async (
+  animeId: string | number
+): Promise<TranslatorAnimeAdminLink[]> => {
+  if (!hasSupabaseConfig) return []
+
+  const { data, error } = await supabase
+    .from('translator_anime')
+    .select('id, anime_id, translator_id, role, translators(id,name,slug,avatar_url,bio)')
+    .eq('anime_id', animeId)
+    .order('id', { ascending: true })
+
+  if (error) {
+    console.warn('getTranslatorAnimeLinksAdminByAnimeId:', error.message)
+    return []
+  }
+
+  const mapped = (data || []).map((row: any): TranslatorAnimeAdminLink | null => {
+    const t = row?.translators
+    if (!t) return null
+    const translator: TranslatorAdminItem = {
+      id: typeof t.id === 'string' || typeof t.id === 'number' ? t.id : undefined,
+      name: String(t.name ?? '').trim(),
+      slug: String(t.slug ?? '').trim(),
+      avatar_url: typeof t.avatar_url === 'string' ? t.avatar_url : (t.avatar_url ?? null),
+      bio: typeof t.bio === 'string' ? t.bio : (t.bio ?? null),
+    }
+
+    return {
+      id: row.id,
+      anime_id: row.anime_id,
+      translator_id: row.translator_id,
+      role: typeof row.role === 'string' ? row.role : (row.role ?? null),
+      translator,
+    }
+  })
+
+  return mapped.filter((x): x is TranslatorAnimeAdminLink => Boolean(x && x.translator))
+}
+
+export const insertTranslatorAnimeLinkAdmin = async (payload: {
+  anime_id: string | number
+  translator_id: string | number
+  role: string | null
+}): Promise<void> => {
+  if (!hasSupabaseConfig) throw new Error('Supabase config missing')
+  const { error } = await supabase.from('translator_anime').insert({
+    anime_id: payload.anime_id,
+    translator_id: payload.translator_id,
+    role: payload.role,
+  })
+  if (error) throw error
+}
+
+export const deleteTranslatorAnimeLinkAdmin = async (linkId: string | number): Promise<void> => {
+  if (!hasSupabaseConfig) throw new Error('Supabase config missing')
+  const { error } = await supabase.from('translator_anime').delete().eq('id', linkId)
+  if (error) throw error
+}
+
 export const insertSubtitlePackAdmin = async (payload: {
   anime_id: string | number
-  season_number: number
   title: string | null
   subtitle_link: string | null
 }): Promise<void> => {
   if (!hasSupabaseConfig) throw new Error('Supabase config missing')
   const { error } = await supabase.from('subtitle_packs').insert({
     anime_id: payload.anime_id,
-    season_number: payload.season_number,
     title: payload.title,
     subtitle_link: payload.subtitle_link,
   })
@@ -347,7 +723,6 @@ export const insertSubtitlePackAdmin = async (payload: {
 
 export const updateSubtitlePackAdmin = async (payload: {
   id: string | number
-  season_number: number
   title: string | null
   subtitle_link: string | null
 }): Promise<void> => {
@@ -355,7 +730,6 @@ export const updateSubtitlePackAdmin = async (payload: {
   const { error } = await supabase
     .from('subtitle_packs')
     .update({
-      season_number: payload.season_number,
       title: payload.title,
       subtitle_link: payload.subtitle_link,
     })
@@ -376,9 +750,9 @@ export const getSubtitlePacksByAnimeId = async (
 
   const { data, error } = await supabase
     .from('subtitle_packs')
-    .select('id, season_number, title, subtitle_link')
+    .select('id, title, subtitle_link')
     .eq('anime_id', animeId)
-    .order('season_number', { ascending: true })
+    .order('id', { ascending: true })
 
   if (error) {
     console.warn('getSubtitlePacksByAnimeId:', error.message)
@@ -387,7 +761,6 @@ export const getSubtitlePacksByAnimeId = async (
 
   return (data || []).map((row: any) => ({
     id: row.id,
-    season_number: typeof row.season_number === 'number' ? row.season_number : undefined,
     title: typeof row.title === 'string' ? row.title : undefined,
     subtitle_link:
       typeof row.subtitle_link === 'string' && row.subtitle_link.trim().length > 0
@@ -401,9 +774,8 @@ export const getEpisodesByAnimeId = async (animeId: string | number): Promise<Ep
   if (!hasSupabaseConfig) return []
   const { data, error } = await supabase
     .from('episodes')
-    .select('id, season_number, episode_number, title, download_link')
+    .select('id, episode_number, title, download_link')
     .eq('anime_id', animeId)
-    .order('season_number', { ascending: true })
     .order('episode_number', { ascending: true })
   if (error) {
     console.warn('getEpisodesByAnimeId:', error.message)
@@ -411,7 +783,6 @@ export const getEpisodesByAnimeId = async (animeId: string | number): Promise<Ep
   }
   return (data || []).map((row: any) => ({
     id: row.id,
-    season_number: typeof row.season_number === 'number' ? row.season_number : undefined,
     number: row.episode_number ?? 0,
     title: row.title || `قسمت ${row.episode_number ?? 0}`,
     download_link: row.download_link ?? undefined,
@@ -423,9 +794,8 @@ export const getSubtitlesByAnimeId = async (animeId: string | number): Promise<S
 
   const { data, error } = await supabase
     .from('subtitles')
-    .select('id, season_number, episode_number, title, subtitle_link')
+    .select('id, episode_number, title, subtitle_link')
     .eq('anime_id', animeId)
-    .order('season_number', { ascending: true })
     .order('episode_number', { ascending: true })
 
   if (error) {
@@ -436,7 +806,6 @@ export const getSubtitlesByAnimeId = async (animeId: string | number): Promise<S
   return (data || []).map((row: any) => {
     return {
       id: row.id,
-      season_number: typeof row.season_number === 'number' ? row.season_number : undefined,
       episode_number: row.episode_number ?? row.episode ?? 0,
       subtitle_link:
         typeof row.subtitle_link === 'string' && row.subtitle_link.trim().length > 0
@@ -521,15 +890,13 @@ export type AnimeAdminRow = {
   studio?: string | null
   start_date?: string | null
   end_date?: string | null
-  has_special_season?: boolean | null
-  special_season_insert_after?: number | null
 }
 
 export const getAnimeAdminById = async (animeId: string | number): Promise<AnimeAdminRow> => {
   if (!hasSupabaseConfig) throw new Error('Supabase config missing')
 
   const select =
-    `id, title, synopsis, format, season, year, featured_image, ${IMAGE_COLUMN}, is_featured, airing_status, average_score, episodes_count, studio, start_date, end_date, has_special_season, special_season_insert_after` as any as string
+    `id, title, synopsis, format, season, year, featured_image, ${IMAGE_COLUMN}, is_featured, airing_status, average_score, episodes_count, studio, start_date, end_date` as any as string
 
   const { data, error } = await (supabase
     .from('anime')
@@ -558,14 +925,6 @@ export const getAnimeAdminById = async (animeId: string | number): Promise<Anime
     studio: row.studio ?? null,
     start_date: row.start_date ?? null,
     end_date: row.end_date ?? null,
-    has_special_season:
-      typeof row.has_special_season === 'boolean'
-        ? row.has_special_season
-        : (row.has_special_season ?? null),
-    special_season_insert_after:
-      typeof row.special_season_insert_after === 'number'
-        ? row.special_season_insert_after
-        : (row.special_season_insert_after ?? null),
   }
 }
 
@@ -576,6 +935,7 @@ export const upsertAnimeAdmin = async (payload: {
   format: string | null
   season: string | null
   year: number | null
+  genre_slugs?: string[]
   featured_image: string | null
   cover_image: string | null
   is_featured: boolean
@@ -585,8 +945,6 @@ export const upsertAnimeAdmin = async (payload: {
   studio?: string | null
   start_date?: string | null
   end_date?: string | null
-  has_special_season?: boolean
-  special_season_insert_after?: number | null
 }): Promise<{ id: number | string }> => {
   if (!hasSupabaseConfig) throw new Error('Supabase config missing')
 
@@ -600,15 +958,14 @@ export const upsertAnimeAdmin = async (payload: {
     is_featured: payload.is_featured,
   }
 
+  if (payload.genre_slugs !== undefined) row.genre_slugs = payload.genre_slugs
+
   if (payload.airing_status !== undefined) row.airing_status = payload.airing_status
   if (payload.average_score !== undefined) row.average_score = payload.average_score
   if (payload.episodes_count !== undefined) row.episodes_count = payload.episodes_count
   if (payload.studio !== undefined) row.studio = payload.studio
   if (payload.start_date !== undefined) row.start_date = payload.start_date
   if (payload.end_date !== undefined) row.end_date = payload.end_date
-  if (payload.has_special_season !== undefined) row.has_special_season = payload.has_special_season
-  if (payload.special_season_insert_after !== undefined)
-    row.special_season_insert_after = payload.special_season_insert_after
 
   row[IMAGE_COLUMN] = payload.cover_image
   if (payload.id !== undefined && payload.id !== null) row.id = payload.id
@@ -621,7 +978,6 @@ export const upsertAnimeAdmin = async (payload: {
 export type EpisodeAdminRow = {
   id: number | string
   anime_id: number | string
-  season_number?: number | null
   episode_number?: number | null
   title?: string | null
   download_link?: string | null
@@ -633,9 +989,8 @@ export const getEpisodesAdminByAnimeId = async (
   if (!hasSupabaseConfig) return []
   const { data, error } = await supabase
     .from('episodes')
-    .select('id, anime_id, season_number, episode_number, title, download_link')
+    .select('id, anime_id, episode_number, title, download_link')
     .eq('anime_id', animeId)
-    .order('season_number', { ascending: true })
     .order('episode_number', { ascending: true })
 
   if (error) {
@@ -646,8 +1001,6 @@ export const getEpisodesAdminByAnimeId = async (
   return (data || []).map((row: any) => ({
     id: row.id,
     anime_id: row.anime_id,
-    season_number:
-      typeof row.season_number === 'number' ? row.season_number : (row.season_number ?? null),
     episode_number:
       typeof row.episode_number === 'number' ? row.episode_number : (row.episode_number ?? null),
     title: row.title ?? null,
@@ -657,7 +1010,6 @@ export const getEpisodesAdminByAnimeId = async (
 
 export const insertEpisodeAdmin = async (payload: {
   anime_id: string | number
-  season_number: number
   episode_number: number
   title: string | null
   download_link: string | null
@@ -665,7 +1017,6 @@ export const insertEpisodeAdmin = async (payload: {
   if (!hasSupabaseConfig) throw new Error('Supabase config missing')
   const { error } = await supabase.from('episodes').insert({
     anime_id: payload.anime_id,
-    season_number: payload.season_number,
     episode_number: payload.episode_number,
     title: payload.title,
     download_link: payload.download_link,
@@ -675,7 +1026,6 @@ export const insertEpisodeAdmin = async (payload: {
 
 export const updateEpisodeAdmin = async (payload: {
   id: string | number
-  season_number: number
   episode_number: number
   title: string | null
   download_link: string | null
@@ -684,7 +1034,6 @@ export const updateEpisodeAdmin = async (payload: {
   const { error } = await supabase
     .from('episodes')
     .update({
-      season_number: payload.season_number,
       episode_number: payload.episode_number,
       title: payload.title,
       download_link: payload.download_link,
@@ -702,7 +1051,6 @@ export const deleteEpisodeAdmin = async (episodeId: string | number): Promise<vo
 export type SubtitleAdminRow = {
   id: number | string
   anime_id: number | string
-  season_number?: number | null
   episode_number?: number | null
   subtitle_link?: string | null
 }
@@ -713,9 +1061,8 @@ export const getSubtitlesAdminByAnimeId = async (
   if (!hasSupabaseConfig) return []
   const { data, error } = await supabase
     .from('subtitles')
-    .select('id, anime_id, season_number, episode_number, subtitle_link')
+    .select('id, anime_id, episode_number, subtitle_link')
     .eq('anime_id', animeId)
-    .order('season_number', { ascending: true })
     .order('episode_number', { ascending: true })
 
   if (error) {
@@ -726,8 +1073,6 @@ export const getSubtitlesAdminByAnimeId = async (
   return (data || []).map((row: any) => ({
     id: row.id,
     anime_id: row.anime_id,
-    season_number:
-      typeof row.season_number === 'number' ? row.season_number : (row.season_number ?? null),
     episode_number:
       typeof row.episode_number === 'number' ? row.episode_number : (row.episode_number ?? null),
     subtitle_link: row.subtitle_link ?? null,
@@ -736,14 +1081,12 @@ export const getSubtitlesAdminByAnimeId = async (
 
 export const insertSubtitleAdmin = async (payload: {
   anime_id: string | number
-  season_number: number
   episode_number: number
   subtitle_link: string | null
 }): Promise<void> => {
   if (!hasSupabaseConfig) throw new Error('Supabase config missing')
   const { error } = await supabase.from('subtitles').insert({
     anime_id: payload.anime_id,
-    season_number: payload.season_number,
     episode_number: payload.episode_number,
     subtitle_link: payload.subtitle_link,
   })
@@ -752,7 +1095,6 @@ export const insertSubtitleAdmin = async (payload: {
 
 export const updateSubtitleAdmin = async (payload: {
   id: string | number
-  season_number: number
   episode_number: number
   subtitle_link: string | null
 }): Promise<void> => {
@@ -760,7 +1102,6 @@ export const updateSubtitleAdmin = async (payload: {
   const { error } = await supabase
     .from('subtitles')
     .update({
-      season_number: payload.season_number,
       episode_number: payload.episode_number,
       subtitle_link: payload.subtitle_link,
     })
@@ -808,6 +1149,7 @@ export const replaceAnimeGenres = async (
 
   const gRes = await supabase.from('genres').select('id, slug').in('slug', cleanSlugs)
   if (gRes.error) throw gRes.error
+
   const genres = (gRes.data || []) as any[]
   const bySlug = new Map<string, any>()
   for (const g of genres) {
@@ -833,8 +1175,8 @@ export const replaceAnimeGenres = async (
     )
   }
 
-  const ins1 = await supabase.from('anime_genres').insert(rowsById)
-  if (ins1.error) throw ins1.error
+  const insById = await supabase.from('anime_genres').insert(rowsById)
+  if (insById.error) throw insById.error
 }
 
 export type StudioAdminItem = {
@@ -914,6 +1256,109 @@ export const getAnimeStudioNames = async (animeId: string | number): Promise<str
     .map((r: any) => r?.studios?.name)
     .filter((s: any) => typeof s === 'string' && s.trim().length > 0)
     .map((s: any) => String(s))
+}
+
+export type AnimeStudioPublicLink = {
+  slug: string
+  name: string
+}
+
+export const getAnimeStudiosPublic = async (
+  animeId: string | number
+): Promise<AnimeStudioPublicLink[]> => {
+  if (!hasSupabaseConfig) return []
+  const res = await supabase
+    .from('anime_studios')
+    .select('studios(slug,name)')
+    .eq('anime_id', animeId)
+
+  if (res.error) {
+    console.warn('getAnimeStudiosPublic:', res.error.message)
+    return []
+  }
+
+  return (res.data || [])
+    .map((r: any) => r?.studios)
+    .filter((s: any) => s && typeof s === 'object')
+    .map((s: any) => ({
+      slug: String(s.slug ?? '').trim(),
+      name: String(s.name ?? '').trim(),
+    }))
+    .filter((s: any) => typeof s.slug === 'string' && s.slug.length > 0)
+}
+
+export type StudioPublicItem = {
+  slug: string
+  name: string
+}
+
+export const getStudioBySlug = async (slug: string): Promise<StudioPublicItem | null> => {
+  if (!hasSupabaseConfig) return null
+  const safeSlug = String(slug ?? '')
+    .trim()
+    .toLowerCase()
+  if (!safeSlug) return null
+
+  const { data, error } = await supabase
+    .from('studios')
+    .select('slug,name')
+    .eq('slug', safeSlug)
+    .maybeSingle()
+
+  if (error) {
+    console.warn('getStudioBySlug:', error.message)
+    return null
+  }
+  if (!data) return null
+  return {
+    slug: String((data as any).slug ?? '').trim(),
+    name: String((data as any).name ?? '').trim(),
+  }
+}
+
+export const getStudioByName = async (name: string): Promise<StudioPublicItem | null> => {
+  if (!hasSupabaseConfig) return null
+  const safeName = String(name ?? '').trim()
+  if (!safeName) return null
+
+  const { data, error } = await supabase
+    .from('studios')
+    .select('slug,name')
+    .eq('name', safeName)
+    .maybeSingle()
+
+  if (error) {
+    console.warn('getStudioByName:', error.message)
+    return null
+  }
+  if (!data) return null
+  return {
+    slug: String((data as any).slug ?? '').trim(),
+    name: String((data as any).name ?? '').trim(),
+  }
+}
+
+export const getAnimeCardsByStudioSlug = async (studioSlug: string): Promise<AnimeCard[]> => {
+  if (!hasSupabaseConfig) return []
+  const safeSlug = String(studioSlug ?? '')
+    .trim()
+    .toLowerCase()
+  if (!safeSlug) return []
+
+  const { data, error } = await supabase
+    .from('anime_studios')
+    .select(`anime(${ANIME_CARD_SELECT_WITH_GENRES}), studios!inner(slug)`)
+    .eq('studios.slug', safeSlug)
+
+  if (error) {
+    console.warn('getAnimeCardsByStudioSlug:', error.message)
+    return []
+  }
+
+  return (data || [])
+    .map((row: any) => row?.anime)
+    .filter((row: any) => row && (typeof row.id === 'number' || typeof row.id === 'string'))
+    .map(toAnimeCard)
 }
 
 export const replaceAnimeStudiosAdmin = async (

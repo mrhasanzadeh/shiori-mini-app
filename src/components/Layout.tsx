@@ -38,40 +38,40 @@ const Layout = ({ children }: LayoutProps) => {
 
   if (isAdminPage) {
     return (
-      <div className="min-h-screen bg-gray-950 text-white">
-        <header className="sticky top-0 z-40 border-b border-white/10 bg-gray-950/80 backdrop-blur">
+      <div className="min-h-screen bg-background text-foreground">
+        <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur">
           <div className="px-8 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Link to="/" className="flex items-center justify-center gap-1 text-white">
+              <Link to="/" className="flex items-center justify-center gap-1 text-foreground">
                 <img src={logo} alt="logo" className="w-6 h-6" />
-                <span className="text-white text-xl font-bold">شیوری</span>
+                <span className="text-foreground text-xl font-bold">شیوری</span>
               </Link>
               <div className="text-gray-500">/</div>
-              <Link to="/admin" className="text-white font-semibold">
+              <Link to="/admin" className="text-foreground font-semibold">
                 پنل ادمین
               </Link>
             </div>
 
             <button
               onClick={() => navigate(-1)}
-              className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors duration-200"
+              className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border bg-muted hover:bg-muted/80 text-foreground transition-colors duration-200"
               aria-label="بازگشت"
             >
-              <ArrowRight01Icon className="w-5 h-5" />
+              <ArrowRight01Icon className="w-4 h-4" />
               بازگشت
             </button>
           </div>
         </header>
 
         <div className="flex">
-          <aside className="w-72 shrink-0 border-r border-white/10 min-h-[calc(100vh-73px)] sticky top-[73px]">
+          <aside className="w-72 shrink-0 border-r border-border min-h-[calc(100vh-73px)] sticky top-[73px]">
             <div className="p-6 space-y-2">
               <Link
                 to="/admin"
                 className={`block px-4 py-3 rounded-xl border transition-colors ${
                   isActive('/admin')
-                    ? 'bg-white/10 border-white/20 text-white'
-                    : 'bg-transparent border-white/10 text-gray-300 hover:bg-white/5'
+                    ? 'bg-muted border-border text-foreground'
+                    : 'bg-transparent border-border text-muted-foreground hover:bg-muted/50'
                 }`}
               >
                 داشبورد
@@ -80,8 +80,8 @@ const Layout = ({ children }: LayoutProps) => {
                 to="/admin/anime"
                 className={`block px-4 py-3 rounded-xl border transition-colors ${
                   location.pathname.startsWith('/admin/anime')
-                    ? 'bg-white/10 border-white/20 text-white'
-                    : 'bg-transparent border-white/10 text-gray-300 hover:bg-white/5'
+                    ? 'bg-muted border-border text-foreground'
+                    : 'bg-transparent border-border text-muted-foreground hover:bg-muted/50'
                 }`}
               >
                 انیمه‌ها
@@ -90,8 +90,8 @@ const Layout = ({ children }: LayoutProps) => {
                 to="/admin/genres"
                 className={`block px-4 py-3 rounded-xl border transition-colors ${
                   location.pathname.startsWith('/admin/genres')
-                    ? 'bg-white/10 border-white/20 text-white'
-                    : 'bg-transparent border-white/10 text-gray-300 hover:bg-white/5'
+                    ? 'bg-muted border-border text-foreground'
+                    : 'bg-transparent border-border text-muted-foreground hover:bg-muted/50'
                 }`}
               >
                 ژانرها
@@ -100,11 +100,22 @@ const Layout = ({ children }: LayoutProps) => {
                 to="/admin/studios"
                 className={`block px-4 py-3 rounded-xl border transition-colors ${
                   location.pathname.startsWith('/admin/studios')
-                    ? 'bg-white/10 border-white/20 text-white'
-                    : 'bg-transparent border-white/10 text-gray-300 hover:bg-white/5'
+                    ? 'bg-muted border-border text-foreground'
+                    : 'bg-transparent border-border text-muted-foreground hover:bg-muted/50'
                 }`}
               >
                 استودیوها
+              </Link>
+
+              <Link
+                to="/admin/translators"
+                className={`block px-4 py-3 rounded-xl border transition-colors ${
+                  location.pathname.startsWith('/admin/translators')
+                    ? 'bg-muted border-border text-foreground'
+                    : 'bg-transparent border-border text-muted-foreground hover:bg-muted/50'
+                }`}
+              >
+                مترجم‌ها
               </Link>
             </div>
           </aside>
@@ -118,26 +129,26 @@ const Layout = ({ children }: LayoutProps) => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-950">
+    <div className="min-h-screen flex flex-col bg-background text-foreground">
       <header
         className={`fixed top-0 left-0 right-0 z-50 transition-colors duration-200 ${
           isScrolled
-            ? 'bg-gray-950'
+            ? 'bg-background'
             : isAnimeDetailPage
               ? 'bg-transparent'
-              : 'bg-gradient-to-b from-gray-950/90 via-gray-950/60 to-transparent'
+              : 'bg-gradient-to-b from-background/90 via-background/60 to-transparent'
         }`}
       >
         <div className="container py-4">
           <div className="flex items-center justify-between">
-            <Link to="/" className="flex items-center justify-center gap-1 text-white">
+            <Link to="/" className="flex items-center justify-center gap-1 text-foreground">
               <img src={logo} alt="logo" className="w-6 h-6" />
-              <span className="text-white text-xl font-bold">شیوری</span>
+              <span className="text-foreground text-xl font-bold">شیوری</span>
             </Link>
             {location.pathname === '/' ? (
               <button
                 onClick={() => window.location.reload()}
-                className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors duration-200"
+                className="p-2 rounded-lg bg-muted hover:bg-muted/80 text-foreground transition-colors duration-200"
                 aria-label="بارگذاری مجدد"
               >
                 <RefreshIcon className="w-6 h-6" />
@@ -145,7 +156,7 @@ const Layout = ({ children }: LayoutProps) => {
             ) : (
               <button
                 onClick={() => navigate(-1)}
-                className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors duration-200"
+                className="p-2 rounded-lg bg-muted hover:bg-muted/80 text-foreground transition-colors duration-200"
                 aria-label="بازگشت"
               >
                 <ArrowRight01Icon className="w-6 h-6" />
@@ -157,7 +168,7 @@ const Layout = ({ children }: LayoutProps) => {
 
       <main className={`flex-1 ${!isAnimeDetailPage ? 'pt-16' : ''}`}>{children}</main>
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-gray-950 z-50">
+      <nav className="fixed bottom-0 left-0 right-0 bg-background z-50">
         <div className="container">
           <div className="flex justify-around py-4">
             <Link

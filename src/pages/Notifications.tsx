@@ -17,29 +17,29 @@ const Notifications = () => {
       title: 'قسمت جدید',
       message: 'قسمت جدید انیمه Demon Slayer منتشر شد',
       time: '۵ دقیقه پیش',
-      isRead: false
+      isRead: false,
     },
     {
       id: 2,
       title: 'به‌روزرسانی برنامه',
       message: 'نسخه جدید شیوری منتشر شد',
       time: '۱ ساعت پیش',
-      isRead: false
+      isRead: false,
     },
     {
       id: 3,
       title: 'یادآوری',
       message: 'انیمه مورد علاقه شما امروز پخش می‌شود',
       time: '۲ ساعت پیش',
-      isRead: true
-    }
+      isRead: true,
+    },
   ])
 
   const markAllAsRead = () => {
-    setNotifications(prev => 
-      prev.map(notification => ({
+    setNotifications((prev) =>
+      prev.map((notification) => ({
         ...notification,
-        isRead: true
+        isRead: true,
       }))
     )
     setHasNewNotifications(false)
@@ -48,13 +48,13 @@ const Notifications = () => {
   return (
     <div className="pb-24">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-gray-950/95 backdrop-blur-sm">
-        <div className="px-4 py-4 flex items-center justify-between border-b border-gray-800">
+      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm">
+        <div className="px-4 py-4 flex items-center justify-between border-b border-border">
           <div className="flex items-center gap-2">
-            <AlarmClockIcon className="w-6 h-6 text-gray-400" />
-            <h1 className="text-lg font-semibold text-white">اعلان‌ها</h1>
+            <AlarmClockIcon className="w-6 h-6 text-muted-foreground" />
+            <h1 className="text-lg font-semibold text-foreground">اعلان‌ها</h1>
             {hasNewNotifications && (
-              <span className="px-2 py-0.5 bg-primary-500 text-white text-xs rounded-full">
+              <span className="px-2 py-0.5 bg-primary text-primary-foreground text-xs rounded-full">
                 جدید
               </span>
             )}
@@ -70,22 +70,22 @@ const Notifications = () => {
 
       {/* Notifications List */}
       <div className="space-y-3 p-4">
-        {notifications.map(notification => (
+        {notifications.map((notification) => (
           <div
             key={notification.id}
-            className={`flex bg-gray-900 gap-4 p-3 rounded-lg ${!notification.isRead ? 'ring-1 ring-primary-500/20' : ''}`}
+            className={`flex bg-card gap-4 p-3 rounded-lg border border-border ${!notification.isRead ? 'ring-1 ring-primary-500/20' : ''}`}
           >
             <div className="flex-1 min-w-0 mt-1">
               <div className="flex items-center gap-2">
-                <h3 className="font-medium text-gray-100">{notification.title}</h3>
+                <h3 className="font-medium text-foreground">{notification.title}</h3>
                 {!notification.isRead && (
-                  <span className="px-2 py-0.5 bg-primary-500 text-white text-xs rounded-full">
+                  <span className="px-2 py-0.5 bg-primary text-primary-foreground text-xs rounded-full">
                     جدید
                   </span>
                 )}
               </div>
-              <p className="text-gray-400 text-sm mt-1">{notification.message}</p>
-              <span className="text-gray-500 text-xs mt-2 block">{notification.time}</span>
+              <p className="text-muted-foreground text-sm mt-1">{notification.message}</p>
+              <span className="text-muted-foreground text-xs mt-2 block">{notification.time}</span>
             </div>
           </div>
         ))}
@@ -93,7 +93,7 @@ const Notifications = () => {
 
       {/* Empty State */}
       {notifications.length === 0 && (
-        <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+        <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
           <AlarmClockIcon className="w-12 h-12 mb-2" />
           <p>اعلانی وجود ندارد</p>
         </div>
@@ -102,4 +102,4 @@ const Notifications = () => {
   )
 }
 
-export default Notifications 
+export default Notifications

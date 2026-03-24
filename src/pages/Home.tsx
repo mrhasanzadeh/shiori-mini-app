@@ -35,10 +35,10 @@ interface SliderSection {
 // Skeleton Card Component
 const SkeletonCard = () => (
   <div className="card animate-pulse">
-    <div className="relative aspect-[2/3] overflow-hidden bg-gray-800 rounded-lg" />
+    <div className="relative aspect-[2/3] overflow-hidden bg-muted rounded-lg" />
     <div className="mt-3">
-      <div className="h-4 bg-gray-800 rounded w-3/4" />
-      <div className="h-3 bg-gray-800 rounded w-1/2 mt-2" />
+      <div className="h-4 bg-muted rounded w-3/4" />
+      <div className="h-3 bg-muted rounded w-1/2 mt-2" />
     </div>
   </div>
 )
@@ -201,7 +201,7 @@ const Home = () => {
 
     if (!isLoading && !hasError && animeList.length === 0) {
       return (
-        <div className="text-center text-gray-400 p-4 text-sm">
+        <div className="text-center text-muted-foreground p-4 text-sm">
           <p>انیمه‌ای لود نشد.</p>
           <p className="mt-2 text-xs max-w-xs mx-auto">
             اگر در Supabase داده دارید، در SQL Editor این را اجرا کنید: Enable RLS و سپس policy با
@@ -222,7 +222,7 @@ const Home = () => {
                 aria-label={`مشاهده ${anime.title}`}
               >
                 <div className="card">
-                  <div className="relative aspect-[2/3] overflow-hidden rounded-xl border-2 border-white/10 border-b-white/5">
+                  <div className="relative aspect-[2/3] overflow-hidden rounded-xl border-2 border-input/80 border-b-input/40">
                     <img
                       src={anime.image}
                       alt={anime.title}
@@ -231,10 +231,10 @@ const Home = () => {
                     />
                   </div>
                   <div className="mt-3 text-center">
-                    <h3 className="text-sm font-medium line-clamp-1 text-gray-100">
+                    <h3 className="text-sm font-medium line-clamp-1 text-foreground">
                       {anime.title}
                     </h3>
-                    <p className="text-xs text-gray-400 mt-[2px]">زیرنویس چسبیده | 1080p</p>
+                    <p className="text-xs text-muted-foreground mt-[2px]">زیرنویس چسبیده | 1080p</p>
                   </div>
                 </div>
               </Link>
@@ -249,7 +249,7 @@ const Home = () => {
     <div>
       {/* Top Tabs: Anime - Movie - Donghua */}
       <div className="px-4 pt-4">
-        <div className="flex items-center gap-2 rounded-xl w-full mx-auto border border-white/20 bg-gray-900/40 backdrop-blur-xl shadow-lg">
+        <div className="flex items-center gap-2 rounded-xl w-full mx-auto border border-border bg-card/30 backdrop-blur-xl shadow-lg">
           {[
             { id: 'anime', label: 'انیمه' },
             { id: 'movie', label: 'انیمه سینمایی' },
@@ -260,8 +260,8 @@ const Home = () => {
               onClick={() => setSelectedType(tab.id as 'anime' | 'movie' | 'donghua')}
               className={`flex-1 text-center text-sm border border-transparent p-2 rounded-lg transition-all ${
                 selectedType === (tab.id as 'anime' | 'movie' | 'donghua')
-                  ? 'bg-gray-900 text-white font-medium shadow-md border !border-white/20'
-                  : 'text-gray-200 hover:text-white hover:bg-white/5'
+                  ? 'bg-card text-foreground font-medium shadow-md border !border-border'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
               }`}
               aria-pressed={selectedType === (tab.id as 'anime' | 'movie' | 'donghua')}
             >
@@ -274,7 +274,7 @@ const Home = () => {
       {/* Compact Hero Carousel with peeking prev/next slides */}
       <div className="mt-4">
         {featuredLoading ? (
-          <div className="relative h-56 w-full rounded-2xl overflow-hidden bg-gray-900 animate-pulse" />
+          <div className="relative h-56 w-full rounded-2xl overflow-hidden bg-muted animate-pulse" />
         ) : featuredAnime.length > 0 ? (
           <Swiper
             modules={[Autoplay]}
@@ -293,7 +293,7 @@ const Home = () => {
             {featuredAnime.slice(0, 8).map((anime) => (
               <SwiperSlide key={anime.id} className="!h-full">
                 <Link to={`/anime/${anime.id}`} className="block group h-full">
-                  <div className="relative h-full w-full rounded-2xl overflow-hidden shadow-lg border-2 border-white/20 !border-b-white/10">
+                  <div className="relative h-full w-full rounded-2xl overflow-hidden shadow-lg border-2 border-input/80 border-b-input/40">
                     <img
                       src={anime.featuredImage || anime.image}
                       alt={anime.title}
@@ -301,22 +301,22 @@ const Home = () => {
                       loading="lazy"
                     />
 
-                    <div className="absolute h-1/2 -bottom-1 left-0 right-0 bg-gradient-to-t from-gray-950 to-transparent" />
+                    <div className="absolute h-1/2 -bottom-1 left-0 right-0 bg-gradient-to-t from-background to-transparent" />
                     <div className="absolute bottom-0 left-0 right-0 px-4 pb-2">
-                      <h2 className="text-lg font-bold text-white line-clamp-1 mb-1">
+                      <h2 className="font-bold text-foreground line-clamp-1 text-left">
                         {anime.title}
                       </h2>
-                      <div className="flex items-center gap-1 mb-2">
+                      <div className="flex justify-end items-center gap-1 mb-2">
                         {(anime.genres || []).slice(0, 4).map((g) => (
                           <span
                             key={g.slug}
-                            className="px-2 py-0.5 text-xs rounded-md bg-gray-800/80 text-gray-100 border border-white/10"
+                            className="px-2 py-0.5 text-xs rounded-md bg-black/50 text-foreground border border-border"
                           >
                             {g.name_fa || g.name_en || g.slug}
                           </span>
                         ))}
                       </div>
-                      {/* <p className="text-gray-300 text-sm mt-1 line-clamp-2">{anime.description}</p> */}
+                      {/* <p className="text-muted-foreground text-sm mt-1 line-clamp-2">{anime.description}</p> */}
                     </div>
                   </div>
                 </Link>
@@ -324,7 +324,7 @@ const Home = () => {
             ))}
           </Swiper>
         ) : (
-          <div className="relative h-56 w-full rounded-2xl overflow-hidden bg-gray-800" />
+          <div className="relative h-56 w-full rounded-2xl overflow-hidden bg-muted" />
         )}
       </div>
 
@@ -332,7 +332,7 @@ const Home = () => {
         {sections.map((section) => (
           <div key={section.id} className="space-y-6 px-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-gray-100">{section.title}</h2>
+              <h2 className="text-xl font-semibold text-foreground">{section.title}</h2>
               <div className="flex items-center gap-2 text-primary-400">
                 <Link
                   to="/search"

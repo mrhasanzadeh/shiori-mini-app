@@ -15,12 +15,15 @@ const MyList = lazy(() => import('./pages/MyList'))
 const ListDetail = lazy(() => import('./pages/ListDetail'))
 const Profile = lazy(() => import('./pages/Profile'))
 const Notifications = lazy(() => import('./pages/Notifications'))
+const TranslatorProfile = lazy(() => import('./pages/TranslatorProfile'))
+const StudioDetail = lazy(() => import('./pages/StudioDetail'))
 
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'))
 const AdminAnimeList = lazy(() => import('./pages/AdminAnimeList'))
 const AdminAnimeEdit = lazy(() => import('./pages/AdminAnimeEdit'))
 const AdminGenres = lazy(() => import('./pages/AdminGenres'))
 const AdminStudios = lazy(() => import('./pages/AdminStudios'))
+const AdminTranslators = lazy(() => import('./pages/AdminTranslators'))
 
 function App() {
   const { isReady } = useTelegramApp()
@@ -53,6 +56,8 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/anime/:id" element={<AnimeDetail />} />
+          <Route path="/studios/:slug" element={<StudioDetail />} />
+          <Route path="/translators/:slug" element={<TranslatorProfile />} />
           <Route path="/schedule" element={<Schedule />} />
           <Route path="/search" element={<Search />} />
           <Route path="/my-list" element={<MyList />} />
@@ -97,6 +102,15 @@ function App() {
             element={
               <AdminGate>
                 <AdminStudios />
+              </AdminGate>
+            }
+          />
+
+          <Route
+            path="/admin/translators"
+            element={
+              <AdminGate>
+                <AdminTranslators />
               </AdminGate>
             }
           />

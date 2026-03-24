@@ -17,6 +17,11 @@ export type UiAnimeCard = {
   genres?: supa.GenreItem[]
 }
 
+export type UiStudioLink = {
+  slug: string
+  name: string
+}
+
 import type { AnimeListItem } from '../store/animeStore'
 
 const toGenreItem = (g: any): supa.GenreItem | null => {
@@ -128,28 +133,34 @@ export const fetchAnimeById = async (id: number | string) => {
     studioNames = []
   }
 
+  let studioLinks: UiStudioLink[] = []
+  try {
+    const links = await supa.getAnimeStudiosPublic(anime.id)
+    studioLinks = (links || []).map((s) => ({ slug: s.slug, name: s.name }))
+  } catch {
+    studioLinks = []
+  }
+
   if (import.meta.env.DEV && subtitlesList.length === 0) {
     console.warn(
       '[fetchAnimeById] subtitlesList خالی برگشت. اگر در جدول subtitles داده دارید، احتمالاً RLS/Policy جلوی SELECT را گرفته. برای تست می‌توانید روی جدول subtitles یک policy خواندن عمومی مثل episodes بگذارید.'
     )
   }
 
-  const subtitleMap = new Map<string, string>()
+  const subtitleMap = new Map<number, string>()
   for (const s of subtitlesList) {
-    const season = typeof s.season_number === 'number' ? s.season_number : 1
     const ep = typeof s.episode_number === 'number' ? s.episode_number : 0
     const link = s.subtitle_link
     if (typeof link === 'string' && link.trim().length > 0) {
-      subtitleMap.set(`${season}:${ep}`, link)
+      subtitleMap.set(ep, link)
     }
   }
 
   let matchedSubtitleCount = 0
 
   const mergedEpisodes = episodesList.map((e: any) => {
-    const season = typeof e.season_number === 'number' ? e.season_number : 1
     const ep = typeof e.number === 'number' ? e.number : 0
-    const subtitle_link = subtitleMap.get(`${season}:${ep}`)
+    const subtitle_link = subtitleMap.get(ep)
     if (subtitle_link) matchedSubtitleCount += 1
     return {
       ...e,
@@ -159,7 +170,7 @@ export const fetchAnimeById = async (id: number | string) => {
 
   if (import.meta.env.DEV && subtitlesList.length > 0 && matchedSubtitleCount === 0) {
     console.warn(
-      '[fetchAnimeById] subtitle rows وجود دارد اما هیچکدام با episodes match نشد. season_number/episode_number را در subtitles و episodes برای همین anime چک کنید.'
+      '[fetchAnimeById] subtitle rows وجود دارد اما هیچکدام با episodes match نشد. episode_number را در subtitles و episodes برای همین anime چک کنید.'
     )
   }
 
@@ -172,26 +183,24 @@ export const fetchAnimeById = async (id: number | string) => {
     description: anime.description,
     status: anime.status,
     airing_status: anime.airing_status ?? undefined,
-    has_special_season:
-      typeof anime.has_special_season === 'boolean' ? anime.has_special_season : undefined,
-    special_season_insert_after:
-      typeof anime.special_season_insert_after === 'number'
-        ? anime.special_season_insert_after
-        : anime.special_season_insert_after === null
-          ? null
-          : undefined,
     genres: anime.genres,
     episodes: mergedEpisodes,
     subtitle_packs: subtitlePacksList,
     episodes_count: typeof anime.episodes_count === 'number' ? anime.episodes_count : 0,
     averageScore: typeof anime.averageScore === 'number' ? anime.averageScore : undefined,
     studios: studioNames.length > 0 ? studioNames : anime.studio ? [anime.studio] : [],
+    studio_links: studioLinks,
     producers: [],
     season: anime.season ?? '',
     year: typeof anime.year === 'number' ? anime.year : undefined,
     startDate: anime.startDate ?? '',
     endDate: anime.endDate ?? '',
   }
+}
+
+export const fetchAnimeByStudioSlug = async (slug: string): Promise<UiAnimeCard[]> => {
+  const list = await supa.getAnimeCardsByStudioSlug(slug)
+  return list.map(toCacheAnime)
 }
 
 // دریافت schedule (ساده‌سازی شده - خالی برمی‌گرداند)

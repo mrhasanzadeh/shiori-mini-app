@@ -23,13 +23,9 @@ type EmptyStateProps = {
 
 const EmptyState = ({ image, title, subtitle }: EmptyStateProps) => (
   <div className="flex flex-col items-center justify-center text-center gap-3 py-12 px-6 h-[55vh]">
-    {image && (
-      <img src={image} alt="empty-list" className="w-48"/>
-    )}
-    <h2 className="text-base font-semibold text-gray-100">{title}</h2>
-    {subtitle && (
-      <p className="text-sm text-gray-400 max-w-xs">{subtitle}</p>
-    )}
+    {image && <img src={image} alt="empty-list" className="w-48" />}
+    <h2 className="text-base font-semibold text-foreground">{title}</h2>
+    {subtitle && <p className="text-sm text-muted-foreground max-w-xs">{subtitle}</p>}
   </div>
 )
 
@@ -55,11 +51,16 @@ const Search = () => {
 
   const translateSeason = (season: string): string => {
     switch (season) {
-      case 'WINTER': return 'زمستان'
-      case 'SPRING': return 'بهار'
-      case 'SUMMER': return 'تابستان'
-      case 'FALL': return 'پاییز'
-      default: return season
+      case 'WINTER':
+        return 'زمستان'
+      case 'SPRING':
+        return 'بهار'
+      case 'SUMMER':
+        return 'تابستان'
+      case 'FALL':
+        return 'پاییز'
+      default:
+        return season
     }
   }
 
@@ -103,7 +104,8 @@ const Search = () => {
 
   const normalizedQuery = debouncedSearchTerm.trim().toLowerCase()
   const filteredBySeasonYear = allAnime.filter((anime) => {
-    if (selectedYear !== null && (!Number.isFinite(selectedYear) || anime.year !== selectedYear)) return false
+    if (selectedYear !== null && (!Number.isFinite(selectedYear) || anime.year !== selectedYear))
+      return false
     if (selectedSeason && String(anime.season ?? '').toUpperCase() !== selectedSeason) return false
     if (selectedGenre) {
       const hasGenre = Array.isArray(anime.genres)
@@ -120,17 +122,16 @@ const Search = () => {
 
   return (
     <div className="pb-24">
-
       {pageTitle && (
         <div className="px-4 pt-4 pb-1">
-          <h2 className="text-base font-semibold text-gray-100">{pageTitle}</h2>
+          <h2 className="text-base font-semibold text-foreground">{pageTitle}</h2>
         </div>
       )}
 
       {/* Search Input */}
       <div className="p-4 pb-2">
-        <div className="relative w-full flex items-center gap-2 border bg-gray-900 border-white/10 text-white rounded-xl pl-10 p-3">
-          <Search01Icon className="w-6 h-6 text-gray-400" />
+        <div className="relative w-full flex items-center gap-2 border bg-card border-border text-foreground rounded-xl pl-10 p-3">
+          <Search01Icon className="w-6 h-6 text-muted-foreground" />
           <input
             type="text"
             value={searchTerm}
@@ -149,11 +150,7 @@ const Search = () => {
       )}
 
       {/* Error State */}
-      {error && (
-        <div className="text-center text-red-500 p-4">
-          {error}
-        </div>
-      )}
+      {error && <div className="text-center text-red-500 p-4">{error}</div>}
 
       {/* Results */}
       {!loading && !error && filteredResults.length > 0 && (
@@ -166,7 +163,7 @@ const Search = () => {
               aria-label={`مشاهده ${anime.title}`}
             >
               <div className="card">
-                <div className="relative aspect-[2/3] overflow-hidden rounded-lg border-2 border-t-white/10 border-r-white/10 border-l-white/10 border-b-white/5">
+                <div className="relative aspect-[2/3] overflow-hidden rounded-lg border-2 border-border">
                   <img
                     src={anime.image}
                     alt={anime.title}
@@ -175,7 +172,7 @@ const Search = () => {
                   />
                 </div>
                 <div className="mt-3">
-                  <h3 className="text-sm font-medium line-clamp-1 text-gray-100">
+                  <h3 className="text-sm font-medium line-clamp-1 text-foreground">
                     {anime.title}
                   </h3>
                 </div>

@@ -4,30 +4,30 @@ import { fetchSchedule } from '../utils/api'
 import type { GenreItem } from '../services/supabaseAnime'
 
 type Anime = {
-  id: number;
-  title: string;
-  image: string;
-  episode: string;
-  isNew?: boolean;
-  description?: string;
-  genres?: GenreItem[];
-  time?: string;
+  id: number
+  title: string
+  image: string
+  episode: string
+  isNew?: boolean
+  description?: string
+  genres?: GenreItem[]
+  time?: string
 }
 
 type ScheduleInfo = {
-  schedule: Record<string, Anime[]>;
-  currentSeason: string;
-  currentYear: number;
+  schedule: Record<string, Anime[]>
+  currentSeason: string
+  currentYear: number
 }
 
 // با استفاده از یک type برای نمایش آیتم‌های قابل نمایش در Schedule
-type ScheduleAnimeItem = Anime & { 
-  airingAt: number;
+type ScheduleAnimeItem = Anime & {
+  airingAt: number
 }
 
 // ساختار داده برای برنامه هر روز
 type ScheduleData = {
-  [key: string]: ScheduleAnimeItem[];
+  [key: string]: ScheduleAnimeItem[]
 }
 
 // روزهای هفته به فارسی
@@ -38,29 +38,34 @@ const getCurrentPersianDay = (): PersianDay => {
   const date = new Date()
   // JavaScript's getDay() returns 0 for Sunday, 1 for Monday, etc.
   const dayNumber = date.getDay()
-  
+
   // Convert day number to Persian day name
   const dayMap: Record<number, PersianDay> = {
-    0: 'یکشنبه',  // Sunday
-    1: 'دوشنبه',   // Monday
-    2: 'سه‌شنبه',  // Tuesday
+    0: 'یکشنبه', // Sunday
+    1: 'دوشنبه', // Monday
+    2: 'سه‌شنبه', // Tuesday
     3: 'چهارشنبه', // Wednesday
     4: 'پنج‌شنبه', // Thursday
-    5: 'جمعه',    // Friday
-    6: 'شنبه'     // Saturday
+    5: 'جمعه', // Friday
+    6: 'شنبه', // Saturday
   }
-  
+
   return dayMap[dayNumber]
 }
 
 // تبدیل نام فصل انگلیسی به فارسی
 const trangraySeason = (season: string): string => {
-  switch(season) {
-    case 'WINTER': return 'زمستان';
-    case 'SPRING': return 'بهار';
-    case 'SUMMER': return 'تابستان';
-    case 'FALL': return 'پاییز';
-    default: return season;
+  switch (season) {
+    case 'WINTER':
+      return 'زمستان'
+    case 'SPRING':
+      return 'بهار'
+    case 'SUMMER':
+      return 'تابستان'
+    case 'FALL':
+      return 'پاییز'
+    default:
+      return season
   }
 }
 
@@ -69,8 +74,8 @@ const ScheduleSkeleton = () => (
   <div className="card mx-4">
     <div className="flex items-center justify-between mb-4">
       <div>
-        <h1 className="text-lg font-medium text-gray-100">برنامه پخش هفتگی</h1>
-        <div className="h-4 w-32 bg-gray-800 rounded animate-pulse mt-1" />
+        <h1 className="text-lg font-medium text-foreground">برنامه پخش هفتگی</h1>
+        <div className="h-4 w-32 bg-muted rounded animate-pulse mt-1" />
       </div>
     </div>
 
@@ -80,7 +85,7 @@ const ScheduleSkeleton = () => (
         {['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه', 'جمعه'].map((day) => (
           <button
             key={day}
-            className="p-2 rounded-lg text-sm whitespace-nowrap text-gray-400"
+            className="p-2 rounded-lg text-sm whitespace-nowrap text-muted-foreground"
           >
             {day}
           </button>
@@ -90,13 +95,13 @@ const ScheduleSkeleton = () => (
       {/* Anime List Skeleton */}
       <div className="space-y-2">
         {[...Array(5)].map((_, i) => (
-          <div key={i} className="flex bg-gray-900 gap-4 p-2 rounded-lg">
-            <div className="w-12 h-16 bg-gray-800 rounded animate-pulse" />
+          <div key={i} className="flex bg-card gap-4 p-2 rounded-lg">
+            <div className="w-12 h-16 bg-muted rounded animate-pulse" />
             <div className="flex-1 min-w-0 mt-1">
-              <div className="h-5 w-3/4 bg-gray-800 rounded animate-pulse mb-2" />
+              <div className="h-5 w-3/4 bg-muted rounded animate-pulse mb-2" />
               <div className="flex items-center gap-2">
-                <div className="h-4 w-20 bg-gray-800 rounded animate-pulse" />
-                <div className="h-4 w-24 bg-gray-800 rounded animate-pulse" />
+                <div className="h-4 w-20 bg-muted rounded animate-pulse" />
+                <div className="h-4 w-24 bg-muted rounded animate-pulse" />
               </div>
             </div>
           </div>
@@ -104,7 +109,7 @@ const ScheduleSkeleton = () => (
       </div>
     </div>
   </div>
-);
+)
 
 const Schedule = () => {
   const [loading, setLoading] = useState(true)
@@ -112,8 +117,12 @@ const Schedule = () => {
   const [activeDay, setActiveDay] = useState<PersianDay>(getCurrentPersianDay())
   const [currentSeason, setCurrentSeason] = useState<string>('')
   const [currentYear, setCurrentYear] = useState<number>(0)
-  
-  const [scheduleInfo, setScheduleInfo] = useState<ScheduleInfo>({ schedule: {}, currentSeason: '', currentYear: 0 })
+
+  const [scheduleInfo, setScheduleInfo] = useState<ScheduleInfo>({
+    schedule: {},
+    currentSeason: '',
+    currentYear: 0,
+  })
 
   // Empty schedule template
   const emptySchedule: ScheduleData = {
@@ -139,19 +148,19 @@ const Schedule = () => {
       try {
         setLoading(true)
         setError(null)
-        const data = await fetchSchedule() as ScheduleInfo
-        
+        const data = (await fetchSchedule()) as ScheduleInfo
+
         // اگر برنامه‌ای وجود نداشت یا داده‌ها خالی بود
-        if (!data.schedule || Object.values(data.schedule).every(arr => arr.length === 0)) {
+        if (!data.schedule || Object.values(data.schedule).every((arr) => arr.length === 0)) {
           setScheduleInfo({
             schedule: emptySchedule,
             currentSeason: data.currentSeason,
-            currentYear: data.currentYear
+            currentYear: data.currentYear,
           })
         } else {
-        setScheduleInfo(data)
+          setScheduleInfo(data)
         }
-        
+
         // ذخیره اطلاعات فصل و سال جاری
         setCurrentSeason(data.currentSeason)
         setCurrentYear(data.currentYear)
@@ -167,48 +176,47 @@ const Schedule = () => {
   }, [])
 
   if (loading) {
-    return <ScheduleSkeleton />;
+    return <ScheduleSkeleton />
   }
 
   if (error) {
-    return (
-      <div className="text-center text-red-500 p-4">
-        {error}
-      </div>
-    )
+    return <div className="text-center text-red-500 p-4">{error}</div>
   }
 
   // Ensure we have data for all days
-  const fullSchedule = scheduleInfo.schedule || emptySchedule;
+  const fullSchedule = scheduleInfo.schedule || emptySchedule
 
   const days = Object.keys(fullSchedule) as PersianDay[]
 
   const toPersianNumber = (num: number | string): string => {
-    const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
-    return String(num).replace(/[0-9]/g, (w) => persianDigits[+w]);
-  };
+    const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹']
+    return String(num).replace(/[0-9]/g, (w) => persianDigits[+w])
+  }
 
   return (
     <div className="card mx-4">
       <div className="flex items-center justify-between mb-4">
         <div>
           {currentSeason && (
-        <h1 className="text-lg font-medium text-gray-100"> فصل {trangraySeason(currentSeason)} {toPersianNumber(currentYear)}</h1>
+            <h1 className="text-lg font-medium text-foreground">
+              {' '}
+              فصل {trangraySeason(currentSeason)} {toPersianNumber(currentYear)}
+            </h1>
           )}
         </div>
       </div>
 
       <div className="space-y-4">
         {/* Days Tabs */}
-        <div className="flex justify-between overflow-x-auto bg-gray-900 rounded-lg border border-white/20">
+        <div className="flex justify-between overflow-x-auto bg-card rounded-lg border border-border">
           {days.map((day) => (
             <button
               key={day}
               onClick={() => setActiveDay(day)}
               className={`p-1 px-2 rounded-md text-xs whitespace-nowrap border border-transparent ${
                 activeDay === day
-                  ? 'bg-gray-800 border border-white/20 text-white font-medium'
-                  : 'text-gray-400'
+                  ? 'bg-muted border border-border text-foreground font-medium'
+                  : 'text-muted-foreground'
               }`}
             >
               {day}
@@ -224,41 +232,36 @@ const Schedule = () => {
               const genres = anime.genres || []
               return !genres.some((g) => String(g.slug).toLowerCase() === 'hentai')
             })
-            return filteredList.length > 0
-              ? (
-                filteredList.map((anime) => (
-            <Link
-              key={anime.id}
-              to={`/anime/${anime.id}`}
-              className="flex bg-gray-900 border shadow-inner border-white/10 gap-4 p-1 rounded-lg"
-            >
-              <img
-                src={anime.image}
-                alt={anime.title}
-                className="w-12 h-16 object-cover rounded"
-                loading="lazy"
-              />
-              <div className="flex-1 min-w-0 mt-2">
-                <h2 className="font-medium text-gray-100 line-clamp-1">
-                  {anime.title}
-                </h2>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-sm text-primary-400">
-                    {toPersianNumber(anime.episode)}
-                  </span>
-                  <span className='text-gray-500'>|</span>
-                  <span className="text-sm text-gray-400">
-                    ساعت: {anime.time}
-                  </span>
-                </div>
+            return filteredList.length > 0 ? (
+              filteredList.map((anime) => (
+                <Link
+                  key={anime.id}
+                  to={`/anime/${anime.id}`}
+                  className="flex bg-card border shadow-inner border-border gap-4 p-1 rounded-lg"
+                >
+                  <img
+                    src={anime.image}
+                    alt={anime.title}
+                    className="w-12 h-16 object-cover rounded"
+                    loading="lazy"
+                  />
+                  <div className="flex-1 min-w-0 mt-2">
+                    <h2 className="font-medium text-foreground line-clamp-1">{anime.title}</h2>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-sm text-primary-400">
+                        {toPersianNumber(anime.episode)}
+                      </span>
+                      <span className="text-muted-foreground">|</span>
+                      <span className="text-sm text-muted-foreground">ساعت: {anime.time}</span>
+                    </div>
+                  </div>
+                </Link>
+              ))
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">برنامه‌ای برای این روز موجود نیست</p>
               </div>
-            </Link>
-                ))
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-gray-500">برنامه‌ای برای این روز موجود نیست</p>
-                </div>
-              )
+            )
           })()}
         </div>
       </div>
@@ -266,4 +269,4 @@ const Schedule = () => {
   )
 }
 
-export default Schedule 
+export default Schedule

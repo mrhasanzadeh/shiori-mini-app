@@ -17,24 +17,24 @@ type Anime = {
   genres?: GenreItem[]
 }
 
-type TabType = 'favorites' | 'lists';
+type TabType = 'favorites' | 'lists'
 
 const MyList = () => {
   const [activeTab, setActiveTab] = useState<TabType>('favorites')
   const navigate = useNavigate()
-  
+
   // State for Favorites tab
   const { favoriteAnime } = useAnimeStore()
- 
+
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [favoriteAnimeDetails, setFavoriteAnimeDetails] = useState<Anime[]>([])
-  
+
   // State for Lists tab
   const { lists, addList } = useListsStore()
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [newListTitle, setNewListTitle] = useState('')
-  
+
   // Handle creating a new list
   const handleCreateList = () => {
     if (newListTitle.trim()) {
@@ -43,14 +43,13 @@ const MyList = () => {
       setShowCreateModal(false)
     }
   }
-  
+
   useEffect(() => {
     if (activeTab === 'favorites') {
       loadFavoriteAnime()
     }
   }, [favoriteAnime, activeTab])
-  
-  
+
   const loadFavoriteAnime = async () => {
     if (favoriteAnime.length === 0) {
       setFavoriteAnimeDetails([])
@@ -60,7 +59,7 @@ const MyList = () => {
     try {
       setLoading(true)
       setError(null)
-      
+
       // Fetch all favorite anime details without cache
       const results = await Promise.all(
         favoriteAnime.map(async (id) => {
@@ -71,7 +70,7 @@ const MyList = () => {
             image: details.image,
             episode: `قسمت ${details.episodes.length > 0 ? details.episodes.length : '۱'}`,
             genres: details.genres,
-            description: details.description
+            description: details.description,
           } as Anime
         })
       )
@@ -95,39 +94,35 @@ const MyList = () => {
 
   // Common error state
   if (error && activeTab === 'favorites') {
-    return (
-      <div className="text-center text-red-500 p-4">
-        {error}
-      </div>
-    )
+    return <div className="text-center text-red-500 p-4">{error}</div>
   }
 
   return (
     <div className="pb-24">
       {/* Tabs Header - match Home segmented tabs */}
       <div className="px-4 pt-4">
-      <div className="flex items-center gap-2 rounded-xl w-full mx-auto border border-white/20 bg-gray-900/40 backdrop-blur-xl shadow-lg">
+        <div className="flex items-center gap-2 rounded-xl w-full mx-auto border border-border bg-card/30 backdrop-blur-xl shadow-lg">
           <button
             onClick={() => setActiveTab('favorites')}
             className={`flex-1 text-center p-2 border border-transparent rounded-lg transition-all ${
               activeTab === 'favorites'
-                ? 'bg-gray-900 text-white font-medium shadow-md border !border-white/20'
-                : 'text-gray-200 hover:text-white hover:bg-white/5'
+                ? 'bg-card text-foreground font-medium shadow-md border !border-border'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
             }`}
             aria-pressed={activeTab === 'favorites'}
           >
-              علاقه‌مندی‌ها
+            علاقه‌مندی‌ها
           </button>
           <button
             onClick={() => setActiveTab('lists')}
             className={`flex-1 text-center p-2 border border-transparent rounded-lg transition-all ${
               activeTab === 'lists'
-                ? 'bg-gray-900 text-white font-medium shadow-md border !border-white/20'
-                : 'text-gray-200 hover:text-white hover:bg-white/5'
+                ? 'bg-card text-foreground font-medium shadow-md border !border-border'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
             }`}
             aria-pressed={activeTab === 'lists'}
           >
-              لیست‌ها
+            لیست‌ها
           </button>
         </div>
       </div>
@@ -140,16 +135,18 @@ const MyList = () => {
             {/* Empty state for favorites */}
             {favoriteAnime.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-[70vh] px-4">
-                <img src={emptyListImage} alt="empty-list" className="w-48 mb-4"/>
-                <h2 className="text-lg font-medium text-gray-300 mb-2">لیست مورد علاقه شما خالی است</h2>
-                <p className="text-gray-500 text-center mb-4 leading-7">
+                <img src={emptyListImage} alt="empty-list" className="w-48 mb-4" />
+                <h2 className="text-lg font-medium text-foreground mb-2">
+                  لیست مورد علاقه شما خالی است
+                </h2>
+                <p className="text-muted-foreground text-center mb-4 leading-7">
                   با گشت‌وگذار در انیمه‌ها و زدن دکمه‌ی قلب، آثار
                   <br />
-                مورد علاقه‌تان را به لیست خود اضافه کنید.
+                  مورد علاقه‌تان را به لیست خود اضافه کنید.
                 </p>
-                <Link 
-                  to="/search" 
-                  className="flex items-center justify-center gap-2 bg-gray-800 hover:bg-primary-600 text-white px-12 py-3 rounded-lg transition-colors duration-200"
+                <Link
+                  to="/search"
+                  className="flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-foreground px-12 py-3 rounded-lg transition-colors duration-200"
                 >
                   مرور انیمه‌ها
                 </Link>
@@ -165,7 +162,7 @@ const MyList = () => {
                       aria-label={`مشاهده ${anime.title}`}
                     >
                       <div className="card">
-                        <div className="relative aspect-[2/3] overflow-hidden rounded-xl border-2 border-t-white/10 border-r-white/10 border-l-white/10 border-b-white/5">
+                        <div className="relative aspect-[2/3] overflow-hidden rounded-xl border-2 border-border">
                           <img
                             src={anime.image}
                             alt={anime.title}
@@ -191,12 +188,14 @@ const MyList = () => {
             {/* Empty state for lists */}
             {lists.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-[70vh] px-4">
-                <ListViewIcon className="w-16 h-16 text-gray-700 mb-4" />
-                <h2 className="text-xl font-medium text-gray-300 mb-2">لیست‌های شما خالی است</h2>
-                <p className="text-gray-500 text-center mb-8">لیست‌های خود را برای مدیریت بهتر کارها ایجاد کنید</p>
-                <button 
+                <ListViewIcon className="w-16 h-16 text-muted-foreground mb-4" />
+                <h2 className="text-xl font-medium text-foreground mb-2">لیست‌های شما خالی است</h2>
+                <p className="text-muted-foreground text-center mb-8">
+                  لیست‌های خود را برای مدیریت بهتر کارها ایجاد کنید
+                </p>
+                <button
                   onClick={() => setShowCreateModal(true)}
-                  className="flex items-center justify-center gap-2 bg-primary-500 hover:bg-primary-600 text-white px-6 py-3 rounded-lg transition-colors duration-200"
+                  className="flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 rounded-lg transition-colors duration-200"
                 >
                   <Add01Icon className="w-5 h-5" />
                   ایجاد لیست جدید
@@ -206,14 +205,12 @@ const MyList = () => {
               <div>
                 <div className="px-4 pt-4 pb-6 flex items-center justify-between">
                   <div>
-                    <h1 className="text-xl font-semibold text-gray-100">لیست‌های من</h1>
-                    <p className="text-gray-400 text-sm mt-1">
-                      {lists.length} لیست
-                    </p>
+                    <h1 className="text-xl font-semibold text-foreground">لیست‌های من</h1>
+                    <p className="text-muted-foreground text-sm mt-1">{lists.length} لیست</p>
                   </div>
                   <button
                     onClick={() => setShowCreateModal(true)}
-                    className="flex items-center justify-center gap-1 bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg transition-colors"
+                    className="flex items-center justify-center gap-1 bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg transition-colors"
                   >
                     <Add01Icon className="w-5 h-5" />
                     جدید
@@ -225,35 +222,41 @@ const MyList = () => {
                     <div
                       key={list.id}
                       onClick={() => navigate(`/lists/${list.id}`)}
-                      className="bg-gray-900 rounded-xl p-4 shadow-md border border-white/10"
+                      className="bg-card rounded-xl p-4 shadow-md border border-border"
                     >
                       <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-gray-100 font-medium text-lg">{list.title}</h3>
-                        <span className="text-gray-400 text-xs">
+                        <h3 className="text-foreground font-medium text-lg">{list.title}</h3>
+                        <span className="text-muted-foreground text-xs">
                           {list.items.length} مورد
                         </span>
                       </div>
-                      
+
                       {list.items.length > 0 ? (
                         <div className="space-y-2 mt-3">
                           {list.items.slice(0, 3).map((item) => (
                             <div key={item.id} className="flex items-center gap-2">
-                              <div className={`w-2 h-2 rounded-full ${item.completed ? 'bg-green-500' : 'bg-gray-500'}`} />
-                              <p className={`text-sm ${item.completed ? 'text-gray-500 line-through' : 'text-gray-300'}`}>
+                              <div
+                                className={`w-2 h-2 rounded-full ${item.completed ? 'bg-green-500' : 'bg-muted-foreground'}`}
+                              />
+                              <p
+                                className={`text-sm ${
+                                  item.completed
+                                    ? 'text-muted-foreground line-through'
+                                    : 'text-foreground'
+                                }`}
+                              >
                                 {item.text}
                               </p>
                             </div>
                           ))}
                           {list.items.length > 3 && (
-                            <p className="text-gray-500 text-xs mt-1">
+                            <p className="text-muted-foreground text-xs mt-1">
                               و {list.items.length - 3} مورد دیگر...
                             </p>
                           )}
                         </div>
                       ) : (
-                        <p className="text-gray-500 text-sm mt-2">
-                          لیست خالی است
-                        </p>
+                        <p className="text-muted-foreground text-sm mt-2">لیست خالی است</p>
                       )}
                     </div>
                   ))}
@@ -263,27 +266,27 @@ const MyList = () => {
 
             {/* Create List Modal */}
             {showCreateModal && (
-              <div className="fixed inset-0 bg-gray-950/70 flex items-center justify-center z-50 p-4">
-                <div className="bg-gray-800 rounded-xl p-5 w-full max-w-sm">
-                  <h3 className="text-lg font-medium text-gray-100 mb-4">ایجاد لیست جدید</h3>
+              <div className="fixed inset-0 bg-background/70 flex items-center justify-center z-50 p-4">
+                <div className="bg-card border border-border rounded-xl p-5 w-full max-w-sm">
+                  <h3 className="text-lg font-medium text-foreground mb-4">ایجاد لیست جدید</h3>
                   <input
                     type="text"
                     placeholder="عنوان لیست"
                     value={newListTitle}
                     onChange={(e) => setNewListTitle(e.target.value)}
-                    className="w-full bg-gray-700 text-gray-100 rounded-lg px-4 py-3 mb-4 border border-gray-600 focus:border-primary-500 focus:outline-none"
+                    className="w-full bg-background text-foreground rounded-lg px-4 py-3 mb-4 border border-input focus:border-ring focus:outline-none"
                     autoFocus
                   />
                   <div className="flex justify-end gap-2">
                     <button
                       onClick={() => setShowCreateModal(false)}
-                      className="px-4 py-2 text-gray-300 hover:text-white"
+                      className="px-4 py-2 text-muted-foreground hover:text-foreground"
                     >
                       انصراف
                     </button>
                     <button
                       onClick={handleCreateList}
-                      className="bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg transition-colors"
+                      className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg transition-colors"
                     >
                       ایجاد
                     </button>
@@ -298,4 +301,4 @@ const MyList = () => {
   )
 }
 
-export default MyList 
+export default MyList
