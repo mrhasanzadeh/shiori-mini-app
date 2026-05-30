@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import * as supa from '../services/supabaseAnime'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { MoreHorizontal } from 'lucide-react'
 import {
   DropdownMenu,
@@ -36,9 +35,9 @@ type Draft = {
 }
 
 const AdminGenres = () => {
-  const [loading, setLoading] = useState(true)
+  const [, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [, setError] = useState<string | null>(null)
   const [q, setQ] = useState('')
   const [list, setList] = useState<supa.GenreAdminItem[]>([])
   const [draft, setDraft] = useState<Draft>({ slug: '', name_en: '', name_fa: '' })

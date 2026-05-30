@@ -12,26 +12,15 @@ import {
 import {
   Building2,
   ChevronLeft,
-  ChevronRight,
   Download,
   Film,
   Languages,
   LayoutDashboard,
-  LogOut,
   PanelLeftOpen,
   PanelRightOpen,
   Tags,
-  UserCircle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { useTelegramApp } from '../hooks/useTelegramApp'
 import logo from '../assets/images/shiori-logo.svg'
 
 interface LayoutProps {
@@ -42,7 +31,6 @@ const Layout = ({ children }: LayoutProps) => {
   const location = useLocation()
   const navigate = useNavigate()
   const [isScrolled, setIsScrolled] = useState(false)
-  const { user } = useTelegramApp()
 
   const [adminSidebarCollapsed, setAdminSidebarCollapsed] = useState(false)
 
