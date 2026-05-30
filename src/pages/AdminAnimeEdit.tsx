@@ -28,6 +28,7 @@ type DraftAnime = {
   airing_status: string
   season: string
   year: string
+  anilist_id: string
   featured_image: string
   cover_image: string
   is_featured: boolean
@@ -81,6 +82,7 @@ const AdminAnimeEdit = () => {
     airing_status: '',
     season: '',
     year: '',
+    anilist_id: '',
     featured_image: '',
     cover_image: '',
     is_featured: false,
@@ -123,7 +125,17 @@ const AdminAnimeEdit = () => {
 
   const EMPTY_SELECT_VALUE = '__EMPTY__'
 
-  const formatOptions = useMemo(() => ['TV', 'MOVIE', 'ONA', 'ONA (CHINESE)', 'OVA', 'SPECIAL'], [])
+  const formatOptions = useMemo(
+    () => [
+      { value: 'TV', label: 'سریالی' },
+      { value: 'MOVIE', label: 'سینمایی' },
+      { value: 'ONA', label: 'ONA' },
+      { value: 'ONA (CHINESE)', label: 'ONA (CHINESE)' },
+      { value: 'OVA', label: 'OVA' },
+      { value: 'SPECIAL', label: 'قسمت ویژه' },
+    ],
+    []
+  )
   const seasonOptions = useMemo(() => ['', 'WINTER', 'SPRING', 'SUMMER', 'FALL'], [])
   const airingStatusOptions = useMemo(() => ['', 'RELEASING', 'FINISHED', 'NOT_YET_RELEASED'], [])
 
@@ -514,6 +526,7 @@ const AdminAnimeEdit = () => {
       airing_status: a.airing_status ?? '',
       season: a.season ?? '',
       year: typeof a.year === 'number' ? String(a.year) : '',
+      anilist_id: typeof a.anilist_id === 'number' ? String(a.anilist_id) : '',
       featured_image: a.featured_image ?? '',
       cover_image: a.cover_image ?? '',
       is_featured: Boolean(a.is_featured),
@@ -595,6 +608,7 @@ const AdminAnimeEdit = () => {
         format: draft.format.trim() || null,
         season: draft.season.trim() || null,
         year: draft.year.trim() ? Number(draft.year) : null,
+        anilist_id: draft.anilist_id.trim() ? Number(draft.anilist_id) : null,
         genre_slugs: Array.from(selectedGenreSlugs),
         featured_image: draft.featured_image.trim() || null,
         cover_image: draft.cover_image.trim() || null,
@@ -793,8 +807,8 @@ const AdminAnimeEdit = () => {
                         </SelectTrigger>
                         <SelectContent>
                           {formatOptions.map((opt) => (
-                            <SelectItem key={opt} value={opt}>
-                              {opt}
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -868,6 +882,18 @@ const AdminAnimeEdit = () => {
                         placeholder="مثلاً: 2024"
                       />
                     </div>
+                    <div>
+                      <div className="text-muted-foreground text-xs mb-2">AniList ID</div>
+                      <Input
+                        value={draft.anilist_id}
+                        onChange={(e) => setDraft((p) => ({ ...p, anilist_id: e.target.value }))}
+                        inputMode="numeric"
+                        placeholder="مثلاً: 196935"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div>
                       <div className="text-muted-foreground text-xs mb-2">فصل انتشار</div>
                       <Select

@@ -119,13 +119,13 @@ const TranslatorProfile = () => {
       </div>
 
       <div className="container mx-auto px-4 mt-4 space-y-6">
-        <div className="rounded-xl border border-border bg-muted overflow-hidden">
+        <div className="rounded-xl bg-muted/50 overflow-hidden">
           <div className="grid grid-cols-3 text-center">
             <div className="py-3">
               <div className="text-lg font-semibold text-foreground">{animeCount}</div>
               <div className="text-xs text-muted-foreground">تعداد انیمه</div>
             </div>
-            <div className="py-3 border-x border-border">
+            <div className="py-3 border-x border-input/60">
               <div className="text-lg font-semibold text-foreground">{totalEpisodes}</div>
               <div className="text-xs text-muted-foreground">تعداد قسمت‌ها</div>
             </div>

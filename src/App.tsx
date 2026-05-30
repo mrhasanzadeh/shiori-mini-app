@@ -24,6 +24,8 @@ const AdminAnimeEdit = lazy(() => import('./pages/AdminAnimeEdit'))
 const AdminGenres = lazy(() => import('./pages/AdminGenres'))
 const AdminStudios = lazy(() => import('./pages/AdminStudios'))
 const AdminTranslators = lazy(() => import('./pages/AdminTranslators'))
+const AdminFilesDownloads = lazy(() => import('./pages/AdminFilesDownloads'))
+const AdminFilePacks = lazy(() => import('./pages/AdminFilePacks'))
 
 function App() {
   const { isReady } = useTelegramApp()
@@ -111,6 +113,24 @@ function App() {
             element={
               <AdminGate>
                 <AdminTranslators />
+              </AdminGate>
+            }
+          />
+
+          <Route
+            path="/admin/files-downloads"
+            element={
+              <AdminGate>
+                <AdminFilesDownloads />
+              </AdminGate>
+            }
+          />
+
+          <Route
+            path="/admin/file-packs"
+            element={
+              <AdminGate>
+                <AdminFilePacks />
               </AdminGate>
             }
           />

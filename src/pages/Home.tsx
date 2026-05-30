@@ -231,7 +231,7 @@ const Home = () => {
                     />
                   </div>
                   <div className="mt-3 text-center">
-                    <h3 className="text-sm font-medium line-clamp-1 text-foreground">
+                    <h3 className="text-sm font-medium line-clamp-2 text-foreground">
                       {anime.title}
                     </h3>
                     <p className="text-xs text-muted-foreground mt-[2px]">زیرنویس چسبیده | 1080p</p>

@@ -154,7 +154,7 @@ const Search = () => {
 
       {/* Results */}
       {!loading && !error && filteredResults.length > 0 && (
-        <div className="grid grid-cols-3 gap-3 p-4">
+        <div className="grid grid-cols-3 gap-x-2 gap-y-4 p-4">
           {filteredResults.map((anime) => (
             <Link
               key={anime.id}
@@ -171,8 +171,8 @@ const Search = () => {
                     loading="lazy"
                   />
                 </div>
-                <div className="mt-3">
-                  <h3 className="text-sm font-medium line-clamp-1 text-foreground">
+                <div className="mt-3 text-center">
+                  <h3 className="text-sm font-medium line-clamp-2 text-foreground">
                     {anime.title}
                   </h3>
                 </div>

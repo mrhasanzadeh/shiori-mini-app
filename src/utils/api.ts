@@ -203,11 +203,20 @@ export const fetchAnimeByStudioSlug = async (slug: string): Promise<UiAnimeCard[
   return list.map(toCacheAnime)
 }
 
-// دریافت schedule (ساده‌سازی شده - خالی برمی‌گرداند)
 export const fetchSchedule = async () => {
-  const schedule: Record<
+  const cacheKey = 'anilist_schedule_v1'
+  const cacheTtlMs = 10 * 60 * 1000
+
+  const emptySchedule: Record<
     string,
-    Array<{ id: number; title: string; time: string; episode: string; image: string }>
+    Array<{
+      id: number
+      title: string
+      time: string
+      episode: string
+      image: string
+      genres?: any[]
+    }>
   > = {
     شنبه: [],
     یکشنبه: [],
@@ -218,13 +227,153 @@ export const fetchSchedule = async () => {
     جمعه: [],
   }
 
-  const currentSeason = 'FALL'
+  const getCurrentSeason = (): 'WINTER' | 'SPRING' | 'SUMMER' | 'FALL' => {
+    const m = new Date().getMonth() + 1
+    if (m >= 1 && m <= 3) return 'WINTER'
+    if (m >= 4 && m <= 6) return 'SPRING'
+    if (m >= 7 && m <= 9) return 'SUMMER'
+    return 'FALL'
+  }
+
+  const currentSeason = getCurrentSeason()
   const currentYear = new Date().getFullYear()
 
-  return { schedule, currentSeason, currentYear }
+  try {
+    const raw = sessionStorage.getItem(cacheKey)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (
+        parsed &&
+        typeof parsed === 'object' &&
+        typeof parsed.ts === 'number' &&
+        Date.now() - parsed.ts < cacheTtlMs &&
+        parsed.data &&
+        typeof parsed.data === 'object'
+      ) {
+        return parsed.data
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  const query = `
+    query ($page: Int, $perPage: Int, $season: MediaSeason, $seasonYear: Int) {
+      Page(page: $page, perPage: $perPage) {
+        media(
+          season: $season
+          seasonYear: $seasonYear
+          status: RELEASING
+          type: ANIME
+          sort: POPULARITY_DESC
+        ) {
+          id
+          format
+          title { romaji english native }
+          coverImage { large }
+          genres
+          nextAiringEpisode { airingAt episode }
+        }
+      }
+    }
+  `
+
+  const variables = {
+    page: 1,
+    perPage: 50,
+    season: currentSeason,
+    seasonYear: currentYear,
+  }
+
+  const res = await fetch('https://graphql.anilist.co', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({ query, variables }),
+  })
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`AniList request failed: ${res.status} ${text}`)
+  }
+
+  const json = await res.json()
+  if (json?.errors?.length) {
+    throw new Error(json.errors?.[0]?.message || 'AniList query error')
+  }
+
+  const mediaList: any[] = json?.data?.Page?.media ?? []
+  const schedule: Record<string, any[]> = { ...emptySchedule }
+
+  const toPersianDay = (d: Date): string => {
+    const dayNumber = d.getDay()
+    const dayMap: Record<number, string> = {
+      0: 'یکشنبه',
+      1: 'دوشنبه',
+      2: 'سه‌شنبه',
+      3: 'چهارشنبه',
+      4: 'پنج‌شنبه',
+      5: 'جمعه',
+      6: 'شنبه',
+    }
+    return dayMap[dayNumber]
+  }
+
+  for (const m of mediaList) {
+    const allowedFormats = new Set(['TV', 'ONA', 'OVA', 'SPECIAL'])
+    const format = typeof m?.format === 'string' ? m.format.trim().toUpperCase() : ''
+    if (!allowedFormats.has(format)) continue
+
+    const ep = m?.nextAiringEpisode
+    if (!ep || typeof ep.airingAt !== 'number') continue
+
+    const airingAtMs = ep.airingAt * 1000
+    if (!Number.isFinite(airingAtMs)) continue
+
+    const d = new Date(airingAtMs)
+    const day = toPersianDay(d)
+    if (!schedule[day]) continue
+
+    const title =
+      (typeof m?.title?.english === 'string' && m.title.english.trim()) ||
+      (typeof m?.title?.romaji === 'string' && m.title.romaji.trim()) ||
+      (typeof m?.title?.native === 'string' && m.title.native.trim()) ||
+      'بدون عنوان'
+
+    const time = d.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' })
+
+    schedule[day].push({
+      id: m.id,
+      title,
+      time,
+      episode: String(ep.episode ?? ''),
+      image: m?.coverImage?.large ?? '',
+      genres: Array.isArray(m?.genres)
+        ? m.genres
+            .filter((g: any) => typeof g === 'string' && g.trim().length > 0)
+            .map((g: string) => ({ slug: g.trim().toLowerCase(), name_en: g }))
+        : [],
+    })
+  }
+
+  for (const day of Object.keys(schedule)) {
+    schedule[day].sort((a: any, b: any) =>
+      String(a?.time ?? '').localeCompare(String(b?.time ?? ''))
+    )
+  }
+
+  const data = { schedule, currentSeason, currentYear }
+  try {
+    sessionStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), data }))
+  } catch {
+    // ignore
+  }
+
+  return data
 }
 
-// دریافت انیمه‌های مشابه (ساده‌سازی شده - بر اساس genres)
 export const fetchSimilar = async (id: number | string) => {
   const allAnime = await supa.getAllAnime()
   const currentAnime = allAnime.find((a) => String(a.id) === String(id))
@@ -239,11 +388,9 @@ export const fetchSimilar = async (id: number | string) => {
     )
   )
 
-  // پیدا کردن انیمه‌های مشابه بر اساس genres مشترک
   const similar = allAnime
     .filter((anime) => {
       if (String(anime.id) === String(id)) return false
-      // اگر حداقل یک genre مشترک داشته باشد
       return (anime.genres || []).some((g: any) => {
         const slug =
           typeof g === 'string' ? g.trim().toLowerCase() : String(g.slug).trim().toLowerCase()
@@ -251,7 +398,6 @@ export const fetchSimilar = async (id: number | string) => {
       })
     })
     .sort((a, b) => {
-      // مرتب‌سازی بر اساس تعداد genres مشترک و score
       const aCommonGenres = (a.genres || []).filter((g: any) => {
         const slug =
           typeof g === 'string' ? g.trim().toLowerCase() : String(g.slug).trim().toLowerCase()
@@ -262,6 +408,7 @@ export const fetchSimilar = async (id: number | string) => {
           typeof g === 'string' ? g.trim().toLowerCase() : String(g.slug).trim().toLowerCase()
         return currentGenreSlugs.has(slug)
       }).length
+
       if (aCommonGenres !== bCommonGenres) {
         return bCommonGenres - aCommonGenres
       }

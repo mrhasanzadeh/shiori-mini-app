@@ -310,6 +310,39 @@ export type SubtitlePackItem = {
   subtitle_link?: string
 }
 
+export const getAnimeIdsWithAnyEpisodes = async (
+  animeIds: Array<string | number>
+): Promise<Set<string>> => {
+  const result = new Set<string>()
+  if (!hasSupabaseConfig) return result
+
+  const ids = Array.from(
+    new Set(
+      (animeIds || [])
+        .map((x) => (typeof x === 'number' || typeof x === 'string' ? String(x) : ''))
+        .map((x) => x.trim())
+        .filter(Boolean)
+    )
+  )
+  if (ids.length === 0) return result
+
+  const CHUNK_SIZE = 500
+  for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
+    const chunk = ids.slice(i, i + CHUNK_SIZE)
+    const { data, error } = await supabase.from('episodes').select('anime_id').in('anime_id', chunk)
+    if (error) {
+      console.warn('getAnimeIdsWithAnyEpisodes:', error.message)
+      continue
+    }
+    for (const row of data || []) {
+      const id = row?.anime_id
+      if (typeof id === 'string' || typeof id === 'number') result.add(String(id))
+    }
+  }
+
+  return result
+}
+
 export type TranslatorItem = {
   id: string | number
   name: string
@@ -874,6 +907,22 @@ export const upsertGenre = async (payload: {
   }
 }
 
+export const deleteGenre = async (payload: {
+  id?: number | string
+  slug?: string
+}): Promise<void> => {
+  if (!hasSupabaseConfig) throw new Error('Supabase config missing')
+
+  if (payload.id === undefined && !payload.slug) throw new Error('Genre id/slug missing')
+
+  let q = supabase.from('genres').delete()
+  if (payload.id !== undefined) q = q.eq('id', payload.id)
+  else q = q.eq('slug', String(payload.slug ?? ''))
+
+  const { error } = await q
+  if (error) throw error
+}
+
 export type AnimeAdminRow = {
   id: number | string
   title?: string | null
@@ -881,6 +930,7 @@ export type AnimeAdminRow = {
   format?: string | null
   season?: string | null
   year?: number | null
+  anilist_id?: number | null
   featured_image?: string | null
   cover_image?: string | null
   is_featured?: boolean | null
@@ -895,15 +945,31 @@ export type AnimeAdminRow = {
 export const getAnimeAdminById = async (animeId: string | number): Promise<AnimeAdminRow> => {
   if (!hasSupabaseConfig) throw new Error('Supabase config missing')
 
-  const select =
+  const selectWithAniList =
+    `id, title, synopsis, format, season, year, anilist_id, featured_image, ${IMAGE_COLUMN}, is_featured, airing_status, average_score, episodes_count, studio, start_date, end_date` as any as string
+
+  const selectWithoutAniList =
     `id, title, synopsis, format, season, year, featured_image, ${IMAGE_COLUMN}, is_featured, airing_status, average_score, episodes_count, studio, start_date, end_date` as any as string
 
-  const { data, error } = await (supabase
+  let data: any = null
+
+  const withAniListRes = await (supabase
     .from('anime')
-    .select(select)
+    .select(selectWithAniList)
     .eq('id', animeId)
     .single() as any)
-  if (error) throw error
+
+  if (withAniListRes.error) {
+    const withoutAniListRes = await (supabase
+      .from('anime')
+      .select(selectWithoutAniList)
+      .eq('id', animeId)
+      .single() as any)
+    if (withoutAniListRes.error) throw withoutAniListRes.error
+    data = withoutAniListRes.data
+  } else {
+    data = withAniListRes.data
+  }
 
   const row: any = data
 
@@ -914,6 +980,12 @@ export const getAnimeAdminById = async (animeId: string | number): Promise<Anime
     format: row.format ?? null,
     season: row.season ?? null,
     year: typeof row.year === 'number' ? row.year : (row.year ?? null),
+    anilist_id:
+      typeof row.anilist_id === 'number'
+        ? row.anilist_id
+        : row.anilist_id === null || row.anilist_id === undefined
+          ? null
+          : Number(row.anilist_id) || null,
     featured_image: row.featured_image ?? null,
     cover_image: row[IMAGE_COLUMN] ?? null,
     is_featured: typeof row.is_featured === 'boolean' ? row.is_featured : (row.is_featured ?? null),
@@ -935,6 +1007,7 @@ export const upsertAnimeAdmin = async (payload: {
   format: string | null
   season: string | null
   year: number | null
+  anilist_id?: number | null
   genre_slugs?: string[]
   featured_image: string | null
   cover_image: string | null
@@ -966,6 +1039,7 @@ export const upsertAnimeAdmin = async (payload: {
   if (payload.studio !== undefined) row.studio = payload.studio
   if (payload.start_date !== undefined) row.start_date = payload.start_date
   if (payload.end_date !== undefined) row.end_date = payload.end_date
+  if (payload.anilist_id !== undefined) row.anilist_id = payload.anilist_id
 
   row[IMAGE_COLUMN] = payload.cover_image
   if (payload.id !== undefined && payload.id !== null) row.id = payload.id
@@ -973,6 +1047,26 @@ export const upsertAnimeAdmin = async (payload: {
   const { data, error } = await supabase.from('anime').upsert(row).select('id').single()
   if (error) throw error
   return { id: data.id }
+}
+
+export const getLocalAnimeIdByAniListId = async (
+  anilistId: number
+): Promise<string | number | null> => {
+  if (!hasSupabaseConfig) return null
+
+  const { data, error } = await (supabase
+    .from('anime')
+    .select('id')
+    .eq('anilist_id', anilistId)
+    .maybeSingle() as any)
+
+  if (error) {
+    if (import.meta.env.DEV) console.warn('getLocalAnimeIdByAniListId:', error.message)
+    return null
+  }
+
+  const id = data?.id
+  return typeof id === 'string' || typeof id === 'number' ? id : null
 }
 
 export type EpisodeAdminRow = {
@@ -1231,6 +1325,12 @@ export const upsertStudioAdmin = async (payload: {
     slug: String(data?.slug ?? '').trim(),
     name: String(data?.name ?? '').trim(),
   }
+}
+
+export const deleteStudioAdmin = async (studioId: string | number): Promise<void> => {
+  if (!hasSupabaseConfig) throw new Error('Supabase config missing')
+  const { error } = await supabase.from('studios').delete().eq('id', studioId)
+  if (error) throw error
 }
 
 export const getAnimeStudioSlugsAdmin = async (animeId: string | number): Promise<string[]> => {

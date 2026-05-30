@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { fetchSchedule } from '../utils/api'
+import * as supa from '../services/supabaseAnime'
 import type { GenreItem } from '../services/supabaseAnime'
+import { Button } from '@/components/ui/button'
 
 type Anime = {
   id: number
@@ -112,11 +114,13 @@ const ScheduleSkeleton = () => (
 )
 
 const Schedule = () => {
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeDay, setActiveDay] = useState<PersianDay>(getCurrentPersianDay())
   const [currentSeason, setCurrentSeason] = useState<string>('')
   const [currentYear, setCurrentYear] = useState<number>(0)
+  const [toast, setToast] = useState<string | null>(null)
 
   const [scheduleInfo, setScheduleInfo] = useState<ScheduleInfo>({
     schedule: {},
@@ -195,6 +199,17 @@ const Schedule = () => {
 
   return (
     <div className="card mx-4">
+      {toast && (
+        <div className="fixed bottom-6 left-0 right-0 z-[60] px-4">
+          <div className="max-w-xl mx-auto rounded-2xl border border-border bg-card px-3 py-2 flex items-start justify-between gap-3 shadow-lg">
+            <div className="text-sm leading-6 text-foreground">{toast}</div>
+            <Button type="button" variant="secondary" size="sm" onClick={() => setToast(null)}>
+              بستن
+            </Button>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between mb-4">
         <div>
           {currentSeason && (
@@ -225,7 +240,7 @@ const Schedule = () => {
         </div>
 
         {/* Anime List for Active Day */}
-        <div className="space-y-2">
+        <div className="grid grid-cols-3 gap-x-2 gap-y-4">
           {(() => {
             const safeList = fullSchedule[activeDay] || []
             const filteredList = safeList.filter((anime) => {
@@ -237,22 +252,51 @@ const Schedule = () => {
                 <Link
                   key={anime.id}
                   to={`/anime/${anime.id}`}
-                  className="flex bg-card border shadow-inner border-border gap-4 p-1 rounded-lg"
+                  onClick={(e) => {
+                    const rawId = String(anime.id)
+                    const isUuid =
+                      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawId)
+                    const isNumeric = /^[0-9]+$/.test(rawId)
+
+                    if (!isUuid && isNumeric) {
+                      e.preventDefault()
+                      const anilistId = Number(rawId)
+                      supa
+                        .getLocalAnimeIdByAniListId(anilistId)
+                        .then((localId) => {
+                          if (localId) {
+                            navigate(`/anime/${localId}`)
+                            return
+                          }
+                          setToast(
+                            'این انیمه توسط شیوری ترجمه نمی‌شود یا در حال حاضر در لیست ترجمه‌های این فصل تیم قرار ندارد.'
+                          )
+                        })
+                        .catch(() => {
+                          setToast(
+                            'این انیمه توسط شیوری ترجمه نمی‌شود یا در حال حاضر در لیست ترجمه‌های این فصل تیم قرار ندارد.'
+                          )
+                        })
+                    }
+                  }}
                 >
-                  <img
-                    src={anime.image}
-                    alt={anime.title}
-                    className="w-12 h-16 object-cover rounded"
-                    loading="lazy"
-                  />
-                  <div className="flex-1 min-w-0 mt-2">
-                    <h2 className="font-medium text-foreground line-clamp-1">{anime.title}</h2>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-sm text-primary-400">
-                        {toPersianNumber(anime.episode)}
-                      </span>
-                      <span className="text-muted-foreground">|</span>
-                      <span className="text-sm text-muted-foreground">ساعت: {anime.time}</span>
+                  <div className="card">
+                    <div className="relative aspect-[2/3] overflow-hidden rounded-xl border-2 border-input/80 border-b-input/40">
+                      <img
+                        src={anime.image}
+                        alt={anime.title}
+                        className="w-full h-full object-cover absolute inset-0"
+                        loading="lazy"
+                      />
+                    </div>
+                    <div className="mt-3 text-center">
+                      <h3 className="text-sm font-medium line-clamp-2 text-foreground">
+                        {anime.title}
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-[2px]">
+                        {' '}
+                        قسمت {toPersianNumber(anime.episode)} | ساعت {anime.time}
+                      </p>
                     </div>
                   </div>
                 </Link>

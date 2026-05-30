@@ -10,6 +10,7 @@ const AdminAnimeList = () => {
   const [error, setError] = useState<string | null>(null)
   const [q, setQ] = useState('')
   const [list, setList] = useState<supa.AnimeCard[]>([])
+  const [animeIdsWithEpisodes, setAnimeIdsWithEpisodes] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     const run = async () => {
@@ -18,6 +19,8 @@ const AdminAnimeList = () => {
         setError(null)
         const data = await supa.getAllAnime()
         setList(data)
+        const withEpisodes = await supa.getAnimeIdsWithAnyEpisodes(data.map((x) => x.id))
+        setAnimeIdsWithEpisodes(withEpisodes)
       } catch (e) {
         const msg = e instanceof Error ? e.message : 'خطا در دریافت لیست انیمه‌ها'
         setError(msg)
@@ -64,13 +67,22 @@ const AdminAnimeList = () => {
                 to={`/admin/anime/${encodeURIComponent(String(a.id))}`}
                 className="block hover:bg-muted/30 transition-colors"
               >
-                <div className="aspect-[3/4] bg-muted">
+                <div className="aspect-[3/4] bg-muted relative">
                   <img
                     src={a.image}
                     alt={a.title}
                     className="w-full h-full object-cover"
                     loading="lazy"
                   />
+                  {animeIdsWithEpisodes.has(String(a.id)) ? (
+                    <div className="absolute top-2 left-2 text-xs rounded bg-muted border border-input px-1">
+                      HAS-EP
+                    </div>
+                  ) : (
+                    <div className="absolute top-2 left-2 font-mono text-xs rounded bg-red-800 px-1">
+                      NO-EP
+                    </div>
+                  )}
                 </div>
                 <div className="p-2 text-left">
                   <div className="text-foreground text-sm font-semibold line-clamp-1">

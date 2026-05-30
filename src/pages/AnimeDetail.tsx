@@ -128,6 +128,18 @@ const AnimeDetail = () => {
     return seasonMap[String(season || '').toUpperCase()] || season
   }
 
+  const translateFormat = (format?: string) => {
+    const key = String(format ?? '')
+      .trim()
+      .toUpperCase()
+    const map: Record<string, string> = {
+      TV: 'سریالی',
+      MOVIE: 'سینمایی',
+      SPECIAL: 'قسمت ویژه',
+    }
+    return map[key] || (format ?? '')
+  }
+
   const toJalaliDate = (value?: string) => {
     if (!value) return 'نامشخص'
 
@@ -388,7 +400,7 @@ const AnimeDetail = () => {
                     <Video01Icon className="w-5 h-5 text-primary-400" />
                     نوع
                   </span>
-                  <span className="text-foreground text-sm">{anime.format}</span>
+                  <span className="text-foreground text-sm">{translateFormat(anime.format)}</span>
                 </div>
                 <div className="flex justify-between items-center py-4 border-b border-b-border">
                   <span className="text-muted-foreground text-sm flex items-center gap-2">
