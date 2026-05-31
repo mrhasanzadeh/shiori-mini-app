@@ -16,6 +16,7 @@ import {
   Film,
   Languages,
   LayoutDashboard,
+  Package,
   PanelLeftOpen,
   PanelRightOpen,
   Tags,
@@ -106,6 +107,12 @@ const Layout = ({ children }: LayoutProps) => {
       isActive: () => location.pathname.startsWith('/admin/files-downloads'),
       label: 'آمار دانلود',
       Icon: Download,
+    },
+    {
+      to: '/admin/file-packs',
+      isActive: () => location.pathname.startsWith('/admin/file-packs'),
+      label: 'پک فایل‌ها',
+      Icon: Package,
     },
   ]
 

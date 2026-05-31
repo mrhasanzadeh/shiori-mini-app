@@ -1,64 +1,173 @@
 import { Link } from 'react-router-dom'
+import {
+  Building2,
+  ChevronLeft,
+  Download,
+  Film,
+  Languages,
+  LayoutDashboard,
+  Package,
+  Tags,
+  Users,
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { cn } from '@/lib/utils'
+
+type AdminNavItem = {
+  title: string
+  description: string
+  Icon: LucideIcon
+  to?: string
+  disabled?: boolean
+  badge?: string
+}
+
+type AdminNavSection = {
+  title: string
+  description?: string
+  items: AdminNavItem[]
+}
+
+const sections: AdminNavSection[] = [
+  {
+    title: 'محتوا',
+    description: 'مدیریت کاتالوگ انیمه و متادیتای مرتبط',
+    items: [
+      {
+        to: '/admin/anime',
+        title: 'انیمه‌ها',
+        description: 'لیست، ایجاد و ویرایش انیمه',
+        Icon: Film,
+      },
+      {
+        to: '/admin/genres',
+        title: 'ژانرها',
+        description: 'افزودن و ویرایش ژانرها',
+        Icon: Tags,
+      },
+      {
+        to: '/admin/studios',
+        title: 'استودیوها',
+        description: 'مدیریت استودیوهای تولید',
+        Icon: Building2,
+      },
+      {
+        to: '/admin/translators',
+        title: 'مترجم‌ها',
+        description: 'تیم‌ها و مترجم‌های همکار',
+        Icon: Languages,
+      },
+    ],
+  },
+  {
+    title: 'فایل‌ها و توزیع',
+    description: 'آمار دانلود و پک‌های ارسال در بات',
+    items: [
+      {
+        to: '/admin/files-downloads',
+        title: 'دانلود فایل‌ها',
+        description: 'آمار، جستجو و صفحه‌بندی',
+        Icon: Download,
+      },
+      {
+        to: '/admin/file-packs',
+        title: 'پک فایل‌ها',
+        description: 'ساخت پک، ترتیب فایل و deep-link',
+        Icon: Package,
+      },
+    ],
+  },
+  {
+    title: 'سیستم',
+    items: [
+      {
+        title: 'کاربران',
+        description: 'مدیریت کاربران و دسترسی‌ها',
+        Icon: Users,
+        disabled: true,
+        badge: 'به‌زودی',
+      },
+    ],
+  },
+]
+
+const NavCard = ({ item }: { item: AdminNavItem }) => {
+  const inner = (
+    <>
+      <span
+        className={cn(
+          'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border',
+          item.disabled
+            ? 'bg-muted/40 text-muted-foreground'
+            : 'bg-primary-600/15 text-primary-300 border-primary-500/20'
+        )}
+      >
+        <item.Icon className="h-5 w-5" aria-hidden />
+      </span>
+      <span className="min-w-0 flex-1 space-y-1">
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="text-foreground text-sm font-semibold">{item.title}</span>
+          {item.badge ? <Badge variant="secondary">{item.badge}</Badge> : null}
+        </span>
+        <span className="text-muted-foreground block text-xs leading-relaxed">{item.description}</span>
+      </span>
+      {!item.disabled ? (
+        <ChevronLeft className="text-muted-foreground h-5 w-5 shrink-0 opacity-60" aria-hidden />
+      ) : null}
+    </>
+  )
+
+  const className = cn(
+    'flex items-start gap-3 rounded-lg border p-4 text-start transition-colors',
+    item.disabled
+      ? 'cursor-not-allowed opacity-70'
+      : 'hover:border-primary-400/40 hover:bg-muted/30 bg-card shadow-sm'
+  )
+
+  if (item.disabled || !item.to) {
+    return <div className={className}>{inner}</div>
+  }
+
+  return (
+    <Link to={item.to} className={className}>
+      {inner}
+    </Link>
+  )
+}
 
 const AdminDashboard = () => {
   return (
-    <div>
-      <h1 className="text-foreground text-xl font-bold">پنل ادمین</h1>
-      <p className="text-muted-foreground text-sm mt-2">مدیریت دیتابیس و محتوا</p>
+    <div dir="rtl" className="mx-auto w-full max-w-6xl space-y-8 text-start">
+      <header className="space-y-1">
+        <h1 className="text-foreground flex items-center gap-2 text-xl font-bold">
+          <LayoutDashboard className="h-5 w-5 shrink-0 text-primary-400" />
+          پنل ادمین
+        </h1>
+        <p className="text-muted-foreground text-sm">
+          میان‌برهای مدیریت دیتابیس، محتوا و فایل‌های بات تلگرام
+        </p>
+      </header>
 
-      <div className="grid grid-cols-3 gap-4 mt-6">
-        <Link
-          to="/admin/anime"
-          className="rounded-xl border bg-card p-4 text-card-foreground shadow-sm"
-        >
-          <div className="text-sm font-semibold">انیمه‌ها</div>
-          <div className="text-xs text-muted-foreground mt-1">لیست / ایجاد / ویرایش</div>
-        </Link>
-
-        <Link
-          to="/admin/genres"
-          className="rounded-xl border bg-card p-4 text-card-foreground shadow-sm"
-        >
-          <div className="text-sm font-semibold">ژانرها</div>
-          <div className="text-xs text-muted-foreground mt-1">لیست / افزودن / ویرایش</div>
-        </Link>
-
-        <Link
-          to="/admin/studios"
-          className="rounded-xl border bg-card p-4 text-card-foreground shadow-sm"
-        >
-          <div className="text-sm font-semibold">استودیوها</div>
-          <div className="text-xs text-muted-foreground mt-1">لیست / افزودن / ویرایش</div>
-        </Link>
-
-        <Link
-          to="/admin/translators"
-          className="rounded-xl border bg-card p-4 text-card-foreground shadow-sm"
-        >
-          <div className="text-sm font-semibold">مترجم‌ها</div>
-          <div className="text-xs text-muted-foreground mt-1">لیست / افزودن / ویرایش</div>
-        </Link>
-
-        <Link
-          to="/admin/files-downloads"
-          className="rounded-xl border bg-card p-4 text-card-foreground shadow-sm"
-        >
-          <div className="text-sm font-semibold">دانلود فایل‌ها</div>
-          <div className="text-xs text-muted-foreground mt-1">آمار / جستجو / صفحه‌بندی</div>
-        </Link>
-
-        <Link
-          to="/admin/file-packs"
-          className="rounded-xl border bg-card p-4 text-card-foreground shadow-sm"
-        >
-          <div className="text-sm font-semibold">پک فایل‌ها</div>
-          <div className="text-xs text-muted-foreground mt-1">ساخت / مدیریت / لینک یک‌کلیک</div>
-        </Link>
-
-        <div className="rounded-xl border bg-card p-4 text-card-foreground shadow-sm">
-          <div className="text-sm font-semibold">کاربران</div>
-          <div className="text-xs mt-1">به‌زودی</div>
-        </div>
+      <div className="space-y-8">
+        {sections.map((section) => (
+          <Card key={section.title} className="overflow-hidden">
+            <CardHeader className="border-b pb-4">
+              <CardTitle className="text-base">{section.title}</CardTitle>
+              {section.description ? (
+                <p className="text-muted-foreground text-sm">{section.description}</p>
+              ) : null}
+            </CardHeader>
+            <CardContent className="pt-4">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-2">
+                {section.items.map((item) => (
+                  <NavCard key={item.title} item={item} />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
     </div>
   )

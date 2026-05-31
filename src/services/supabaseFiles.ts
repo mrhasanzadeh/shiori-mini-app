@@ -27,6 +27,45 @@ export type FilePickerItem = {
   is_active: boolean
 }
 
+/** Whitespace-separated terms; each must appear somewhere in key / file_name / caption. */
+const splitFileSearchTokens = (query: string): string[] => {
+  return String(query ?? '')
+    .trim()
+    .split(/\s+/)
+    .map((t) => t.replace(/,/g, ' ').trim())
+    .filter((t) => t.length > 0)
+}
+
+const escapeIlikePattern = (token: string): string => {
+  return token.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_')
+}
+
+const fileSearchOrFilter = (token: string): string => {
+  const safe = escapeIlikePattern(token)
+  return `key.ilike.%${safe}%,file_name.ilike.%${safe}%,caption.ilike.%${safe}%`
+}
+
+type FileSearchQuery = {
+  or: (filter: string) => FileSearchQuery
+  ilike: (column: string, pattern: string) => FileSearchQuery
+}
+
+const applyFileSearchFilters = <T extends FileSearchQuery>(
+  q: T,
+  query: string,
+  opts?: { fileNameOnly?: boolean }
+): T => {
+  const tokens = splitFileSearchTokens(query)
+  for (const token of tokens) {
+    if (opts?.fileNameOnly) {
+      q = q.ilike('file_name', `%${escapeIlikePattern(token)}%`) as T
+    } else {
+      q = q.or(fileSearchOrFilter(token)) as T
+    }
+  }
+  return q
+}
+
 export const getFilesDownloadStats = async (
   params: GetFilesDownloadStatsParams
 ): Promise<{ items: FileDownloadStat[]; total: number }> => {
@@ -62,8 +101,7 @@ export const getFilesDownloadStats = async (
 
   const term = String(params.query ?? '').trim()
   if (term.length > 0) {
-    const safe = term.replace(/,/g, ' ')
-    q = q.or(`key.ilike.%${safe}%,file_name.ilike.%${safe}%,caption.ilike.%${safe}%`)
+    q = applyFileSearchFilters(q, term)
   }
 
   q = q.order(orderColumn, { ascending: sortDir === 'asc' }).range(from, to)
@@ -139,12 +177,9 @@ export const searchFilesForPicker = async (payload: {
     q = q.eq('is_active', true)
   }
 
-  const safe = term.replace(/,/g, ' ')
-  q = q
-    .or(`key.ilike.%${safe}%,file_name.ilike.%${safe}%,caption.ilike.%${safe}%`)
-    .order('created_at', {
-      ascending: false,
-    })
+  q = applyFileSearchFilters(q, term, { fileNameOnly: true }).order('created_at', {
+    ascending: false,
+  })
 
   const { data, error } = await q
   if (error) {

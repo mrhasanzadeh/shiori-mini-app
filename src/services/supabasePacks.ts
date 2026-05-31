@@ -155,3 +155,20 @@ export const updatePackItemSortOrder = async (payload: {
 
   if (error) throw error
 }
+
+export const reorderFilePackItems = async (payload: {
+  packId: string
+  orderedFileKeys: string[]
+}): Promise<void> => {
+  if (!hasSupabaseConfig) throw new Error('Supabase config missing')
+
+  await Promise.all(
+    payload.orderedFileKeys.map((fileKey, index) =>
+      updatePackItemSortOrder({
+        packId: payload.packId,
+        fileKey,
+        sortOrder: index + 1,
+      })
+    )
+  )
+}
