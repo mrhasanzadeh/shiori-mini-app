@@ -12,7 +12,6 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 
 type AdminNavItem = {
@@ -24,72 +23,49 @@ type AdminNavItem = {
   badge?: string
 }
 
-type AdminNavSection = {
-  title: string
-  description?: string
-  items: AdminNavItem[]
-}
-
-const sections: AdminNavSection[] = [
+const navItems: AdminNavItem[] = [
   {
-    title: 'محتوا',
-    description: 'مدیریت کاتالوگ انیمه و متادیتای مرتبط',
-    items: [
-      {
-        to: '/admin/anime',
-        title: 'انیمه‌ها',
-        description: 'لیست، ایجاد و ویرایش انیمه',
-        Icon: Film,
-      },
-      {
-        to: '/admin/genres',
-        title: 'ژانرها',
-        description: 'افزودن و ویرایش ژانرها',
-        Icon: Tags,
-      },
-      {
-        to: '/admin/studios',
-        title: 'استودیوها',
-        description: 'مدیریت استودیوهای تولید',
-        Icon: Building2,
-      },
-      {
-        to: '/admin/translators',
-        title: 'مترجم‌ها',
-        description: 'تیم‌ها و مترجم‌های همکار',
-        Icon: Languages,
-      },
-    ],
+    to: '/admin/anime',
+    title: 'انیمه‌ها',
+    description: 'لیست، ایجاد و ویرایش انیمه',
+    Icon: Film,
   },
   {
-    title: 'فایل‌ها و توزیع',
-    description: 'آمار دانلود و پک‌های ارسال در بات',
-    items: [
-      {
-        to: '/admin/files-downloads',
-        title: 'دانلود فایل‌ها',
-        description: 'آمار، جستجو و صفحه‌بندی',
-        Icon: Download,
-      },
-      {
-        to: '/admin/file-packs',
-        title: 'پک فایل‌ها',
-        description: 'ساخت پک، ترتیب فایل و deep-link',
-        Icon: Package,
-      },
-    ],
+    to: '/admin/genres',
+    title: 'ژانرها',
+    description: 'افزودن و ویرایش ژانرها',
+    Icon: Tags,
   },
   {
-    title: 'سیستم',
-    items: [
-      {
-        title: 'کاربران',
-        description: 'مدیریت کاربران و دسترسی‌ها',
-        Icon: Users,
-        disabled: true,
-        badge: 'به‌زودی',
-      },
-    ],
+    to: '/admin/studios',
+    title: 'استودیوها',
+    description: 'مدیریت استودیوهای تولید',
+    Icon: Building2,
+  },
+  {
+    to: '/admin/translators',
+    title: 'مترجم‌ها',
+    description: 'تیم‌ها و مترجم‌های همکار',
+    Icon: Languages,
+  },
+  {
+    to: '/admin/files-downloads',
+    title: 'دانلود فایل‌ها',
+    description: 'آمار، جستجو و صفحه‌بندی',
+    Icon: Download,
+  },
+  {
+    to: '/admin/file-packs',
+    title: 'پک فایل‌ها',
+    description: 'ساخت پک، ترتیب فایل و deep-link',
+    Icon: Package,
+  },
+  {
+    title: 'کاربران',
+    description: 'مدیریت کاربران و دسترسی‌ها',
+    Icon: Users,
+    disabled: true,
+    badge: 'به‌زودی',
   },
 ]
 
@@ -120,10 +96,10 @@ const NavCard = ({ item }: { item: AdminNavItem }) => {
   )
 
   const className = cn(
-    'flex items-start gap-3 rounded-lg border p-4 text-start transition-colors',
+    'flex items-start gap-3 rounded-xl border bg-card p-4 text-start shadow-sm transition-colors',
     item.disabled
       ? 'cursor-not-allowed opacity-70'
-      : 'hover:border-primary-400/40 hover:bg-muted/30 bg-card shadow-sm'
+      : 'hover:border-primary-400/40 hover:bg-muted/30'
   )
 
   if (item.disabled || !item.to) {
@@ -139,7 +115,7 @@ const NavCard = ({ item }: { item: AdminNavItem }) => {
 
 const AdminDashboard = () => {
   return (
-    <div dir="rtl" className="mx-auto w-full max-w-6xl space-y-8 text-start">
+    <div dir="rtl" className="mx-auto w-full max-w-6xl space-y-6 text-start">
       <header className="space-y-1">
         <h1 className="text-foreground flex items-center gap-2 text-xl font-bold">
           <LayoutDashboard className="h-5 w-5 shrink-0 text-primary-400" />
@@ -150,23 +126,9 @@ const AdminDashboard = () => {
         </p>
       </header>
 
-      <div className="space-y-8">
-        {sections.map((section) => (
-          <Card key={section.title} className="overflow-hidden">
-            <CardHeader className="border-b pb-4">
-              <CardTitle className="text-base">{section.title}</CardTitle>
-              {section.description ? (
-                <p className="text-muted-foreground text-sm">{section.description}</p>
-              ) : null}
-            </CardHeader>
-            <CardContent className="pt-4">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-2">
-                {section.items.map((item) => (
-                  <NavCard key={item.title} item={item} />
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {navItems.map((item) => (
+          <NavCard key={item.title} item={item} />
         ))}
       </div>
     </div>

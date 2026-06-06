@@ -1,14 +1,78 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { UserIcon } from 'hugeicons-react'
 import * as supa from '../services/supabaseAnime'
-import { Badge } from '@/components/ui/badge'
+import type { GenreItem } from '../services/supabaseAnime'
+import { Button } from '@/components/ui/button'
+
+const toPersianNumber = (num: number | string): string => {
+  const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹']
+  return String(num).replace(/[0-9]/g, (w) => persianDigits[+w])
+}
+
+const genreLabel = (g: GenreItem) => g.name_fa || g.name_en || g.slug
+
+const ProfileSkeleton = () => (
+  <div className="pb-24 animate-pulse">
+    <div className="relative h-52">
+      <div className="absolute inset-x-0 top-0 h-full bg-muted" />
+      <div className="relative z-10 pt-24 flex flex-col items-center">
+        <div className="w-24 h-24 rounded-2xl bg-muted border-4 border-background" />
+        <div className="h-6 w-40 bg-muted rounded mt-4" />
+      </div>
+    </div>
+    <div className="mx-4 mt-6 h-20 rounded-2xl bg-muted" />
+    <div className="grid grid-cols-3 gap-3 p-4 mt-6">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="aspect-[2/3] rounded-2xl bg-muted" />
+      ))}
+    </div>
+  </div>
+)
+
+const AnimeGridCard = ({ anime }: { anime: supa.AnimeCard }) => {
+  const genres = (anime.genres || []).slice(0, 2)
+
+  return (
+    <Link
+      to={`/anime/${anime.id}`}
+      className="group block active:scale-[0.98] transition-transform"
+      aria-label={`مشاهده ${anime.title}`}
+    >
+      <div className="relative aspect-[2/3] rounded-xl overflow-hidden border border-border bg-muted shadow-sm">
+        <img
+          src={anime.image}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+          loading="lazy"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+        <div className="absolute left-0 bottom-0 p-2.5 pt-10">
+          <h3 className="text-xs font-semibold text-white text-left line-clamp-2">{anime.title}</h3>
+          {genres.length > 0 && (
+            <div className="flex flex-wrap gap-0.5 mt-1 justify-end">
+              {genres.map((g) => (
+                <span
+                  key={g.slug}
+                  className="text-[8px] leading-none px-1 py-0.5 rounded-sm bg-white/15 text-white/90 border border-white/10 truncate max-w-full"
+                >
+                  {genreLabel(g)}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </Link>
+  )
+}
 
 const TranslatorProfile = () => {
   const { slug } = useParams<{ slug: string }>()
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [translator, setTranslator] = useState<supa.TranslatorItem | null>(null)
   const [animeList, setAnimeList] = useState<supa.AnimeCard[]>([])
-  const [favoriteGenres, setFavoriteGenres] = useState<supa.TranslatorFavoriteGenre[]>([])
 
   const safeSlug = useMemo(() => String(slug || '').trim(), [slug])
 
@@ -28,151 +92,135 @@ const TranslatorProfile = () => {
     return (
       translator?.cover_url ||
       translator?.avatar_url ||
-      animeList?.[0]?.featuredImage ||
-      animeList?.[0]?.image ||
+      animeList[0]?.featuredImage ||
+      animeList[0]?.image ||
       null
     )
   }, [translator?.cover_url, translator?.avatar_url, animeList])
 
-  useEffect(() => {
-    const run = async () => {
-      if (!safeSlug) return
-      try {
-        setLoading(true)
-        const [t, list, fav] = await Promise.all([
-          supa.getTranslatorBySlug(safeSlug),
-          supa.getAnimeCardsByTranslatorSlug(safeSlug),
-          supa.getTranslatorFavoriteGenresBySlug(safeSlug),
-        ])
-        setTranslator(t)
-        setAnimeList(list)
-        setFavoriteGenres(fav)
-      } finally {
-        setLoading(false)
-      }
+  const loadProfile = useCallback(async () => {
+    if (!safeSlug) return
+    try {
+      setLoading(true)
+      setError(null)
+      const [t, list] = await Promise.all([
+        supa.getTranslatorBySlug(safeSlug),
+        supa.getAnimeCardsByTranslatorSlug(safeSlug),
+      ])
+      setTranslator(t)
+      setAnimeList(list)
+    } catch (err) {
+      setError('خطا در بارگذاری پروفایل مترجم')
+      console.error('Failed to load translator profile:', err)
+    } finally {
+      setLoading(false)
     }
-
-    run()
   }, [safeSlug])
 
+  useEffect(() => {
+    loadProfile()
+  }, [loadProfile])
+
   if (!safeSlug) {
-    return <div className="p-4 text-center text-muted-foreground">مترجم یافت نشد</div>
+    return (
+      <div className="px-4 py-16 text-center text-muted-foreground pb-24">مترجم یافت نشد.</div>
+    )
   }
 
-  if (loading) {
-    return <div className="p-4 text-center text-muted-foreground">در حال بارگذاری...</div>
+  if (loading) return <ProfileSkeleton />
+
+  if (error || !translator) {
+    return (
+      <div className="px-4 py-16 text-center space-y-3 pb-24">
+        <p className="text-sm text-red-500">{error || 'مترجم یافت نشد.'}</p>
+        <Button type="button" variant="secondary" onClick={loadProfile}>
+          تلاش مجدد
+        </Button>
+      </div>
+    )
   }
 
-  if (!translator) {
-    return <div className="p-4 text-center text-muted-foreground">مترجم یافت نشد</div>
-  }
+  const experienceLabel =
+    translator.experience && translator.experience.trim().length > 0
+      ? translator.experience
+      : '—'
 
   return (
-    <div className="bg-background text-foreground min-h-screen pb-20">
+    <div className="pb-24 bg-background text-foreground">
+      {/* Cover + avatar — extends under transparent app header */}
       <div className="relative">
-        <div className="h-64 overflow-hidden absolute top-0 w-full">
+        <div className="absolute inset-x-0 top-0 h-52 overflow-hidden">
           {coverImage ? (
-            <img src={coverImage} alt="" className="w-full h-full object-cover opacity-50" />
+            <img src={coverImage} alt="" className="w-full h-full object-cover opacity-45" />
           ) : (
             <div className="w-full h-full bg-muted" />
           )}
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-background"></div>
+          <div className="absolute inset-0 bg-gradient-to-b from-background/10 via-background/30 to-background" />
         </div>
 
-        <div className="container pt-24 mx-auto px-4">
-          <div className="flex flex-col items-center relative z-10">
-            <div className="w-32 h-32 rounded-full overflow-hidden border-2 border-border shadow-inner bg-muted">
-              {translator.avatar_url ? (
-                <img
-                  src={translator.avatar_url}
-                  alt={translator.name}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full" />
-              )}
-            </div>
-
-            <div className="flex-1 mt-4 w-full max-w-2xl">
-              <h1 className="text-xl text-center font-semibold text-foreground line-clamp-3">
-                {translator.name}
-              </h1>
-              {translator.bio ? (
-                <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap text-center">
-                  {translator.bio}
-                </div>
-              ) : (
-                <div className="text-sm text-muted-foreground text-center">بیوگرافی ثبت نشده</div>
-              )}
-              {favoriteGenres.length > 0 && (
-                <div className="flex flex-wrap justify-center gap-1 mt-2">
-                  {favoriteGenres.map((g) => (
-                    <Badge key={g.genre_slug} variant="secondary">
-                      {g.name_fa || g.name_en || g.genre_slug}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="container mx-auto px-4 mt-4 space-y-6">
-        <div className="rounded-xl bg-muted/50 overflow-hidden">
-          <div className="grid grid-cols-3 text-center">
-            <div className="py-3">
-              <div className="text-lg font-semibold text-foreground">{animeCount}</div>
-              <div className="text-xs text-muted-foreground">تعداد انیمه</div>
-            </div>
-            <div className="py-3 border-x border-input/60">
-              <div className="text-lg font-semibold text-foreground">{totalEpisodes}</div>
-              <div className="text-xs text-muted-foreground">تعداد قسمت‌ها</div>
-            </div>
-            <div className="py-3">
-              <div className="text-lg font-semibold text-foreground">
-                {translator.experience && translator.experience.trim().length > 0
-                  ? translator.experience
-                  : '—'}
+        <div className="relative z-10 pt-24 px-4 pb-2 flex flex-col items-center">
+          <div className="w-24 h-24 rounded-2xl overflow-hidden border-4 border-background bg-muted shadow-lg ring-2 ring-primary-400/25">
+            {translator.avatar_url ? (
+              <img
+                src={translator.avatar_url}
+                alt={translator.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-muted">
+                <UserIcon className="w-10 h-10 text-muted-foreground/50" />
               </div>
-              <div className="text-xs text-muted-foreground">سال سابقه</div>
-            </div>
+            )}
           </div>
-        </div>
 
-        <div className="space-y-3">
-          {animeList.length === 0 ? (
-            <div className="text-sm text-muted-foreground">اثری برای این مترجم ثبت نشده</div>
-          ) : (
-            <div className="grid grid-cols-3 gap-2">
-              {animeList.map((a) => (
-                <Link
-                  key={String(a.id)}
-                  to={`/anime/${a.id}`}
-                  className="block"
-                  aria-label={`مشاهده ${a.title}`}
-                >
-                  <div className="card">
-                    <div className="relative aspect-[2/3] overflow-hidden rounded-lg border-2 border-border">
-                      <img
-                        src={a.image}
-                        alt={a.title}
-                        className="w-full h-full object-cover absolute inset-0"
-                        loading="lazy"
-                      />
-                    </div>
-                    {/* <div className="mt-3">
-                      <h3 className="text-sm text-center font-medium line-clamp-1 text-foreground">
-                        {a.title}
-                      </h3>
-                    </div> */}
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
+          <h1 className="text-lg font-bold text-foreground mt-3 text-center line-clamp-2 px-2">
+            {translator.name}
+          </h1>
+          {translator.bio ? (
+          <p className="text-sm text-muted-foreground leading-7 text-center whitespace-pre-wrap">
+            {translator.bio}
+          </p>
+        ) : (
+          <p className="text-sm text-muted-foreground/70 text-center italic">بیوگرافی ثبت نشده</p>
+        )}
         </div>
       </div>
+      {/* Stats */}
+      <div className="mx-4 mt-5 grid grid-cols-3 gap-2">
+        {[
+          { value: toPersianNumber(animeCount), label: 'انیمه' },
+          { value: toPersianNumber(totalEpisodes), label: 'قسمت' },
+          { value: experienceLabel, label: 'سابقه' },
+        ].map((stat) => (
+          <div
+            key={stat.label}
+            className="rounded-xl border border-border bg-card/60 py-3 px-2 text-center"
+          >
+            <p className="text-base font-bold text-foreground">{stat.value}</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">{stat.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Works */}
+      <div className="px-4 pt-6 pb-2 flex items-baseline justify-between">
+        <h2 className="text-base font-semibold text-foreground">آثار</h2>
+        <span className="text-xs text-muted-foreground">
+          {animeCount > 0 ? `${toPersianNumber(animeCount)} عنوان` : 'خالی'}
+        </span>
+      </div>
+
+      {animeList.length === 0 ? (
+        <div className="mx-4 rounded-2xl border border-dashed border-border bg-muted/20 py-12 text-center">
+          <p className="text-sm text-muted-foreground">اثری برای این مترجم ثبت نشده.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-3 gap-3 px-4">
+          {animeList.map((a) => (
+            <AnimeGridCard key={String(a.id)} anime={a} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

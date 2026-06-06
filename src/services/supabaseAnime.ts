@@ -290,6 +290,198 @@ export const getAllAnime = async (): Promise<AnimeCard[]> => {
   return list
 }
 
+export type AnimeSearchParams = {
+  query?: string
+  year?: number | null
+  season?: string | null
+  genreSlug?: string | null
+  limit?: number
+  offset?: number
+}
+
+export type AnimeSearchResult = {
+  items: AnimeCard[]
+  total: number
+  hasMore: boolean
+}
+
+const splitAnimeSearchTokens = (query: string): string[] =>
+  String(query ?? '')
+    .trim()
+    .split(/\s+/)
+    .map((t) => t.replace(/,/g, ' ').trim())
+    .filter((t) => t.length > 0)
+
+const escapeAnimeIlikePattern = (token: string): string =>
+  token.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_')
+
+const buildAnimeSearchSelect = (withGenreInnerJoin: boolean): string => {
+  const genreJoin = withGenreInnerJoin
+    ? 'anime_genres!inner(genres!inner(slug,name_en,name_fa))'
+    : 'anime_genres(genres(slug,name_en,name_fa))'
+
+  return `
+      id,
+      title,
+      ${IMAGE_COLUMN},
+      featured_image,
+      synopsis,
+      format,
+      airing_status,
+      average_score,
+      episodes_count,
+      studio,
+      season,
+      year,
+      start_date,
+      end_date,
+      is_featured,
+      ${genreJoin},
+      created_at
+    `
+}
+
+/** Paginated catalog search — filters run in Supabase, not in the browser. */
+export const searchAnimeCards = async (params: AnimeSearchParams): Promise<AnimeSearchResult> => {
+  if (!hasSupabaseConfig) {
+    throw new Error(
+      'تنظیمات Supabase یافت نشد. در روت پروژه فایل .env بسازید و VITE_SUPABASE_URL و VITE_SUPABASE_ANON_KEY را از پروژه Supabase قرار دهید.'
+    )
+  }
+
+  const limit = Number.isFinite(params.limit) && (params.limit ?? 0) > 0 ? params.limit! : 48
+  const offset = Number.isFinite(params.offset) && (params.offset ?? 0) >= 0 ? params.offset! : 0
+  const from = offset
+  const to = offset + limit - 1
+
+  const genreSlug = params.genreSlug ? String(params.genreSlug).trim().toLowerCase() : ''
+  const season =
+    params.season && String(params.season).trim()
+      ? String(params.season).trim().toUpperCase()
+      : ''
+  const year =
+    params.year !== null && params.year !== undefined && Number.isFinite(params.year)
+      ? params.year
+      : null
+
+  let q = supabase
+    .from('anime')
+    .select(buildAnimeSearchSelect(Boolean(genreSlug)), { count: 'exact' })
+
+  if (genreSlug) {
+    q = q.eq('anime_genres.genres.slug', genreSlug)
+  }
+  if (year !== null) {
+    q = q.eq('year', year)
+  }
+  if (season) {
+    q = q.eq('season', season)
+  }
+
+  for (const token of splitAnimeSearchTokens(params.query ?? '')) {
+    q = q.ilike('title', `%${escapeAnimeIlikePattern(token)}%`)
+  }
+
+  q = q.order('created_at', { ascending: false }).range(from, to)
+
+  const { data, error, count } = await q
+
+  if (error) {
+    // Fallback when airing_status column is missing
+    let fallback = supabase
+      .from('anime')
+      .select(buildAnimeSearchSelect(Boolean(genreSlug)).replace('airing_status,', ''), {
+        count: 'exact',
+      })
+
+    if (genreSlug) fallback = fallback.eq('anime_genres.genres.slug', genreSlug)
+    if (year !== null) fallback = fallback.eq('year', year)
+    if (season) fallback = fallback.eq('season', season)
+    for (const token of splitAnimeSearchTokens(params.query ?? '')) {
+      fallback = fallback.ilike('title', `%${escapeAnimeIlikePattern(token)}%`)
+    }
+    fallback = fallback.order('created_at', { ascending: false }).range(from, to)
+
+    const retry = await fallback
+    if (retry.error) {
+      console.error('searchAnimeCards:', retry.error)
+      throw retry.error
+    }
+
+    const total = typeof retry.count === 'number' ? retry.count : (retry.data || []).length
+    const items = (retry.data || []).map((row: any) => toAnimeCard(row))
+    return { items, total, hasMore: offset + items.length < total }
+  }
+
+  const total = typeof count === 'number' ? count : (data || []).length
+  const items = (data || []).map((row: any) => toAnimeCard(row))
+  return { items, total, hasMore: offset + items.length < total }
+}
+
+/** Similar titles by shared genres (same catalog, excludes current anime). */
+export const getSimilarAnimeCards = async (
+  animeId: string | number,
+  genreSlugs: string[],
+  limit = 12
+): Promise<AnimeCard[]> => {
+  if (!hasSupabaseConfig) return []
+
+  const slugs = [
+    ...new Set(genreSlugs.map((s) => String(s).trim().toLowerCase()).filter(Boolean)),
+  ]
+  if (slugs.length === 0) return []
+
+  const gRes = await supabase.from('genres').select('id, slug').in('slug', slugs)
+  if (gRes.error || !gRes.data?.length) {
+    if (import.meta.env.DEV && gRes.error) console.warn('getSimilarAnimeCards genres:', gRes.error.message)
+    return []
+  }
+
+  const genreIds = (gRes.data as any[]).map((g) => g.id)
+
+  const linksRes = await supabase
+    .from('anime_genres')
+    .select('anime_id')
+    .in('genre_id', genreIds)
+    .neq('anime_id', animeId)
+
+  if (linksRes.error || !linksRes.data?.length) {
+    if (import.meta.env.DEV && linksRes.error)
+      console.warn('getSimilarAnimeCards links:', linksRes.error.message)
+    return []
+  }
+
+  const counts = new Map<string, number>()
+  for (const row of linksRes.data as any[]) {
+    const aid = String(row.anime_id)
+    counts.set(aid, (counts.get(aid) ?? 0) + 1)
+  }
+
+  const topIds = [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([id]) => id)
+
+  if (topIds.length === 0) return []
+
+  const { data, error } = await supabase
+    .from('anime')
+    .select(ANIME_CARD_SELECT_WITH_GENRES)
+    .in('id', topIds)
+
+  if (error || !data) {
+    if (import.meta.env.DEV && error) console.warn('getSimilarAnimeCards anime:', error.message)
+    return []
+  }
+
+  const byId = new Map<string, AnimeCard>()
+  for (const row of data as any[]) {
+    byId.set(String(row.id), toAnimeCard(row))
+  }
+
+  return topIds.map((id) => byId.get(id)).filter((c): c is AnimeCard => Boolean(c))
+}
+
 // نوع هر قسمت برای نمایش در تب «قسمت‌ها»
 export type EpisodeItem = {
   id: string | number
@@ -359,12 +551,6 @@ export type TranslatorAnimeLink = {
   translator_id: string | number
   role?: string | null
   translator: TranslatorItem
-}
-
-export type TranslatorFavoriteGenre = {
-  genre_slug: string
-  name_en?: string | null
-  name_fa?: string | null
 }
 
 export const getTranslatorBySlug = async (slug: string): Promise<TranslatorItem | null> => {
@@ -481,41 +667,6 @@ export const getTranslatorLinksByAnimeId = async (
 
   return mapped.filter((x): x is TranslatorAnimeLink =>
     Boolean(x && x.translator && typeof x.translator.slug === 'string')
-  )
-}
-
-export const getTranslatorFavoriteGenresBySlug = async (
-  slug: string
-): Promise<TranslatorFavoriteGenre[]> => {
-  if (!hasSupabaseConfig) return []
-
-  const safeSlug = String(slug || '').trim()
-  if (!safeSlug) return []
-
-  const { data, error } = await supabase
-    .from('translator_genres')
-    .select('genre_slug, genres(slug,name_en,name_fa), translators!inner(slug)')
-    .eq('translators.slug', safeSlug)
-    .order('genre_slug', { ascending: true })
-
-  if (error) {
-    console.warn('getTranslatorFavoriteGenresBySlug:', error.message)
-    return []
-  }
-
-  const mapped = (data || []).map((row: any): TranslatorFavoriteGenre | null => {
-    const g = row?.genres
-    const slugVal = typeof row?.genre_slug === 'string' ? row.genre_slug : g?.slug
-    if (typeof slugVal !== 'string' || slugVal.trim().length === 0) return null
-    return {
-      genre_slug: String(slugVal).trim(),
-      name_en: typeof g?.name_en === 'string' ? g.name_en : (g?.name_en ?? null),
-      name_fa: typeof g?.name_fa === 'string' ? g.name_fa : (g?.name_fa ?? null),
-    }
-  })
-
-  return mapped.filter((x): x is TranslatorFavoriteGenre =>
-    Boolean(x && typeof x.genre_slug === 'string')
   )
 }
 

@@ -1,5 +1,8 @@
 # راهنمای راه‌اندازی Supabase
 
+> **ساختار جداول:** مرجع فعلی اپ در [`docs/schema.md`](docs/schema.md) است.  
+> فایل SQL seed (`supabase-final-data.sql`) ممکن است خارج از repo نگه‌داری شود — جداول باید با schema بالا هم‌خوان باشند.
+
 ## مراحل اجرا
 
 ### 1. ورود به Supabase
@@ -113,5 +116,5 @@ Wit Studio, MAPPA, ufotable, Bones, Madhouse, Production I.G, Kyoto Animation, A
 اگر داده‌ای نمایش داده نشد:
 1. در Supabase Dashboard به **Table Editor** بروید
 2. جداول را بررسی کنید که داده دارند
-3. در **Authentication > Policies** مطمئن شوید RLS فعال است
+3. در **Authentication > Policies** مطمئن شوید RLS فعال است — الگوهای پیشنهادی: [`docs/rls.md`](docs/rls.md)
 4. Console مرورگر را برای خطاهای API بررسی کنید

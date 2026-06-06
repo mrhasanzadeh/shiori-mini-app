@@ -112,6 +112,35 @@ export const fetchAnimeCards = async (_section?: string): Promise<UiAnimeCard[]>
   return mapped
 }
 
+export type AnimeSearchFilters = {
+  query?: string
+  year?: number | null
+  season?: string | null
+  genreSlug?: string | null
+  limit?: number
+  offset?: number
+}
+
+export const fetchAnimeSearch = async (
+  filters: AnimeSearchFilters = {}
+): Promise<{ items: UiAnimeCard[]; total: number; hasMore: boolean }> => {
+  const result = await supa.searchAnimeCards(filters)
+  return {
+    items: result.items.map(toCacheAnime),
+    total: result.total,
+    hasMore: result.hasMore,
+  }
+}
+
+export const fetchSimilarAnime = async (
+  animeId: number | string,
+  genreSlugs: string[],
+  limit = 12
+): Promise<UiAnimeCard[]> => {
+  const list = await supa.getSimilarAnimeCards(animeId, genreSlugs, limit)
+  return list.map(toCacheAnime)
+}
+
 // دریافت جزئیات یک انیمه + لیست قسمت‌ها از جدول episodes (با لینک دانلود هر قسمت)
 export const fetchAnimeById = async (id: number | string) => {
   const allAnime = await supa.getAllAnime()
@@ -372,69 +401,4 @@ export const fetchSchedule = async () => {
   }
 
   return data
-}
-
-export const fetchSimilar = async (id: number | string) => {
-  const allAnime = await supa.getAllAnime()
-  const currentAnime = allAnime.find((a) => String(a.id) === String(id))
-
-  if (!currentAnime || !currentAnime.genres || currentAnime.genres.length === 0) {
-    return []
-  }
-
-  const currentGenreSlugs = new Set(
-    (currentAnime.genres || []).map((g: any) =>
-      typeof g === 'string' ? g.trim().toLowerCase() : String(g.slug).trim().toLowerCase()
-    )
-  )
-
-  const similar = allAnime
-    .filter((anime) => {
-      if (String(anime.id) === String(id)) return false
-      return (anime.genres || []).some((g: any) => {
-        const slug =
-          typeof g === 'string' ? g.trim().toLowerCase() : String(g.slug).trim().toLowerCase()
-        return currentGenreSlugs.has(slug)
-      })
-    })
-    .sort((a, b) => {
-      const aCommonGenres = (a.genres || []).filter((g: any) => {
-        const slug =
-          typeof g === 'string' ? g.trim().toLowerCase() : String(g.slug).trim().toLowerCase()
-        return currentGenreSlugs.has(slug)
-      }).length
-      const bCommonGenres = (b.genres || []).filter((g: any) => {
-        const slug =
-          typeof g === 'string' ? g.trim().toLowerCase() : String(g.slug).trim().toLowerCase()
-        return currentGenreSlugs.has(slug)
-      }).length
-
-      if (aCommonGenres !== bCommonGenres) {
-        return bCommonGenres - aCommonGenres
-      }
-      return (b.averageScore || 0) - (a.averageScore || 0)
-    })
-    .slice(0, 24)
-    .map((anime) => ({
-      id: anime.id,
-      title: anime.title,
-      image: anime.image || '',
-      status: anime.status || 'ongoing',
-      genres: anime.genres,
-      score: anime.averageScore,
-    }))
-
-  return similar
-}
-
-// جستجو در لیست انیمه‌ها (client-side filtering)
-export const fetchSearch = async (q: string, _page: number = 1): Promise<UiAnimeCard[]> => {
-  const allAnime = await supa.getAllAnime()
-  const searchTerm = q.trim().toLowerCase()
-
-  if (!searchTerm) return allAnime.map(toCacheAnime)
-
-  const filtered = allAnime.filter((anime) => anime.title.toLowerCase().includes(searchTerm))
-
-  return filtered.map(toCacheAnime)
 }

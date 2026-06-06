@@ -1,91 +1,104 @@
 # Shiori Mini App
 
-A Telegram Mini App for anime streaming, inspired by AniList but adapted for Persian (Farsi) audience.
+Telegram Mini App for browsing and managing an anime catalog (Persian UI, RTL).
 
 ## Features
 
-- 🎨 Modern UI with RTL support
-- 🌐 Fully Persian (Farsi) interface
-- 📱 Mobile-first design
-- 🎬 Anime streaming and downloads
-- 📅 Weekly broadcast schedule
-- 🔍 Search functionality
-- 🌓 Light/Dark theme support
+- Catalog: home, search, anime detail, studios, translators
+- Weekly schedule (AniList API, mapped to local catalog when possible)
+- Favorites (persisted locally + Supabase-backed detail)
+- Admin panel: anime CRUD, genres, studios, translators, file download stats, file packs for bot deep-links
 
-## Tech Stack
+## Tech stack
 
-- React with Vite
-- TypeScript
-- TailwindCSS
-- Telegram Web Apps SDK
-- Zustand (State Management)
+| Layer | Stack |
+|-------|--------|
+| UI | React 18, TypeScript, Vite, Tailwind CSS |
+| Components | Radix / shadcn-style (`src/components/ui/`) |
+| Platform | `@twa-dev/sdk` (Telegram Web App) |
+| State | Zustand (`persist` for favorites, lists, theme) |
+| Backend | Supabase (Postgres + client SDK) |
+| Schedule | AniList GraphQL (`src/utils/api.ts`) |
 
-## Getting Started
-
-### Prerequisites
-
-- Node.js (v16 or higher)
-- npm or yarn
-
-### Installation
-
-1. Clone the repository:
-
-```bash
-git clone https://github.com/yourusername/shiori-mini-app.git
-cd shiori-mini-app
-```
-
-2. Install dependencies:
+## Getting started
 
 ```bash
 npm install
-# or
-yarn install
-```
-
-3. Start the development server:
-
-```bash
+cp .env.example .env   # fill Supabase + optional admin vars
 npm run dev
-# or
-yarn dev
 ```
 
-4. Build for production:
+Build:
 
 ```bash
 npm run build
-# or
-yarn build
+npm run preview
 ```
 
-## Project Structure
+Lint / format:
+
+```bash
+npm run lint
+npm run format
+```
+
+## Environment variables
+
+See `.env.example`. Typed in `src/vite-env.d.ts`.
+
+| Variable | Required | Purpose |
+|----------|----------|---------|
+| `VITE_SUPABASE_URL` | Yes | Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | Yes | Supabase anon key |
+| `VITE_ANIME_IMAGE_COLUMN` | No | Image column on `anime` (default: `cover_image`) |
+| `VITE_ADMIN_TELEGRAM_IDS` | No | Comma-separated Telegram user IDs for admin |
+| `VITE_ADMIN_WEB_PASSWORD` | No | Browser-only admin password (dev) |
+| `VITE_TELEGRAM_BOT_USERNAME` | No | Bot username for pack deep-links |
+
+## Project structure
 
 ```
 src/
-├── components/     # Reusable UI components
-├── pages/         # Page components
-├── store/         # State management
-├── types/         # TypeScript type definitions
-├── utils/         # Utility functions
-└── App.tsx        # Main application component
+├── App.tsx                 # Routes (user + /admin/*)
+├── components/
+│   ├── Layout.tsx          # Shell, bottom nav, admin sidebar
+│   ├── AdminGate.tsx       # Admin auth
+│   ├── admin/              # Shared admin UI (AdminCrudUi)
+│   └── ui/                 # shadcn-style primitives
+├── pages/                  # Route pages
+├── services/
+│   ├── supabaseAnime.ts    # Anime, episodes, genres, studios, translators
+│   ├── supabaseFiles.ts    # File download stats
+│   └── supabasePacks.ts    # File packs for Telegram bot
+├── store/                  # Zustand stores
+├── hooks/                  # useTelegramApp, useAnime, …
+├── utils/
+│   ├── api.ts              # App-level data (catalog, schedule)
+│   └── theme.ts
+└── lib/supabase.ts         # Supabase client
 ```
 
-## Contributing
+## Database
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+Schema used by the app is documented in **`docs/schema.md`**.
+
+Security (before production):
+
+- **`docs/rls.md`** — Supabase RLS policies and test checklist
+- **`docs/admin-auth.md`** — admin gate (Telegram ID / web password)
+
+Setup notes: **`SUPABASE_SETUP.md`**. The older **`docs/database-simple-schema.md`** describes an obsolete single-table design.
+
+## Scripts
+
+| Script | Description |
+|--------|-------------|
+| `dev` | Vite dev server |
+| `build` | `tsc` + production bundle |
+| `lint` / `lint:fix` | ESLint |
+| `format` | Prettier on `src/**/*.{ts,tsx,css}` |
+| `preview` | Serve production build locally |
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- Inspired by [AniList](https://anilist.co)
-- Uses [Vazirmatn](https://github.com/rastikerdar/vazirmatn) font
-- Built with [Telegram Web Apps](https://core.telegram.org/bots/webapps)
+MIT — see [LICENSE](LICENSE) if present.

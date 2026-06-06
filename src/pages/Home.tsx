@@ -1,13 +1,20 @@
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { fetchAnimeCards } from '../utils/api'
 import { Swiper, SwiperSlide } from 'swiper/react'
-import { FreeMode, Autoplay } from 'swiper/modules'
+import { Autoplay, FreeMode, Pagination } from 'swiper/modules'
 import 'swiper/css'
 import 'swiper/css/free-mode'
-import { ArrowLeft01Icon } from 'hugeicons-react'
+import 'swiper/css/pagination'
+import {
+  ArrowLeft01Icon,
+  SparklesIcon,
+} from 'hugeicons-react'
 import type { GenreItem } from '../services/supabaseAnime'
-// Removed full-screen FeaturedSlider in favor of compact hero card on Home
+import { Button } from '@/components/ui/button'
+
+type ContentType = 'anime' | 'movie' | 'donghua'
+
 type Anime = {
   id: number | string
   title: string
@@ -21,332 +28,360 @@ type Anime = {
   isFeatured?: boolean
   episode?: string
   averageScore?: number
+  format?: string
   season?: string
   year?: number
 }
 
-interface SliderSection {
-  id: string
-  title: string
-  fetchData: () => Promise<Anime[]>
-  setCache: (data: Anime[]) => void
+type SectionId = 'latest' | 'popular' | 'donghua' | 'movies'
+
+const TYPE_TABS: { id: ContentType; label: string }[] = [
+  { id: 'anime', label: 'انیمه' },
+  { id: 'movie', label: 'سینمایی' },
+  { id: 'donghua', label: 'دونگهوا' },
+]
+
+const toPersianNumber = (num: number | string): string => {
+  const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹']
+  return String(num).replace(/[0-9]/g, (w) => persianDigits[+w])
 }
 
-// Skeleton Card Component
-const SkeletonCard = () => (
-  <div className="card animate-pulse">
-    <div className="relative aspect-[2/3] overflow-hidden bg-muted rounded-lg" />
-    <div className="mt-3">
-      <div className="h-4 bg-muted rounded w-3/4" />
-      <div className="h-3 bg-muted rounded w-1/2 mt-2" />
-    </div>
-  </div>
-)
+const translateSeason = (season: string): string => {
+  switch (season) {
+    case 'WINTER':
+      return 'زمستان'
+    case 'SPRING':
+      return 'بهار'
+    case 'SUMMER':
+      return 'تابستان'
+    case 'FALL':
+      return 'پاییز'
+    default:
+      return season
+  }
+}
 
-// Skeleton Slider Component
-const SkeletonSlider = () => (
-  <div className="relative">
-    <Swiper modules={[FreeMode]} spaceBetween={16} slidesPerView="auto" freeMode={true}>
-      {[...Array(5)].map((_, index) => (
-        <SwiperSlide key={index} className="!w-40">
-          <SkeletonCard />
-        </SwiperSlide>
-      ))}
-    </Swiper>
+const getFallbackSeason = (): 'WINTER' | 'SPRING' | 'SUMMER' | 'FALL' => {
+  const month = new Date().getMonth()
+  if (month >= 0 && month < 3) return 'WINTER'
+  if (month >= 3 && month < 6) return 'SPRING'
+  if (month >= 6 && month < 9) return 'SUMMER'
+  return 'FALL'
+}
+
+const genreLabel = (g: GenreItem) => g.name_fa || g.name_en || g.slug
+
+const PosterCardContent = ({ anime }: { anime: Anime }) => {
+  const genres = (anime.genres || []).slice(0, 3)
+
+  return (
+    <Link
+      to={`/anime/${anime.id}`}
+      className="group block active:scale-[0.98] transition-transform"
+      aria-label={`مشاهده ${anime.title}`}
+    >
+      <div className="relative aspect-[2/3] rounded-xl overflow-hidden border border-border bg-muted shadow-sm">
+        <img
+          src={anime.image}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+          loading="lazy"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-transparent" />
+        {anime.isNew && (
+          <span className="absolute top-2 right-2 text-[10px] font-semibold bg-primary-400 text-white px-1.5 py-0.5 rounded-md">
+            جدید
+          </span>
+        )}
+        <div className="absolute left-0 bottom-0 p-2.5 pt-10">
+          <h3 className="text-xs text-left font-semibold text-white line-clamp-2 leading-2">{anime.title}</h3>
+          {genres.length > 0 ? (
+            <div className="flex flex-wrap gap-1 mt-1 justify-end">
+              {genres.map((g) => (
+                <span
+                  key={g.slug}
+                  className="text-[9px] leading-none px-1 py-0.5 rounded-sm bg-white/15 text-white/90 border border-white/10 max-w-full truncate"
+                >
+                  {genreLabel(g)}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-[10px] text-white/60 mt-1">{anime.episode || 'شیوری'}</p>
+          )}
+        </div>
+      </div>
+    </Link>
+  )
+}
+
+const SectionSkeleton = () => (
+  <div className="flex gap-3 overflow-hidden px-4">
+    {Array.from({ length: 4 }).map((_, i) => (
+      <div key={i} className="w-[9.25rem] shrink-0 animate-pulse">
+        <div className="aspect-[2/3] rounded-2xl bg-muted" />
+      </div>
+    ))}
   </div>
 )
 
 const Home = () => {
+  const [selectedType, setSelectedType] = useState<ContentType>('anime')
   const [loading, setLoading] = useState<Record<string, boolean>>({})
   const [error, setError] = useState<Record<string, string | null>>({})
   const [sectionData, setSectionData] = useState<Record<string, Anime[]>>({})
-  const [selectedType, setSelectedType] = useState<'anime' | 'movie' | 'donghua'>('anime')
-
   const [featuredAnime, setFeaturedAnime] = useState<Anime[]>([])
-  const featuredLoading = loading['featured'] || false
+
+  const fallbackSeason = getFallbackSeason()
+  const currentYearNumber = new Date().getFullYear()
+  const currentSeasonKey = fallbackSeason
+  const currentSeasonFa = translateSeason(fallbackSeason)
+  const seasonLabel = `فصل ${currentSeasonFa} ${toPersianNumber(currentYearNumber)}`
+
+  const sectionMeta = useMemo(
+    (): Record<
+      SectionId,
+      { title: string; seeAll: string }
+    > => ({
+      latest: {
+        title: `فصل ${currentSeasonFa} ${toPersianNumber(currentYearNumber)}`,
+        seeAll: `/search?year=${currentYearNumber}&season=${encodeURIComponent(currentSeasonKey)}`,
+      },
+      popular: { title: 'محبوب‌ترین‌ها', seeAll: '/search' },
+      donghua: { title: 'دونگهوا', seeAll: '/search' },
+      movies: { title: 'انیمه سینمایی', seeAll: '/search' },
+    }),
+    [currentSeasonFa, currentSeasonKey, currentYearNumber]
+  )
+
+  const loadSection = useCallback(async (id: SectionId, fetchData: () => Promise<Anime[]>) => {
+    try {
+      setLoading((prev) => ({ ...prev, [id]: true }))
+      setError((prev) => ({ ...prev, [id]: null }))
+      const data = await fetchData()
+      setSectionData((prev) => ({ ...prev, [id]: data }))
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'خطا در بارگذاری'
+      setError((prev) => ({ ...prev, [id]: message }))
+      console.error(`Failed to load ${id}:`, err)
+    } finally {
+      setLoading((prev) => ({ ...prev, [id]: false }))
+    }
+  }, [])
 
   useEffect(() => {
-    const loadFeaturedAnime = async () => {
+    loadSection('latest', () => fetchAnimeCards('latest') as Promise<Anime[]>)
+    loadSection('popular', () => fetchAnimeCards('popular') as Promise<Anime[]>)
+    loadSection('donghua', () => fetchAnimeCards('donghua') as Promise<Anime[]>)
+    loadSection('movies', () => fetchAnimeCards('movies') as Promise<Anime[]>)
+  }, [loadSection])
+
+  useEffect(() => {
+    const loadFeatured = async () => {
       try {
         setLoading((prev) => ({ ...prev, featured: true }))
         setError((prev) => ({ ...prev, featured: null }))
-
-        // Map tabs to existing API sections. Donghua currently proxies to popular.
         const sectionKey =
           selectedType === 'movie' ? 'movies' : selectedType === 'donghua' ? 'donghua' : 'latest'
         const data = await fetchAnimeCards(sectionKey)
-        const featuredOnly = data.filter((a) => Boolean(a.isFeatured))
-        setFeaturedAnime(featuredOnly)
+        setFeaturedAnime(data.filter((a) => Boolean(a.isFeatured)))
       } catch (err) {
         const message = err instanceof Error ? err.message : 'خطا در بارگذاری پیشنهاد ویژه'
-        setError((prev) => ({
-          ...prev,
-          featured: message,
-        }))
-        console.error('Failed to load featured anime:', err)
+        setError((prev) => ({ ...prev, featured: message }))
       } finally {
         setLoading((prev) => ({ ...prev, featured: false }))
       }
     }
-
-    loadFeaturedAnime()
+    loadFeatured()
   }, [selectedType])
 
-  // Build dynamic current season/year title (prefer cache from schedule)
-  const toPersianNumber = (num: number | string): string => {
-    const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹']
-    return String(num).replace(/[0-9]/g, (w) => persianDigits[+w])
+  const filterLatest = (list: Anime[]) =>
+    list.filter(
+      (a) =>
+        typeof a.year === 'number' &&
+        a.year === currentYearNumber &&
+        String(a.season ?? '').toUpperCase() === currentSeasonKey
+    )
+
+  const getSectionList = (id: SectionId): Anime[] => {
+    const raw = sectionData[id] || []
+    return id === 'latest' ? filterLatest(raw) : raw
   }
 
-  const translateSeason = (season: string): string => {
-    switch (season) {
-      case 'WINTER':
-        return 'زمستان'
-      case 'SPRING':
-        return 'بهار'
-      case 'SUMMER':
-        return 'تابستان'
-      case 'FALL':
-        return 'پاییز'
-      default:
-        return season
-    }
-  }
+  const featuredLoading = loading.featured
+  const featuredError = error.featured
 
-  const scheduleInfo = { currentSeason: '', currentYear: new Date().getFullYear() }
-  const fallbackSeason = (() => {
-    const month = new Date().getMonth()
-    if (month >= 0 && month < 3) return 'WINTER'
-    if (month >= 3 && month < 6) return 'SPRING'
-    if (month >= 6 && month < 9) return 'SUMMER'
-    return 'FALL'
-  })()
-  const currentSeasonFa = translateSeason(scheduleInfo.currentSeason || fallbackSeason)
-  const currentYearFa = toPersianNumber(
-    (scheduleInfo.currentYear || new Date().getFullYear()).toString()
-  )
-  const currentSeasonKey = (scheduleInfo.currentSeason || fallbackSeason).toUpperCase()
-  const currentYearNumber = scheduleInfo.currentYear || new Date().getFullYear()
-
-  const sections: SliderSection[] = [
-    {
-      id: 'latest',
-      title: ` ${currentSeasonFa} ${currentYearFa}`,
-      fetchData: () => fetchAnimeCards('latest') as Promise<Anime[]>,
-      setCache: () => {},
-    },
-    {
-      id: 'popular',
-      title: 'محبوب‌ترین‌ها',
-      fetchData: () => fetchAnimeCards('popular') as Promise<Anime[]>,
-      setCache: () => {},
-    },
-    {
-      id: 'donghua',
-      title: 'دونگهوا',
-      fetchData: () => fetchAnimeCards('donghua') as Promise<Anime[]>,
-      setCache: () => {},
-    },
-    {
-      id: 'movies',
-      title: 'انیمه‌های سینمایی',
-      fetchData: () => fetchAnimeCards('movies') as Promise<Anime[]>,
-      setCache: () => {},
-    },
-  ]
-
-  useEffect(() => {
-    const loadAnime = async (section: SliderSection) => {
-      try {
-        setLoading((prev) => ({ ...prev, [section.id]: true }))
-        setError((prev) => ({ ...prev, [section.id]: null }))
-        const data = await section.fetchData()
-        setSectionData((prev) => ({ ...prev, [section.id]: data }))
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'خطا در بارگذاری لیست انیمه‌ها'
-        setError((prev) => ({
-          ...prev,
-          [section.id]: message,
-        }))
-        console.error('Failed to load anime list:', err)
-      } finally {
-        setLoading((prev) => ({ ...prev, [section.id]: false }))
-      }
-    }
-
-    sections.forEach((section) => loadAnime(section))
-  }, [])
-
-  const renderSlider = (section: SliderSection) => {
-    const rawList = sectionData[section.id] || []
-    const animeList =
-      section.id === 'latest'
-        ? rawList.filter(
-            (a) =>
-              typeof a.year === 'number' &&
-              a.year === currentYearNumber &&
-              String(a.season ?? '').toUpperCase() === currentSeasonKey
-          )
-        : rawList
-    const isLoading = loading[section.id]
-    const hasError = error[section.id]
-
-    if (isLoading && animeList.length === 0) {
-      return <SkeletonSlider />
-    }
-
-    if (hasError && animeList.length === 0) {
-      return <div className="text-center text-red-500 p-4">{hasError}</div>
-    }
-
-    if (!isLoading && !hasError && animeList.length === 0) {
-      return (
-        <div className="text-center text-muted-foreground p-4 text-sm">
-          <p>انیمه‌ای لود نشد.</p>
-          <p className="mt-2 text-xs max-w-xs mx-auto">
-            اگر در Supabase داده دارید، در SQL Editor این را اجرا کنید: Enable RLS و سپس policy با
-            نام Allow public read برای SELECT روی جدول anime.
-          </p>
-        </div>
-      )
-    }
+  const renderSection = (id: SectionId) => {
+    const list = getSectionList(id)
+    const isLoading = loading[id]
+    const err = error[id]
+    const meta = sectionMeta[id]
 
     return (
-      <div className="relative">
-        <Swiper modules={[FreeMode]} spaceBetween={8} slidesPerView="auto" freeMode={true}>
-          {animeList.map((anime) => (
-            <SwiperSlide key={anime.id} className="!w-40">
-              <Link
-                to={`/anime/${anime.id}`}
-                className="block"
-                aria-label={`مشاهده ${anime.title}`}
-              >
-                <div className="card">
-                  <div className="relative aspect-[2/3] overflow-hidden rounded-xl border-2 border-input/80 border-b-input/40">
-                    <img
-                      src={anime.image}
-                      alt={anime.title}
-                      className="w-full h-full object-cover absolute inset-0"
-                      loading="lazy"
-                    />
-                  </div>
-                  <div className="mt-3 text-center">
-                    <h3 className="text-sm font-medium line-clamp-2 text-foreground">
-                      {anime.title}
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-[2px]">زیرنویس چسبیده | 1080p</p>
-                  </div>
-                </div>
-              </Link>
-            </SwiperSlide>
-          ))}
-        </Swiper>
-      </div>
+      <section key={id} className="space-y-3">
+        <div className="px-4 flex items-center justify-between gap-3">
+          <h2 className="text-base font-semibold text-foreground">{meta.title}</h2>
+          <Link
+            to={meta.seeAll}
+            className="flex items-center gap-1 text-xs text-primary-400 font-medium shrink-0"
+          >
+            مشاهده همه
+            <ArrowLeft01Icon className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+
+        {isLoading && list.length === 0 ? (
+          <SectionSkeleton />
+        ) : err && list.length === 0 ? (
+          <div className="px-4">
+            <p className="text-sm text-red-500 text-center py-4">{err}</p>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="mx-auto flex"
+              onClick={() => {
+                const fetchers: Record<SectionId, () => Promise<Anime[]>> = {
+                  latest: () => fetchAnimeCards('latest') as Promise<Anime[]>,
+                  popular: () => fetchAnimeCards('popular') as Promise<Anime[]>,
+                  donghua: () => fetchAnimeCards('donghua') as Promise<Anime[]>,
+                  movies: () => fetchAnimeCards('movies') as Promise<Anime[]>,
+                }
+                loadSection(id, fetchers[id])
+              }}
+            >
+              تلاش مجدد
+            </Button>
+          </div>
+        ) : list.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-6 px-4">فعلاً موردی نیست.</p>
+        ) : (
+          <Swiper
+            modules={[FreeMode]}
+            spaceBetween={10}
+            slidesPerView="auto"
+            freeMode
+            className="home-section-swiper !px-4"
+          >
+            {list.map((anime) => (
+              <SwiperSlide key={anime.id} className="home-section-slide">
+                <PosterCardContent anime={anime} />
+              </SwiperSlide>
+            ))}
+          </Swiper>
+        )}
+      </section>
     )
   }
 
   return (
-    <div>
-      {/* Top Tabs: Anime - Movie - Donghua */}
+    <div className="pb-24">
+      {/* Type filter */}
       <div className="px-4 pt-4">
-        <div className="flex items-center gap-2 rounded-xl w-full mx-auto border border-border bg-card/30 backdrop-blur-xl shadow-lg">
-          {[
-            { id: 'anime', label: 'انیمه' },
-            { id: 'movie', label: 'انیمه سینمایی' },
-            { id: 'donghua', label: 'دونگهوا' },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setSelectedType(tab.id as 'anime' | 'movie' | 'donghua')}
-              className={`flex-1 text-center text-sm border border-transparent p-2 rounded-lg transition-all ${
-                selectedType === (tab.id as 'anime' | 'movie' | 'donghua')
-                  ? 'bg-card text-foreground font-medium shadow-md border !border-border'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
-              }`}
-              aria-pressed={selectedType === (tab.id as 'anime' | 'movie' | 'donghua')}
-            >
-              {tab.label}
-            </button>
-          ))}
+        <div className="relative flex rounded-xl border border-border bg-muted/20 p-0">
+          {TYPE_TABS.map((tab) => {
+            const active = selectedType === tab.id
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setSelectedType(tab.id)}
+                className={`relative flex-1 py-2.5 rounded-xl text-sm transition-all duration-200 ${
+                  active
+                    ? 'text-primary-400 font-semibold'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+                aria-pressed={active}
+              >
+                {active && (
+                  <span
+                    aria-hidden
+                    className="absolute inset-0 rounded-xl bg-primary-400/15 border border-primary-400/35 shadow-sm shadow-primary-400/10"
+                  />
+                )}
+                <span className="relative z-10">{tab.label}</span>
+              </button>
+            )
+          })}
         </div>
       </div>
 
-      {/* Compact Hero Carousel with peeking prev/next slides */}
-      <div className="mt-4">
+      {/* Featured */}
+      <div className="mt-4 px-4">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+            <SparklesIcon className="w-4 h-4 text-primary-400" />
+            پیشنهاد ویژه
+          </h2>
+          <span className="text-xs text-primary-400 font-medium">{seasonLabel}</span>
+        </div>
+
         {featuredLoading ? (
-          <div className="relative h-56 w-full rounded-2xl overflow-hidden bg-muted animate-pulse" />
+          <div className="h-52 rounded-2xl bg-muted animate-pulse" />
+        ) : featuredError ? (
+          <div className="h-40 rounded-2xl border border-dashed border-border flex items-center justify-center px-4">
+            <p className="text-sm text-red-500 text-center">{featuredError}</p>
+          </div>
         ) : featuredAnime.length > 0 ? (
-          <Swiper
-            modules={[Autoplay]}
-            centeredSlides={true}
-            loop={true}
-            autoplay={{ delay: 4500, disableOnInteraction: false }}
-            spaceBetween={12}
-            slidesPerView={1.2}
-            breakpoints={{
-              480: { slidesPerView: 1.15 },
-              640: { slidesPerView: 1.22 },
-              768: { slidesPerView: 1.3 },
-            }}
-            className="h-56"
-          >
+          <div className="home-featured-wrap">
+            <Swiper
+              modules={[Autoplay, Pagination]}
+              centeredSlides
+              loop={featuredAnime.length > 1}
+              autoplay={{ delay: 5000, disableOnInteraction: false }}
+              pagination={{ clickable: true, el: '.home-featured-pagination' }}
+              spaceBetween={12}
+              slidesPerView={1.08}
+              className="home-featured-swiper"
+            >
             {featuredAnime.slice(0, 8).map((anime) => (
-              <SwiperSlide key={anime.id} className="!h-full">
-                <Link to={`/anime/${anime.id}`} className="block group h-full">
-                  <div className="relative h-full w-full rounded-2xl overflow-hidden shadow-lg border-2 border-input/80 border-b-input/40">
+              <SwiperSlide key={anime.id}>
+                <Link to={`/anime/${anime.id}`} className="block group h-52">
+                  <div className="relative h-full w-full rounded-2xl overflow-hidden border border-border">
                     <img
                       src={anime.featuredImage || anime.image}
-                      alt={anime.title}
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      alt=""
+                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       loading="lazy"
                     />
-
-                    <div className="absolute h-1/2 -bottom-1 left-0 right-0 bg-gradient-to-t from-background to-transparent" />
-                    <div className="absolute bottom-0 left-0 right-0 px-4 pb-2">
-                      <h2 className="font-bold text-foreground line-clamp-1 text-left">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
+                    <div className="absolute left-0 bottom-0 p-4">
+                      <h3 className="text-base font-bold text-white text-left line-clamp-2 leading-6">
                         {anime.title}
-                      </h2>
-                      <div className="flex justify-end items-center gap-1 mb-2">
-                        {(anime.genres || []).slice(0, 4).map((g) => (
-                          <span
-                            key={g.slug}
-                            className="px-2 py-0.5 text-xs rounded-md bg-black/50 text-foreground border border-border"
-                          >
-                            {g.name_fa || g.name_en || g.slug}
-                          </span>
-                        ))}
-                      </div>
-                      {/* <p className="text-muted-foreground text-sm mt-1 line-clamp-2">{anime.description}</p> */}
+                      </h3>
+                      {(anime.genres || []).length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1 justify-end">
+                          {(anime.genres || []).slice(0, 3).map((g) => (
+                            <span
+                              key={g.slug}
+                              className="text-[10px] px-2 py-0.5 rounded-md bg-white/15 text-white/90 backdrop-blur-sm border border-white/10"
+                            >
+                              {genreLabel(g)}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </Link>
               </SwiperSlide>
             ))}
-          </Swiper>
+            </Swiper>
+            <div className="home-featured-pagination" />
+          </div>
         ) : (
-          <div className="relative h-56 w-full rounded-2xl overflow-hidden bg-muted" />
+          <div className="h-40 rounded-2xl border border-dashed border-border bg-muted/20 flex items-center justify-center">
+            <p className="text-sm text-muted-foreground">پیشنهاد ویژه‌ای ثبت نشده.</p>
+          </div>
         )}
       </div>
 
-      <div className="space-y-8 mt-8 pb-24">
-        {sections.map((section) => (
-          <div key={section.id} className="space-y-6 px-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-foreground">{section.title}</h2>
-              <div className="flex items-center gap-2 text-primary-400">
-                <Link
-                  to="/search"
-                  className="text-sm transition-colors duration-200"
-                  aria-label="مشاهده همه"
-                >
-                  مشاهده همه
-                </Link>
-                <ArrowLeft01Icon className="w-4 h-4" />
-              </div>
-            </div>
-            {renderSlider(section)}
-          </div>
-        ))}
+      {/* Catalog sections */}
+      <div className="space-y-8 pt-6">
+        {renderSection('latest')}
+        {renderSection('popular')}
+        {renderSection('donghua')}
+        {renderSection('movies')}
       </div>
     </div>
   )

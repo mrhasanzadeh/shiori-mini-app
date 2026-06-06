@@ -17,10 +17,8 @@ export interface AnimeListItem {
 interface AnimeState {
   animeList: AnimeListItem[]
   favoriteAnime: (number | string)[]
-  recentlyWatched: (number | string)[]
   addToFavorites: (animeId: number | string) => void
   removeFromFavorites: (animeId: number | string) => void
-  addToRecentlyWatched: (animeId: number | string) => void
   setAnimeList: (animeList: AnimeListItem[]) => void
 }
 
@@ -29,7 +27,6 @@ export const useAnimeStore = create<AnimeState>()(
     (set) => ({
       animeList: [],
       favoriteAnime: [],
-      recentlyWatched: [],
       addToFavorites: (animeId) =>
         set((state) => ({
           favoriteAnime: state.favoriteAnime.includes(animeId)
@@ -39,10 +36,6 @@ export const useAnimeStore = create<AnimeState>()(
       removeFromFavorites: (animeId) =>
         set((state) => ({
           favoriteAnime: state.favoriteAnime.filter((id) => id !== animeId),
-        })),
-      addToRecentlyWatched: (animeId) =>
-        set((state) => ({
-          recentlyWatched: [animeId, ...state.recentlyWatched.slice(0, 9)],
         })),
       setAnimeList: (animeList) => set({ animeList }),
     }),

@@ -160,6 +160,91 @@ export const getFilesDownloadStats = async (
   return { items, total: typeof count === 'number' ? count : items.length }
 }
 
+export type FilesDownloadOverview = {
+  totalFiles: number
+  totalDownloads: number
+  activeFiles: number
+  inactiveFiles: number
+  topFiles: FileDownloadStat[]
+}
+
+export const getFilesDownloadOverview = async (): Promise<FilesDownloadOverview> => {
+  if (!hasSupabaseConfig) {
+    return { totalFiles: 0, totalDownloads: 0, activeFiles: 0, inactiveFiles: 0, topFiles: [] }
+  }
+
+  const { count: totalFilesCount, error: countError } = await supabase
+    .from('files')
+    .select('*', { count: 'exact', head: true })
+
+  if (countError) {
+    if (import.meta.env.DEV) console.warn('getFilesDownloadOverview count:', countError.message)
+    throw new Error(`خطا در شمارش فایل‌ها: ${countError.message}`)
+  }
+
+  const totalFiles = typeof totalFilesCount === 'number' ? totalFilesCount : 0
+
+  let totalDownloads = 0
+  let activeFiles = 0
+  const pageSize = 1000
+  let from = 0
+
+  while (from < totalFiles) {
+    const { data, error } = await supabase
+      .from('files')
+      .select('downloads, is_active')
+      .range(from, from + pageSize - 1)
+
+    if (error) {
+      if (import.meta.env.DEV) console.warn('getFilesDownloadOverview summary:', error.message)
+      throw new Error(`خطا در خواندن خلاصه آمار: ${error.message}`)
+    }
+
+    const batch = data || []
+    for (const row of batch) {
+      const d = typeof row?.downloads === 'number' ? row.downloads : Number(row?.downloads ?? 0) || 0
+      totalDownloads += d
+      if (row?.is_active) activeFiles += 1
+    }
+
+    if (batch.length < pageSize) break
+    from += pageSize
+  }
+
+  const { data: topData, error: topError } = await supabase
+    .from('files')
+    .select('key, file_name, caption, file_size, downloads, last_accessed, created_at, is_active')
+    .order('downloads', { ascending: false })
+    .limit(10)
+
+  if (topError) {
+    if (import.meta.env.DEV) console.warn('getFilesDownloadOverview top:', topError.message)
+    throw new Error(`خطا در خواندن پردانلودترین فایل‌ها: ${topError.message}`)
+  }
+
+  const topFiles: FileDownloadStat[] = (topData || []).map((row: any) => ({
+    key: String(row?.key ?? '').trim(),
+    file_name: typeof row?.file_name === 'string' ? row.file_name : (row?.file_name ?? null),
+    caption: typeof row?.caption === 'string' ? row.caption : (row?.caption ?? null),
+    file_size: typeof row?.file_size === 'number' ? row.file_size : (row?.file_size ?? null),
+    downloads:
+      typeof row?.downloads === 'number' ? row.downloads : Number(row?.downloads ?? 0) || 0,
+    last_accessed:
+      typeof row?.last_accessed === 'string' ? row.last_accessed : (row?.last_accessed ?? null),
+    created_at: typeof row?.created_at === 'string' ? row.created_at : (row?.created_at ?? null),
+    is_active:
+      typeof row?.is_active === 'boolean' ? row.is_active : Boolean(row?.is_active ?? true),
+  }))
+
+  return {
+    totalFiles,
+    totalDownloads,
+    activeFiles,
+    inactiveFiles: totalFiles - activeFiles,
+    topFiles,
+  }
+}
+
 export const searchFilesForPicker = async (payload: {
   query: string
   limit: number

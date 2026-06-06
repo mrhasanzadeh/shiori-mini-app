@@ -1,58 +1,47 @@
-import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { FavouriteIcon, Search01Icon } from 'hugeicons-react'
 import { useAnimeStore } from '../store/animeStore'
-import { Add01Icon, FavouriteIcon, ListViewIcon } from 'hugeicons-react'
 import { fetchAnimeById } from '../utils/api'
-import { useListsStore } from '../store/listsStore'
+import { Button } from '@/components/ui/button'
 import emptyListImage from '../assets/images/frieren-03.webp'
 import type { GenreItem } from '../services/supabaseAnime'
 
-type Anime = {
-  id: number
+type FavoriteAnime = {
+  id: number | string
   title: string
   image: string
-  episode: string
-  isNew?: boolean
-  description?: string
-  genres?: GenreItem[]
+  episodeLabel: string
+  genres: GenreItem[]
 }
 
-type TabType = 'favorites' | 'lists'
+const toPersianNumber = (num: number | string): string => {
+  const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹']
+  return String(num).replace(/[0-9]/g, (w) => persianDigits[+w])
+}
+
+const SkeletonGrid = () => (
+  <div className="grid grid-cols-3 gap-x-2 gap-y-4 px-4">
+    {Array.from({ length: 6 }).map((_, i) => (
+      <div key={i} className="animate-pulse">
+        <div className="aspect-[2/3] rounded-xl bg-muted" />
+        <div className="h-4 bg-muted rounded mt-3 w-full" />
+        <div className="h-3 bg-muted rounded mt-2 w-2/3 mx-auto" />
+      </div>
+    ))}
+  </div>
+)
 
 const MyList = () => {
-  const [activeTab, setActiveTab] = useState<TabType>('favorites')
-  const navigate = useNavigate()
-
-  // State for Favorites tab
   const { favoriteAnime } = useAnimeStore()
-
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [favoriteAnimeDetails, setFavoriteAnimeDetails] = useState<Anime[]>([])
+  const [items, setItems] = useState<FavoriteAnime[]>([])
 
-  // State for Lists tab
-  const { lists, addList } = useListsStore()
-  const [showCreateModal, setShowCreateModal] = useState(false)
-  const [newListTitle, setNewListTitle] = useState('')
-
-  // Handle creating a new list
-  const handleCreateList = () => {
-    if (newListTitle.trim()) {
-      addList(newListTitle.trim())
-      setNewListTitle('')
-      setShowCreateModal(false)
-    }
-  }
-
-  useEffect(() => {
-    if (activeTab === 'favorites') {
-      loadFavoriteAnime()
-    }
-  }, [favoriteAnime, activeTab])
-
-  const loadFavoriteAnime = async () => {
+  const loadFavorites = useCallback(async () => {
     if (favoriteAnime.length === 0) {
-      setFavoriteAnimeDetails([])
+      setItems([])
+      setError(null)
       return
     }
 
@@ -60,243 +49,123 @@ const MyList = () => {
       setLoading(true)
       setError(null)
 
-      // Fetch all favorite anime details without cache
       const results = await Promise.all(
         favoriteAnime.map(async (id) => {
           const details = await fetchAnimeById(id)
+          const epCount = details.episodes.length
           return {
             id: details.id,
             title: details.title,
             image: details.image,
-            episode: `قسمت ${details.episodes.length > 0 ? details.episodes.length : '۱'}`,
-            genres: details.genres,
-            description: details.description,
-          } as Anime
+            episodeLabel:
+              epCount > 0 ? `${toPersianNumber(epCount)} قسمت` : 'بدون قسمت',
+            genres: details.genres ?? [],
+          } satisfies FavoriteAnime
         })
       )
-      setFavoriteAnimeDetails(results)
+      setItems(results)
     } catch (err) {
-      setError('خطا در بارگذاری لیست مورد علاقه')
-      console.error('Failed to load favorite anime:', err)
+      setError('خطا در بارگذاری علاقه‌مندی‌ها')
+      console.error('Failed to load favorites:', err)
     } finally {
       setLoading(false)
     }
-  }
+  }, [favoriteAnime])
 
-  // Common loading state
-  if (loading && activeTab === 'favorites') {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
-      </div>
-    )
-  }
+  useEffect(() => {
+    loadFavorites()
+  }, [loadFavorites])
 
-  // Common error state
-  if (error && activeTab === 'favorites') {
-    return <div className="text-center text-red-500 p-4">{error}</div>
-  }
+  const isEmpty = !loading && !error && favoriteAnime.length === 0
 
   return (
     <div className="pb-24">
-      {/* Tabs Header - match Home segmented tabs */}
-      <div className="px-4 pt-4">
-        <div className="flex items-center gap-2 rounded-xl w-full mx-auto border border-border bg-card/30 backdrop-blur-xl shadow-lg">
-          <button
-            onClick={() => setActiveTab('favorites')}
-            className={`flex-1 text-center p-2 border border-transparent rounded-lg transition-all ${
-              activeTab === 'favorites'
-                ? 'bg-card text-foreground font-medium shadow-md border !border-border'
-                : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
-            }`}
-            aria-pressed={activeTab === 'favorites'}
-          >
-            علاقه‌مندی‌ها
-          </button>
-          <button
-            onClick={() => setActiveTab('lists')}
-            className={`flex-1 text-center p-2 border border-transparent rounded-lg transition-all ${
-              activeTab === 'lists'
-                ? 'bg-card text-foreground font-medium shadow-md border !border-border'
-                : 'text-muted-foreground hover:text-foreground hover:bg-muted/30'
-            }`}
-            aria-pressed={activeTab === 'lists'}
-          >
-            لیست‌ها
-          </button>
+      <div className="px-4 pt-4 pb-2">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h1 className="text-lg font-semibold text-foreground flex items-center gap-2">
+              <FavouriteIcon className="w-5 h-5 text-red-500" />
+              علاقه‌مندی‌ها
+            </h1>
+            {!isEmpty && !loading && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {toPersianNumber(items.length)} انیمه
+              </p>
+            )}
+          </div>
+          {!isEmpty && (
+            <Button asChild type="button" variant="secondary" size="sm">
+              <Link to="/search" className="gap-1.5">
+                <Search01Icon className="w-4 h-4" />
+                جستجو
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* Content area */}
-      <div className="mt-4">
-        {/* Favorites Tab */}
-        {activeTab === 'favorites' && (
-          <>
-            {/* Empty state for favorites */}
-            {favoriteAnime.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-[70vh] px-4">
-                <img src={emptyListImage} alt="empty-list" className="w-48 mb-4" />
-                <h2 className="text-lg font-medium text-foreground mb-2">
-                  لیست مورد علاقه شما خالی است
-                </h2>
-                <p className="text-muted-foreground text-center mb-4 leading-7">
-                  با گشت‌وگذار در انیمه‌ها و زدن دکمه‌ی قلب، آثار
-                  <br />
-                  مورد علاقه‌تان را به لیست خود اضافه کنید.
-                </p>
-                <Link
-                  to="/search"
-                  className="flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-foreground px-12 py-3 rounded-lg transition-colors duration-200"
-                >
-                  مرور انیمه‌ها
-                </Link>
-              </div>
-            ) : (
-              <div>
-                <div className="grid grid-cols-3 gap-2 px-4">
-                  {favoriteAnimeDetails.map((anime) => (
-                    <Link
-                      key={anime.id}
-                      to={`/anime/${anime.id}`}
-                      className="block relative"
-                      aria-label={`مشاهده ${anime.title}`}
-                    >
-                      <div className="card">
-                        <div className="relative aspect-[2/3] overflow-hidden rounded-xl border-2 border-border">
-                          <img
-                            src={anime.image}
-                            alt={anime.title}
-                            className="w-full h-full object-cover absolute inset-0"
-                            loading="lazy"
-                          />
-                          <div className="absolute top-2 right-2">
-                            <FavouriteIcon className="w-6 h-6 text-primary-500 drop-shadow-lg" />
-                          </div>
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
-          </>
-        )}
+      {loading && <SkeletonGrid />}
 
-        {/* Lists Tab */}
-        {activeTab === 'lists' && (
-          <>
-            {/* Empty state for lists */}
-            {lists.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-[70vh] px-4">
-                <ListViewIcon className="w-16 h-16 text-muted-foreground mb-4" />
-                <h2 className="text-xl font-medium text-foreground mb-2">لیست‌های شما خالی است</h2>
-                <p className="text-muted-foreground text-center mb-8">
-                  لیست‌های خود را برای مدیریت بهتر کارها ایجاد کنید
-                </p>
-                <button
-                  onClick={() => setShowCreateModal(true)}
-                  className="flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground px-6 py-3 rounded-lg transition-colors duration-200"
-                >
-                  <Add01Icon className="w-5 h-5" />
-                  ایجاد لیست جدید
-                </button>
-              </div>
-            ) : (
-              <div>
-                <div className="px-4 pt-4 pb-6 flex items-center justify-between">
-                  <div>
-                    <h1 className="text-xl font-semibold text-foreground">لیست‌های من</h1>
-                    <p className="text-muted-foreground text-sm mt-1">{lists.length} لیست</p>
-                  </div>
-                  <button
-                    onClick={() => setShowCreateModal(true)}
-                    className="flex items-center justify-center gap-1 bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg transition-colors"
-                  >
-                    <Add01Icon className="w-5 h-5" />
-                    جدید
-                  </button>
-                </div>
+      {error && (
+        <div className="px-4 py-12 text-center space-y-3">
+          <p className="text-red-500 text-sm">{error}</p>
+          <Button type="button" variant="secondary" onClick={loadFavorites}>
+            تلاش مجدد
+          </Button>
+        </div>
+      )}
 
-                <div className="px-4 space-y-4">
-                  {lists.map((list) => (
-                    <div
-                      key={list.id}
-                      onClick={() => navigate(`/lists/${list.id}`)}
-                      className="bg-card rounded-xl p-4 shadow-md border border-border"
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-foreground font-medium text-lg">{list.title}</h3>
-                        <span className="text-muted-foreground text-xs">
-                          {list.items.length} مورد
-                        </span>
-                      </div>
+      {isEmpty && (
+        <div className="flex flex-col items-center justify-center min-h-[65vh] px-6 text-center">
+          <img src={emptyListImage} alt="" className="w-44 mb-5 opacity-90" />
+          <h2 className="text-base font-semibold text-foreground mb-2">
+لیست علاقه‌مندی‌هات خالیه <small className="text-xs">＞﹏＜</small>
+          </h2>
+          <p className="text-sm text-muted-foreground leading-7 max-w-xs mb-6">
+            در صفحهٔ جزئیات هر انیمه، با زدن دکمهی<br/>قلب انیمه رو این‌جا ذخیره کن.
+          </p>
+          <Button asChild type="button" size="lg" className="bg-primary-500 text-white font-bold rounded-lg px-6 py-3 hover:bg-primary-500/90">
+            <Link to="/search">مرور انیمه‌ها</Link>
+          </Button>
+     
+        </div>
+      )}
 
-                      {list.items.length > 0 ? (
-                        <div className="space-y-2 mt-3">
-                          {list.items.slice(0, 3).map((item) => (
-                            <div key={item.id} className="flex items-center gap-2">
-                              <div
-                                className={`w-2 h-2 rounded-full ${item.completed ? 'bg-green-500' : 'bg-muted-foreground'}`}
-                              />
-                              <p
-                                className={`text-sm ${
-                                  item.completed
-                                    ? 'text-muted-foreground line-through'
-                                    : 'text-foreground'
-                                }`}
-                              >
-                                {item.text}
-                              </p>
-                            </div>
-                          ))}
-                          {list.items.length > 3 && (
-                            <p className="text-muted-foreground text-xs mt-1">
-                              و {list.items.length - 3} مورد دیگر...
-                            </p>
-                          )}
-                        </div>
-                      ) : (
-                        <p className="text-muted-foreground text-sm mt-2">لیست خالی است</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+      {!loading && !error && items.length > 0 && (
+        <div className="grid grid-cols-3 gap-x-2 gap-y-4 px-4 pt-2">
+          {items.map((anime) => {
+            const genreLabel =
+              anime.genres[0]?.name_fa || anime.genres[0]?.name_en || anime.genres[0]?.slug
 
-            {/* Create List Modal */}
-            {showCreateModal && (
-              <div className="fixed inset-0 bg-background/70 flex items-center justify-center z-50 p-4">
-                <div className="bg-card border border-border rounded-xl p-5 w-full max-w-sm">
-                  <h3 className="text-lg font-medium text-foreground mb-4">ایجاد لیست جدید</h3>
-                  <input
-                    type="text"
-                    placeholder="عنوان لیست"
-                    value={newListTitle}
-                    onChange={(e) => setNewListTitle(e.target.value)}
-                    className="w-full bg-background text-foreground rounded-lg px-4 py-3 mb-4 border border-input focus:border-ring focus:outline-none"
-                    autoFocus
+            return (
+              <Link
+                key={anime.id}
+                to={`/anime/${anime.id}`}
+                className="group block"
+                aria-label={`مشاهده ${anime.title}`}
+              >
+                <div className="relative aspect-[2/3] overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-transform group-active:scale-[0.98]">
+                  <img
+                    src={anime.image}
+                    alt={anime.title}
+                    className="w-full h-full object-cover absolute inset-0"
+                    loading="lazy"
                   />
-                  <div className="flex justify-end gap-2">
-                    <button
-                      onClick={() => setShowCreateModal(false)}
-                      className="px-4 py-2 text-muted-foreground hover:text-foreground"
-                    >
-                      انصراف
-                    </button>
-                    <button
-                      onClick={handleCreateList}
-                      className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg transition-colors"
-                    >
-                      ایجاد
-                    </button>
-                  </div>
+                  <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/70 to-transparent" />
+                  <FavouriteIcon className="absolute top-2 right-2 w-5 h-5 text-red-500 drop-shadow-md fill-red-500" />
                 </div>
-              </div>
-            )}
-          </>
-        )}
-      </div>
+                <h3 className="mt-2 text-xs font-medium text-foreground line-clamp-2 text-center leading-5">
+                  {anime.title}
+                </h3>
+                <p className="text-[11px] text-muted-foreground text-center mt-0.5 line-clamp-1">
+                  {genreLabel ? `${genreLabel} · ` : ''}
+                  {anime.episodeLabel}
+                </p>
+              </Link>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

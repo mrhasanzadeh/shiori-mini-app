@@ -12,7 +12,6 @@ const AnimeDetail = lazy(() => import('./pages/AnimeDetail'))
 const Schedule = lazy(() => import('./pages/Schedule'))
 const Search = lazy(() => import('./pages/Search'))
 const MyList = lazy(() => import('./pages/MyList'))
-const ListDetail = lazy(() => import('./pages/ListDetail'))
 const Profile = lazy(() => import('./pages/Profile'))
 const Notifications = lazy(() => import('./pages/Notifications'))
 const TranslatorProfile = lazy(() => import('./pages/TranslatorProfile'))
@@ -63,7 +62,6 @@ function App() {
           <Route path="/schedule" element={<Schedule />} />
           <Route path="/search" element={<Search />} />
           <Route path="/my-list" element={<MyList />} />
-          <Route path="/lists/:id" element={<ListDetail />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/notifications" element={<Notifications />} />
 

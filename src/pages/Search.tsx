@@ -1,19 +1,19 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Search01Icon } from 'hugeicons-react'
-import { fetchAnimeCards } from '../utils/api'
-type Anime = {
-  id: number | string
-  title: string
-  image: string
-  episode: string
-  season?: string
-  year?: number
-  isNew?: boolean
-  description?: string
-  genres?: string[]
-}
+import { fetchAnimeSearch, type UiAnimeCard } from '../utils/api'
+import type { GenreItem } from '../services/supabaseAnime'
+import { Button } from '@/components/ui/button'
 import frieren from '../assets/images/frieren-03.webp'
+
+const PAGE_SIZE = 48
+
+const toPersianNumber = (num: number | string): string => {
+  const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹']
+  return String(num).replace(/[0-9]/g, (w) => persianDigits[+w])
+}
+
+const genreLabel = (g: GenreItem) => g.name_fa || g.name_en || g.slug
 
 type EmptyStateProps = {
   image?: string
@@ -29,11 +29,68 @@ const EmptyState = ({ image, title, subtitle }: EmptyStateProps) => (
   </div>
 )
 
+const SkeletonGrid = () => (
+  <div className="grid grid-cols-3 gap-3 px-4 pt-2">
+    {Array.from({ length: 9 }).map((_, i) => (
+      <div key={i} className="animate-pulse">
+        <div className="aspect-[2/3] rounded-xl bg-muted" />
+      </div>
+    ))}
+  </div>
+)
+
+const AnimeGridCard = ({ anime }: { anime: UiAnimeCard }) => {
+  const genres = (anime.genres || []).slice(0, 3)
+
+  return (
+    <Link
+      to={`/anime/${anime.id}`}
+      className="group block active:scale-[0.98] transition-transform"
+      aria-label={`مشاهده ${anime.title}`}
+    >
+      <div className="relative aspect-[2/3] rounded-xl overflow-hidden border border-border bg-muted shadow-sm">
+        <img
+          src={anime.image}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+          loading="lazy"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-transparent" />
+        {anime.isNew && (
+          <span className="absolute top-2 right-2 text-[10px] font-semibold bg-primary-400 text-white px-1.5 py-0.5 rounded-md">
+            جدید
+          </span>
+        )}
+        <div className="absolute inset-x-0 bottom-0 p-2.5 pt-10">
+          <h3 className="text-xs font-semibold text-white line-clamp-2 leading-5">{anime.title}</h3>
+          {genres.length > 0 ? (
+            <div className="flex flex-wrap gap-1 mt-1.5">
+              {genres.map((g) => (
+                <span
+                  key={g.slug}
+                  className="text-[9px] leading-none px-1.5 py-1 rounded-md bg-white/15 text-white/90 border border-white/10 truncate max-w-full"
+                >
+                  {genreLabel(g)}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-[10px] text-white/60 mt-1">{anime.episode || 'شیوری'}</p>
+          )}
+        </div>
+      </div>
+    </Link>
+  )
+}
+
 const Search = () => {
   const [searchParams] = useSearchParams()
   const [searchTerm, setSearchTerm] = useState('')
-  const [allAnime, setAllAnime] = useState<Anime[]>([])
+  const [results, setResults] = useState<UiAnimeCard[]>([])
+  const [total, setTotal] = useState(0)
+  const [hasMore, setHasMore] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
 
@@ -43,11 +100,6 @@ const Search = () => {
   const selectedYear = yearParam ? Number(yearParam) : null
   const selectedSeason = seasonParam ? seasonParam.trim().toUpperCase() : null
   const selectedGenre = genreParam ? genreParam.trim().toLowerCase() : null
-
-  const toPersianNumber = (num: number | string): string => {
-    const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹']
-    return String(num).replace(/[0-9]/g, (w) => persianDigits[+w])
-  }
 
   const translateSeason = (season: string): string => {
     switch (season) {
@@ -74,26 +126,6 @@ const Search = () => {
     return null
   })()
 
-  // Load all anime once on page mount
-  useEffect(() => {
-    const loadAll = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-        const data = await fetchAnimeCards()
-        setAllAnime(data as Anime[])
-      } catch (err) {
-        setError('خطا در بارگذاری لیست انیمه‌ها')
-        console.error('Failed to load all anime:', err)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadAll()
-  }, [])
-
-  // Debounce search term
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm)
@@ -102,23 +134,43 @@ const Search = () => {
     return () => clearTimeout(timer)
   }, [searchTerm])
 
-  const normalizedQuery = debouncedSearchTerm.trim().toLowerCase()
-  const filteredBySeasonYear = allAnime.filter((anime) => {
-    if (selectedYear !== null && (!Number.isFinite(selectedYear) || anime.year !== selectedYear))
-      return false
-    if (selectedSeason && String(anime.season ?? '').toUpperCase() !== selectedSeason) return false
-    if (selectedGenre) {
-      const hasGenre = Array.isArray(anime.genres)
-        ? anime.genres.some((g) => String(g).trim().toLowerCase() === selectedGenre)
-        : false
-      if (!hasGenre) return false
-    }
-    return true
-  })
+  const loadPage = useCallback(
+    async (offset: number, append: boolean) => {
+      try {
+        if (append) {
+          setLoadingMore(true)
+        } else {
+          setLoading(true)
+        }
+        setError(null)
 
-  const filteredResults = normalizedQuery
-    ? filteredBySeasonYear.filter((anime) => anime.title.toLowerCase().includes(normalizedQuery))
-    : filteredBySeasonYear
+        const { items, total: count, hasMore: more } = await fetchAnimeSearch({
+          query: debouncedSearchTerm.trim() || undefined,
+          year: selectedYear !== null && Number.isFinite(selectedYear) ? selectedYear : null,
+          season: selectedSeason,
+          genreSlug: selectedGenre,
+          limit: PAGE_SIZE,
+          offset,
+        })
+
+        setTotal(count)
+        setHasMore(more)
+        setResults((prev) => (append ? [...prev, ...items] : items))
+      } catch (err) {
+        setError('خطا در بارگذاری لیست انیمه‌ها')
+        console.error('Failed to search anime:', err)
+        if (!append) setResults([])
+      } finally {
+        setLoading(false)
+        setLoadingMore(false)
+      }
+    },
+    [debouncedSearchTerm, selectedYear, selectedSeason, selectedGenre]
+  )
+
+  useEffect(() => {
+    loadPage(0, false)
+  }, [loadPage])
 
   return (
     <div className="pb-24">
@@ -128,7 +180,6 @@ const Search = () => {
         </div>
       )}
 
-      {/* Search Input */}
       <div className="p-4 pb-2">
         <div className="relative w-full flex items-center gap-2 border bg-card border-border text-foreground rounded-xl pl-10 p-3">
           <Search01Icon className="w-6 h-6 text-muted-foreground" />
@@ -142,48 +193,48 @@ const Search = () => {
         </div>
       </div>
 
-      {/* Loading State */}
-      {loading && (
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+      {!loading && !error && total > 0 && (
+        <p className="px-4 pb-1 text-xs text-muted-foreground">
+          {toPersianNumber(total)} نتیجه
+          {results.length < total ? ` · ${toPersianNumber(results.length)} نمایش داده شده` : ''}
+        </p>
+      )}
+
+      {loading && <SkeletonGrid />}
+
+      {error && (
+        <div className="px-4 py-8 text-center space-y-3">
+          <p className="text-red-500">{error}</p>
+          <Button type="button" variant="secondary" onClick={() => loadPage(0, false)}>
+            تلاش مجدد
+          </Button>
         </div>
       )}
 
-      {/* Error State */}
-      {error && <div className="text-center text-red-500 p-4">{error}</div>}
+      {!loading && !error && results.length > 0 && (
+        <>
+          <div className="grid grid-cols-3 gap-3 px-4 pt-2">
+            {results.map((anime) => (
+              <AnimeGridCard key={anime.id} anime={anime} />
+            ))}
+          </div>
 
-      {/* Results */}
-      {!loading && !error && filteredResults.length > 0 && (
-        <div className="grid grid-cols-3 gap-x-2 gap-y-4 p-4">
-          {filteredResults.map((anime) => (
-            <Link
-              key={anime.id}
-              to={`/anime/${anime.id}`}
-              className="block"
-              aria-label={`مشاهده ${anime.title}`}
-            >
-              <div className="card">
-                <div className="relative aspect-[2/3] overflow-hidden rounded-lg border-2 border-border">
-                  <img
-                    src={anime.image}
-                    alt={anime.title}
-                    className="w-full h-full object-cover absolute inset-0"
-                    loading="lazy"
-                  />
-                </div>
-                <div className="mt-3 text-center">
-                  <h3 className="text-sm font-medium line-clamp-2 text-foreground">
-                    {anime.title}
-                  </h3>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
+          {hasMore && (
+            <div className="px-4 pb-6 flex justify-center">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={loadingMore}
+                onClick={() => loadPage(results.length, true)}
+              >
+                {loadingMore ? 'در حال بارگذاری…' : 'بارگذاری بیشتر'}
+              </Button>
+            </div>
+          )}
+        </>
       )}
 
-      {/* No Results */}
-      {!loading && !error && filteredResults.length === 0 && (
+      {!loading && !error && results.length === 0 && (
         <EmptyState
           image={frieren}
           title="چیزی پیدا نشد"

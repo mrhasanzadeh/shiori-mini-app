@@ -57,7 +57,7 @@ interface Anime {
   score?: number
 }
 
-type TabType = 'info' | 'episodes'
+type TabType = 'info' | 'episodes' | 'similar'
 
 type DownloadTabType = 'episodes' | 'subtitle_packs' | 'translators'
 
@@ -74,11 +74,14 @@ const AnimeDetail = () => {
   const [showFullDescription, setShowFullDescription] = useState(false)
 
   const [translatorLinks, setTranslatorLinks] = useState<supa.TranslatorAnimeLink[]>([])
+  const [similarAnime, setSimilarAnime] = useState<Array<{ id: number | string; title: string; image: string }>>([])
+  const [similarLoading, setSimilarLoading] = useState(false)
 
   // Reset active tab when anime ID changes
   useEffect(() => {
     setActiveTab('info')
     setDownloadTab('episodes')
+    setSimilarAnime([])
   }, [id])
 
   const isFinished =
@@ -219,6 +222,41 @@ const AnimeDetail = () => {
     fetchAnime()
   }, [id])
 
+  useEffect(() => {
+    if (activeTab !== 'similar' || !anime) return
+
+    let cancelled = false
+    const loadSimilar = async () => {
+      try {
+        setSimilarLoading(true)
+        const slugs = (anime.genres || []).map((g) => g.slug).filter(Boolean)
+        const cards = await supa.getSimilarAnimeCards(anime.id, slugs, 12)
+        if (!cancelled) {
+          setSimilarAnime(cards.map((c) => ({ id: c.id, title: c.title, image: c.image })))
+        }
+      } catch {
+        if (!cancelled) setSimilarAnime([])
+      } finally {
+        if (!cancelled) setSimilarLoading(false)
+      }
+    }
+
+    loadSimilar()
+    return () => {
+      cancelled = true
+    }
+  }, [activeTab, anime?.id])
+
+  const displayScore =
+    typeof anime?.averageScore === 'number'
+      ? anime.averageScore
+      : typeof anime?.animeListScore === 'number'
+        ? anime.animeListScore
+        : null
+
+  const scoreLabel =
+    displayScore !== null ? toPersianNumber(displayScore.toFixed(1)) : '—'
+
   const handleFavorite = () => {
     if (!anime) return
     toggleFavorite(anime.id)
@@ -289,9 +327,7 @@ const AnimeDetail = () => {
                     type="button"
                     className="px-2 py-0.5 bg-muted/30 border border-border rounded-full text-xs text-muted-foreground"
                     onClick={() =>
-                      navigate(
-                        `/search?genre=${encodeURIComponent(genre.name_fa || genre.name_en || genre.slug)}`
-                      )
+                      navigate(`/search?genre=${encodeURIComponent(genre.slug)}`)
                     }
                   >
                     {genre.name_fa || genre.name_en || genre.slug}
@@ -303,19 +339,11 @@ const AnimeDetail = () => {
               <div className="flex items-center justify-center mt-3 gap-2">
                 <div className="flex items-center gap-2 bg-card/60 rounded-lg px-1 pe-2 py-1">
                   <img src={malLogo} className="w-6 h-6 rounded" alt="" />
-                  <span className="text-sm text-foreground font-medium">
-                    {typeof anime.animeListScore === 'number'
-                      ? toPersianNumber(anime.animeListScore.toFixed(1))
-                      : '8.24'}
-                  </span>
+                  <span className="text-sm text-foreground font-medium">{scoreLabel}</span>
                 </div>
                 <div className="flex items-center gap-2 bg-card/60 rounded-lg px-1 pe-2 py-1">
                   <img src={alLogo} className="w-6 h-6 rounded" alt="" />
-                  <span className="text-sm text-foreground font-medium">
-                    {typeof anime.animeListScore === 'number'
-                      ? toPersianNumber(anime.animeListScore.toFixed(1))
-                      : '8.24'}
-                  </span>
+                  <span className="text-sm text-foreground font-medium">{scoreLabel}</span>
                 </div>
                 {/* Action buttons in a connected container */}
                 <div className="flex bg-card/60 rounded-full">
@@ -377,14 +405,14 @@ const AnimeDetail = () => {
               بخش دانلود
             </button>
             <button
-              className="py-2 px-4 text-sm font-medium text-muted-foreground hover:bg-muted/30"
-              onClick={() => {}}
-              aria-disabled={true}
+              className={`py-2 px-4 text-sm font-medium ${
+                activeTab === 'similar'
+                  ? 'text-primary-400 border-b border-primary-500'
+                  : 'text-muted-foreground hover:bg-muted/30'
+              }`}
+              onClick={() => setActiveTab('similar')}
             >
-              آثار مشابه{' '}
-              <span className="px-2 py-0.5 text-xs mr-1 font-light bg-muted text-foreground rounded-full">
-                به‌زودی
-              </span>
+              آثار مشابه
             </button>
           </div>
         </div>
@@ -680,6 +708,49 @@ const AnimeDetail = () => {
                     ))
                   )}
                 </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'similar' && (
+            <div className="space-y-3 pb-4">
+              {similarLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-500" />
+                </div>
+              ) : similarAnime.length > 0 ? (
+                <div className="grid grid-cols-3 gap-x-2 gap-y-4">
+                  {similarAnime.map((item) => (
+                    <Link
+                      key={item.id}
+                      to={`/anime/${item.id}`}
+                      className="block"
+                      aria-label={`مشاهده ${item.title}`}
+                    >
+                      <div className="card">
+                        <div className="relative aspect-[2/3] overflow-hidden rounded-lg border-2 border-border">
+                          <img
+                            src={item.image}
+                            alt={item.title}
+                            className="w-full h-full object-cover absolute inset-0"
+                            loading="lazy"
+                          />
+                        </div>
+                        <div className="mt-2 text-center">
+                          <h3 className="text-xs font-medium line-clamp-2 text-foreground">
+                            {item.title}
+                          </h3>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  {anime.genres.length > 0
+                    ? 'انیمه مشابهی در کاتالوگ شیوری پیدا نشد.'
+                    : 'ژانری برای پیشنهاد آثار مشابه ثبت نشده.'}
+                </p>
               )}
             </div>
           )}

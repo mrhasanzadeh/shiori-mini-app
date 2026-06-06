@@ -69,6 +69,9 @@ const Layout = ({ children }: LayoutProps) => {
   }
 
   const isAnimeDetailPage = location.pathname.startsWith('/anime/')
+  const isProfileHeroPage =
+    location.pathname === '/profile' || location.pathname.startsWith('/translators/')
+  const isTransparentHeaderPage = isAnimeDetailPage || isProfileHeroPage
   const isAdminPage = location.pathname === '/admin' || location.pathname.startsWith('/admin/')
 
   const adminNav = [
@@ -270,7 +273,7 @@ const Layout = ({ children }: LayoutProps) => {
         className={`fixed top-0 left-0 right-0 z-50 transition-colors duration-200 ${
           isScrolled
             ? 'bg-background'
-            : isAnimeDetailPage
+            : isTransparentHeaderPage
               ? 'bg-transparent'
               : 'bg-gradient-to-b from-background/90 via-background/60 to-transparent'
         }`}
@@ -302,9 +305,9 @@ const Layout = ({ children }: LayoutProps) => {
         </div>
       </header>
 
-      <main className={`flex-1 ${!isAnimeDetailPage ? 'pt-16' : ''}`}>{children}</main>
+      <main className={`flex-1 ${!isTransparentHeaderPage ? 'pt-16' : ''} pb-20`}>{children}</main>
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-background z-50">
+      <nav className="fixed bottom-0 left-0 right-0 bg-background border-t border-border z-50 pb-[env(safe-area-inset-bottom,0px)]">
         <div className="container">
           <div className="flex justify-around py-4">
             <Link

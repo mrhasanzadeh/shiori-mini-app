@@ -1,15 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Building2, Pencil, Trash2 } from 'lucide-react'
 import * as supa from '../services/supabaseAnime'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { MoreHorizontal } from 'lucide-react'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { Label } from '@/components/ui/label'
 import {
   Sheet,
   SheetContent,
@@ -19,13 +14,15 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+  AdminCrudCount,
+  AdminCrudEmpty,
+  AdminCrudError,
+  AdminCrudHeader,
+  AdminCrudPage,
+  AdminCrudCard,
+  AdminCrudGrid,
+  AdminCrudSearch,
+} from '@/components/admin/AdminCrudUi'
 
 type DraftStudio = {
   id?: number | string
@@ -58,23 +55,6 @@ const AdminStudios = () => {
       setError(msg)
     } finally {
       setLoading(false)
-    }
-  }
-
-  const onDelete = async (s: supa.StudioAdminItem) => {
-    if (!s.id) return
-    if (!confirm('این استودیو حذف شود؟')) return
-    try {
-      setSaving(true)
-      setError(null)
-      await supa.deleteStudioAdmin(s.id)
-      await reload()
-      onClear()
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'خطا در حذف'
-      setError(msg)
-    } finally {
-      setSaving(false)
     }
   }
 
@@ -121,8 +101,8 @@ const AdminStudios = () => {
 
       const slug = draft.slug.trim().toLowerCase()
       const name = draft.name.trim()
-      if (!slug) throw new Error('slug الزامی است')
-      if (!name) throw new Error('name الزامی است')
+      if (!slug) throw new Error('اسلاگ الزامی است')
+      if (!name) throw new Error('نام الزامی است')
 
       await supa.upsertStudioAdmin({
         id: draft.id,
@@ -132,6 +112,7 @@ const AdminStudios = () => {
 
       await reload()
       onClear()
+      setSheetOpen(false)
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'خطا در ذخیره'
       setError(msg)
@@ -140,142 +121,150 @@ const AdminStudios = () => {
     }
   }
 
+  const onDelete = async (s: supa.StudioAdminItem) => {
+    if (!s.id) return
+    if (!confirm('این استودیو حذف شود؟')) return
+    try {
+      setSaving(true)
+      setError(null)
+      await supa.deleteStudioAdmin(s.id)
+      await reload()
+      onClear()
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'خطا در حذف'
+      setError(msg)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
-    <div>
-      <div className="flex items-center justify-between gap-3 mb-6">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-foreground text-xl font-bold">استودیوها</h1>
-          <p className="text-muted-foreground">لیستی از استودیوهای انیمه‌ها</p>
-        </div>
-        <Button size={'lg'} className="px-6" type="button" onClick={onCreate} disabled={saving}>
-          ایجاد
-        </Button>
-      </div>
+    <AdminCrudPage>
+      <AdminCrudHeader
+        icon={Building2}
+        title="استودیوها"
+        description="مدیریت استودیوهای تولید انیمه"
+        createLabel="استودیو جدید"
+        onCreate={onCreate}
+        createDisabled={saving}
+      />
 
-      {error && <div className="mt-4 text-red-400 text-sm">{error}</div>}
+      {error ? <AdminCrudError message={error} /> : null}
 
-      <div className="flex flex-col gap-4">
-        <Input
-          className="w-1/3"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="جستجو در استودیوها..."
+      <AdminCrudSearch value={query} onChange={setQuery} placeholder="جستجو در نام یا اسلاگ..." />
+
+      {loading ? (
+        <p className="text-muted-foreground py-16 text-center text-sm">در حال بارگذاری...</p>
+      ) : filtered.length === 0 ? (
+        <AdminCrudEmpty
+          title={items.length === 0 ? 'هنوز استودیویی ثبت نشده' : 'نتیجه‌ای پیدا نشد'}
+          description={
+            items.length === 0
+              ? 'اولین استودیو را اضافه کنید.'
+              : 'عبارت جستجو را تغییر دهید.'
+          }
+          actionLabel={items.length === 0 ? 'افزودن استودیو' : query.trim() ? 'پاک کردن جستجو' : undefined}
+          onAction={
+            items.length === 0
+              ? onCreate
+              : query.trim()
+                ? () => setQuery('')
+                : undefined
+          }
         />
-
-        {loading ? (
-          <div className="mt-6 text-muted-foreground text-sm">در حال بارگذاری...</div>
-        ) : (
-          <div>
-            <div className="overflow-hidden border rounded-md">
-              <Table>
-                <TableHeader className="bg-muted">
-                  <TableRow>
-                    <TableHead className="text-right h-10 text-foreground">عنوان</TableHead>
-                    <TableHead className="text-right h-10 text-foreground">اسلاگ</TableHead>
-                    <TableHead className="text-right h-10 text-foreground"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.map((s) => {
-                    return (
-                      <TableRow key={String(s.id ?? s.slug)} className="h-10">
-                        <TableCell className="text-right p-0 px-4">
-                          <div className="text-foreground text-sm font-semibold">{s.name}</div>
-                        </TableCell>
-                        <TableCell className="text-right font-mono text-xs p-0 px-4">
-                          {s.slug}
-                        </TableCell>
-                        <TableCell className="text-left p-0 px-4">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button type="button" variant="ghost" size="icon" disabled={saving}>
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start">
-                              <DropdownMenuItem onSelect={() => onEdit(s)}>ویرایش</DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                className="text-destructive"
-                                onSelect={async () => {
-                                  await onDelete(s)
-                                }}
-                              >
-                                حذف
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-
-            {filtered.length === 0 && (
-              <div className="text-muted-foreground text-sm mt-3">چیزی پیدا نشد</div>
-            )}
-          </div>
-        )}
-      </div>
+      ) : (
+        <>
+          <AdminCrudCount filtered={filtered.length} total={items.length} />
+          <AdminCrudGrid>
+            {filtered.map((s) => (
+              <AdminCrudCard
+                key={String(s.id ?? s.slug)}
+                actions={
+                  <>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      disabled={saving}
+                      onClick={() => onEdit(s)}
+                      title="ویرایش"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive"
+                      disabled={saving}
+                      onClick={() => void onDelete(s)}
+                      title="حذف"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </>
+                }
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-foreground text-sm font-semibold">{s.name}</span>
+                  <Badge variant="outline" className="font-mono text-[10px]">
+                    {s.slug}
+                  </Badge>
+                </div>
+              </AdminCrudCard>
+            ))}
+          </AdminCrudGrid>
+        </>
+      )}
 
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent>
+        <SheetContent dir="rtl" className="flex flex-col">
           <SheetHeader>
-            <SheetTitle>{draft.id ? 'ویرایش استودیو' : 'ایجاد استودیو'}</SheetTitle>
-            <SheetDescription>اطلاعات استودیو را وارد کنید و ذخیره کنید.</SheetDescription>
+            <SheetTitle>{draft.id ? 'ویرایش استودیو' : 'استودیو جدید'}</SheetTitle>
+            <SheetDescription>نام نمایشی و اسلاگ یکتا را وارد کنید.</SheetDescription>
           </SheetHeader>
 
-          <div className="p-4 space-y-3">
-            <div>
-              <div className="text-muted-foreground text-xs mb-1">Slug</div>
+          <div className="flex flex-1 flex-col gap-4 p-4">
+            <div className="space-y-2">
+              <Label htmlFor="studio-name">نام</Label>
               <Input
-                value={draft.slug}
-                onChange={(e) => setDraft((p) => ({ ...p, slug: e.target.value }))}
-                placeholder="mappa"
-              />
-            </div>
-
-            <div>
-              <div className="text-muted-foreground text-xs mb-1">Name</div>
-              <Input
+                id="studio-name"
                 value={draft.name}
                 onChange={(e) => setDraft((p) => ({ ...p, name: e.target.value }))}
                 placeholder="MAPPA"
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="studio-slug">اسلاگ</Label>
+              <Input
+                id="studio-slug"
+                value={draft.slug}
+                onChange={(e) => setDraft((p) => ({ ...p, slug: e.target.value }))}
+                placeholder="mappa"
+                className="font-mono text-sm"
+                dir="ltr"
+              />
+            </div>
           </div>
 
           <SheetFooter>
-            <div className="flex flex-col items-center justify-end gap-2 w-full">
+            <div className="flex w-full flex-col gap-2">
               <Button
                 type="button"
-                size={'lg'}
-                className="bg-primary-500 text-foreground w-full"
-                onClick={async () => {
-                  await onSave()
-                  setSheetOpen(false)
-                }}
-                disabled={saving}
+                size="lg"
+                disabled={saving || !draft.slug.trim() || !draft.name.trim()}
+                onClick={() => void onSave()}
               >
-                ذخیره تغییرات
+                ذخیره
               </Button>
-              <Button
-                type="button"
-                size={'lg'}
-                className="w-full"
-                variant="secondary"
-                onClick={() => setSheetOpen(false)}
-                disabled={saving}
-              >
+              <Button type="button" size="lg" variant="secondary" onClick={() => setSheetOpen(false)} disabled={saving}>
                 انصراف
               </Button>
             </div>
           </SheetFooter>
         </SheetContent>
       </Sheet>
-    </div>
+    </AdminCrudPage>
   )
 }
 
