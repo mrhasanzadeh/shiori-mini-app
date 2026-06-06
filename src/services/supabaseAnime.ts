@@ -572,7 +572,7 @@ export const getTranslatorBySlug = async (slug: string): Promise<TranslatorItem 
   if (error) {
     const msg = String(error?.message ?? '')
     if (String(error?.code ?? '') === '42703' || msg.toLowerCase().includes('column')) {
-      ;({ data, error } = await supabase
+      ({ data, error } = await supabase
         .from('translators')
         .select('id, name, slug, avatar_url, bio')
         .eq('slug', safeSlug)
@@ -739,7 +739,7 @@ export const getAllTranslatorsAdmin = async (): Promise<TranslatorAdminItem[]> =
   if (error) {
     const msg = String(error?.message ?? '')
     if (String(error?.code ?? '') === '42703' || msg.toLowerCase().includes('column')) {
-      ;({ data, error } = await supabase
+      ({ data, error } = await supabase
         .from('translators')
         .select('id, name, slug, avatar_url, bio, experience')
         .order('name', { ascending: true }))
@@ -797,7 +797,7 @@ export const upsertTranslatorAdmin = async (payload: {
   if (error) {
     const msg = String(error?.message ?? '')
     if (String(error?.code ?? '') === '42703' || msg.toLowerCase().includes('column')) {
-      ;({ data, error } = await supabase
+      ({ data, error } = await supabase
         .from('translators')
         .upsert(row, { onConflict: row.id ? 'id' : 'slug' })
         .select('id, name, slug, avatar_url, bio, experience')

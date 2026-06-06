@@ -43,15 +43,16 @@
     "zustand": "^4.5.1"
   },
   "devDependencies": {
+    "@eslint/js": "^8.57.1",
     "@types/react": "^18.2.55",
     "@types/react-dom": "^18.2.19",
-    "@typescript-eslint/eslint-plugin": "^6.21.0",
-    "@typescript-eslint/parser": "^6.21.0",
     "@vitejs/plugin-react": "^4.2.1",
     "eslint": "^8.56.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
+    "globals": "^15.15.0",
     "typescript": "^5.2.2",
+    "typescript-eslint": "^7.18.0",
     "vite": "^5.1.0"
   }
 }
