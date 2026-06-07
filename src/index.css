@@ -116,6 +116,40 @@
     animation: sheet-out-bottom 0.32s cubic-bezier(0.32, 0.72, 0, 1) both;
   }
 
+  @property --episode-pack-angle {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+  }
+
+  @keyframes episode-pack-border-spin {
+    to {
+      --episode-pack-angle: 360deg;
+    }
+  }
+
+  .episode-pack-card-wrap {
+    --episode-pack-angle: 0deg;
+    position: relative;
+    border-radius: 0.75rem;
+    padding: 2px;
+    background: conic-gradient(
+      from var(--episode-pack-angle),
+      rgba(167, 139, 250, 0.22) 0deg,
+      rgba(167, 139, 250, 0.22) 250deg,
+      #a78bfa 285deg,
+      #ddd6fe 315deg,
+      #a78bfa 345deg,
+      rgba(167, 139, 250, 0.22) 360deg
+    );
+    animation: episode-pack-border-spin 3.5s linear infinite;
+  }
+
+  .episode-pack-card-inner {
+    position: relative;
+    border-radius: calc(0.75rem - 2px);
+  }
+
   .home-featured-wrap {
     --swiper-theme-color: #a78bfa;
     --swiper-pagination-color: #a78bfa;

@@ -46,6 +46,7 @@ Main catalog row. Image column name is configurable via `VITE_ANIME_IMAGE_COLUMN
 | `season`, `year` | Broadcast metadata |
 | `start_date`, `end_date` | ISO dates |
 | `is_featured` | Home slider flag |
+| `episode_pack_title`, `episode_pack_link` | Optional all-episodes download pack (admin) |
 | `anilist_id` | Bridge for Schedule page |
 | `created_at` | Sorting |
 

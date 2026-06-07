@@ -180,6 +180,7 @@ export const fetchAnimeById = async (id: number | string) => {
   const episodesList = await supa.getEpisodesByAnimeId(anime.id)
   const subtitlesList = await supa.getSubtitlesByAnimeId(anime.id)
   const subtitlePacksList = await supa.getSubtitlePacksByAnimeId(anime.id)
+  const episodePack = await supa.getEpisodePackByAnimeId(anime.id)
 
   let studioNames: string[] = []
   try {
@@ -241,6 +242,7 @@ export const fetchAnimeById = async (id: number | string) => {
     genres: anime.genres,
     episodes: mergedEpisodes,
     subtitle_packs: subtitlePacksList,
+    episode_pack: episodePack,
     episodes_count: typeof anime.episodes_count === 'number' ? anime.episodes_count : 0,
     averageScore: externalMeta.averageScore ?? anime.averageScore,
     malScore: externalMeta.malScore ?? anime.malScore,

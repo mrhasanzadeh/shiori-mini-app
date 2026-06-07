@@ -544,6 +544,81 @@ export type SubtitlePackItem = {
   subtitle_link?: string
 }
 
+export type EpisodePackItem = {
+  title?: string | null
+  download_link?: string | null
+}
+
+const parseEpisodePackRow = (row: Record<string, unknown> | null | undefined): EpisodePackItem | null => {
+  if (!row) return null
+  const link =
+    typeof row.episode_pack_link === 'string' && row.episode_pack_link.trim().length > 0
+      ? row.episode_pack_link.trim()
+      : null
+  if (!link) return null
+  return {
+    title:
+      typeof row.episode_pack_title === 'string' && row.episode_pack_title.trim().length > 0
+        ? row.episode_pack_title.trim()
+        : null,
+    download_link: link,
+  }
+}
+
+export const getEpisodePackByAnimeId = async (
+  animeId: string | number
+): Promise<EpisodePackItem | null> => {
+  if (!hasSupabaseConfig) return null
+
+  const { data, error } = await supabase
+    .from('anime')
+    .select('episode_pack_title, episode_pack_link')
+    .eq('id', animeId)
+    .maybeSingle()
+
+  if (error) {
+    const msg = String(error.message ?? '')
+    const code = String(error.code ?? '')
+    if (code === '42703' || code === 'PGRST204' || msg.toLowerCase().includes('does not exist')) {
+      if (import.meta.env.DEV) {
+        console.warn(
+          '[getEpisodePackByAnimeId] ستون episode_pack در anime وجود ندارد. supabase-add-episode-pack.sql را اجرا کنید.'
+        )
+      }
+      return null
+    }
+    console.warn('getEpisodePackByAnimeId:', error.message)
+    return null
+  }
+
+  return parseEpisodePackRow(data as Record<string, unknown>)
+}
+
+export const updateEpisodePackAdmin = async (
+  animeId: string | number,
+  payload: { title: string | null; download_link: string | null }
+): Promise<void> => {
+  if (!hasSupabaseConfig) throw new Error('Supabase config missing')
+
+  const { error } = await supabase
+    .from('anime')
+    .update({
+      episode_pack_title: payload.title,
+      episode_pack_link: payload.download_link,
+    })
+    .eq('id', animeId)
+
+  if (error) {
+    const msg = String(error.message ?? '')
+    if (String(error.code ?? '') === '42703' || msg.toLowerCase().includes('episode_pack')) {
+      throw new Error(
+        'ستون‌های episode_pack_title و episode_pack_link در جدول anime پیدا نشد. فایل supabase-add-episode-pack.sql را در SQL Editor اجرا کنید.'
+      )
+    }
+    throw error
+  }
+}
+
 export const getAnimeIdsWithAnyEpisodes = async (
   animeIds: Array<string | number>
 ): Promise<Set<string>> => {
@@ -1137,10 +1212,15 @@ export type AnimeAdminRow = {
   studio?: string | null
   start_date?: string | null
   end_date?: string | null
+  episode_pack_title?: string | null
+  episode_pack_link?: string | null
 }
 
 export const getAnimeAdminById = async (animeId: string | number): Promise<AnimeAdminRow> => {
   if (!hasSupabaseConfig) throw new Error('Supabase config missing')
+
+  const selectWithEpisodePack =
+    `id, title, synopsis, format, season, year, anilist_id, mal_id, imdb_id, mal_score, imdb_score, featured_image, ${IMAGE_COLUMN}, is_featured, airing_status, average_score, episodes_count, studio, start_date, end_date, episode_pack_title, episode_pack_link` as any as string
 
   const selectWithAniList =
     `id, title, synopsis, format, season, year, anilist_id, mal_id, imdb_id, mal_score, imdb_score, featured_image, ${IMAGE_COLUMN}, is_featured, airing_status, average_score, episodes_count, studio, start_date, end_date` as any as string
@@ -1156,7 +1236,13 @@ export const getAnimeAdminById = async (animeId: string | number): Promise<Anime
 
   let data: any = null
 
-  const queries = [selectWithExternalScores, selectWithAniList, selectMinimal, selectWithoutAniList]
+  const queries = [
+    selectWithEpisodePack,
+    selectWithExternalScores,
+    selectWithAniList,
+    selectMinimal,
+    selectWithoutAniList,
+  ]
   let lastError: any = null
 
   for (const select of queries) {
@@ -1202,6 +1288,10 @@ export const getAnimeAdminById = async (animeId: string | number): Promise<Anime
     studio: row.studio ?? null,
     start_date: row.start_date ?? null,
     end_date: row.end_date ?? null,
+    episode_pack_title:
+      typeof row.episode_pack_title === 'string' ? row.episode_pack_title : (row.episode_pack_title ?? null),
+    episode_pack_link:
+      typeof row.episode_pack_link === 'string' ? row.episode_pack_link : (row.episode_pack_link ?? null),
   }
 }
 

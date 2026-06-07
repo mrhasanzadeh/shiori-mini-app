@@ -27,7 +27,7 @@ import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { format as formatDate } from 'date-fns'
-import { invalidateAnimeQueries } from '../hooks/queries/invalidate'
+import { invalidateAnimeQueries, invalidateAnimeDetailQuery } from '../hooks/queries/invalidate'
 import { formatSupabaseError } from '../services/supabaseAnime'
 import { cn } from '@/lib/utils'
 
@@ -67,6 +67,11 @@ type SubtitleDraft = {
 type SubtitlePackDraft = {
   title: string
   subtitle_link: string
+}
+
+type EpisodePackDraft = {
+  title: string
+  download_link: string
 }
 
 type TranslatorLinkDraft = {
@@ -318,6 +323,11 @@ const AdminAnimeEdit = () => {
   const [subtitlePackDraft, setSubtitlePackDraft] = useState<SubtitlePackDraft>({
     title: '',
     subtitle_link: '',
+  })
+
+  const [episodePackDraft, setEpisodePackDraft] = useState<EpisodePackDraft>({
+    title: '',
+    download_link: '',
   })
 
   const EMPTY_SELECT_VALUE = '__EMPTY__'
@@ -694,6 +704,66 @@ const AdminAnimeEdit = () => {
     }
   }
 
+  const onSaveEpisodePack = async () => {
+    if (!draft.id && !anime?.id && isNew) {
+      showError('اول انیمه را ذخیره کن')
+      return
+    }
+
+    const animeId = (anime?.id ?? draft.id) as string | number
+
+    try {
+      setSaving(true)
+      setToast(null)
+      await supa.updateEpisodePackAdmin(animeId, {
+        title: episodePackDraft.title.trim() || null,
+        download_link: episodePackDraft.download_link.trim() || null,
+      })
+      setAnime((prev) =>
+        prev
+          ? {
+              ...prev,
+              episode_pack_title: episodePackDraft.title.trim() || null,
+              episode_pack_link: episodePackDraft.download_link.trim() || null,
+            }
+          : prev
+      )
+      showSuccess('پک تمام قسمت‌ها ذخیره شد')
+      invalidateAnimeQueries()
+      invalidateAnimeDetailQuery(animeId)
+    } catch (e) {
+      showError(formatSupabaseError(e) || 'خطا در ذخیره پک قسمت‌ها')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const onClearEpisodePack = async () => {
+    if (!draft.id && !anime?.id && isNew) {
+      showError('اول انیمه را ذخیره کن')
+      return
+    }
+
+    const animeId = (anime?.id ?? draft.id) as string | number
+
+    try {
+      setSaving(true)
+      setToast(null)
+      await supa.updateEpisodePackAdmin(animeId, { title: null, download_link: null })
+      setEpisodePackDraft({ title: '', download_link: '' })
+      setAnime((prev) =>
+        prev ? { ...prev, episode_pack_title: null, episode_pack_link: null } : prev
+      )
+      showSuccess('پک تمام قسمت‌ها حذف شد')
+      invalidateAnimeQueries()
+      invalidateAnimeDetailQuery(animeId)
+    } catch (e) {
+      showError(formatSupabaseError(e) || 'خطا در حذف پک قسمت‌ها')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const onAddSubtitlePack = async () => {
     if (!draft.id && !anime?.id && isNew) {
       showError('اول انیمه را ذخیره کن')
@@ -753,6 +823,10 @@ const AdminAnimeEdit = () => {
     setEpisodes(eps)
     setSubtitles(subs)
     setSubtitlePacks(packs)
+    setEpisodePackDraft({
+      title: a.episode_pack_title ?? '',
+      download_link: a.episode_pack_link ?? '',
+    })
     setSelectedGenreSlugs(new Set(aGenres))
     setSelectedStudioSlugs(new Set(aStudios))
 
@@ -1595,6 +1669,50 @@ const AdminAnimeEdit = () => {
                 )}
 
                 {mediaSubTab === 'packs' && (
+                  <div className="space-y-4">
+                  <AdminSection
+                    title="پک تمام قسمت‌ها"
+                    description="لینک دانلود یک‌جای همه قسمت‌های این انیمه"
+                  >
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <Field label="عنوان (اختیاری)">
+                        <Input
+                          value={episodePackDraft.title}
+                          onChange={(e) =>
+                            setEpisodePackDraft((p) => ({ ...p, title: e.target.value }))
+                          }
+                          placeholder="پک کامل فصل ۱"
+                        />
+                      </Field>
+                      <Field label="لینک پک">
+                        <Input
+                          value={episodePackDraft.download_link}
+                          onChange={(e) =>
+                            setEpisodePackDraft((p) => ({ ...p, download_link: e.target.value }))
+                          }
+                          placeholder="https://..."
+                          className="font-mono text-xs"
+                        />
+                      </Field>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button type="button" disabled={saving} onClick={onSaveEpisodePack}>
+                        ذخیره پک قسمت‌ها
+                      </Button>
+                      {(episodePackDraft.download_link.trim() ||
+                        anime?.episode_pack_link) && (
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          disabled={saving}
+                          onClick={onClearEpisodePack}
+                        >
+                          حذف پک
+                        </Button>
+                      )}
+                    </div>
+                  </AdminSection>
+
                   <AdminSection
                     title={editingSubtitlePackId ? 'ویرایش پک' : 'افزودن پک زیرنویس'}
                     description={`${subtitlePacks.length} پک ثبت شده`}
@@ -1668,6 +1786,7 @@ const AdminAnimeEdit = () => {
                       )}
                     </div>
                   </AdminSection>
+                  </div>
                 )}
               </div>
             )}

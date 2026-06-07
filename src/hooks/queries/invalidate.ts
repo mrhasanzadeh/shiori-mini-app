@@ -12,3 +12,7 @@ export const invalidateAnimeQueries = () => {
   queryClient.invalidateQueries({ queryKey: ['anime', 'detail'] })
   queryClient.invalidateQueries({ queryKey: ['anime', 'search'] })
 }
+
+export const invalidateAnimeDetailQuery = (animeId: string | number) => {
+  queryClient.invalidateQueries({ queryKey: queryKeys.animeDetail(animeId) })
+}

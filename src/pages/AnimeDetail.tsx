@@ -56,6 +56,11 @@ interface SubtitlePack {
   subtitle_link?: string
 }
 
+interface EpisodePack {
+  title?: string | null
+  download_link?: string | null
+}
+
 interface Anime {
   id: number | string
   title: string
@@ -68,6 +73,7 @@ interface Anime {
   genres: GenreItem[]
   episodes: Episode[]
   subtitle_packs?: SubtitlePack[]
+  episode_pack?: EpisodePack | null
   episodes_count: number
   averageScore?: number
   animeListScore?: number
@@ -449,6 +455,31 @@ const SimilarPosterCard = ({
   </AnimePrefetchLink>
 )
 
+const EpisodePackDownloadCard = ({
+  pack,
+  onDownload,
+}: {
+  pack: EpisodePack
+  onDownload: () => void
+}) => (
+  <div className="episode-pack-card-wrap">
+    <div className="episode-pack-card-inner flex items-center justify-between gap-3 bg-card p-3">
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-foreground line-clamp-1">
+          {pack.title?.trim() || 'دانلود تمام قسمت‌ها'}
+        </p>
+        <p className="text-[11px] text-muted-foreground mt-0.5">
+          پک یک‌جا · زیرنویس چسبیده · 1080p x265
+        </p>
+      </div>
+      <Button type="button" size="sm" className="shrink-0 gap-1 font-semibold" onClick={onDownload}>
+        <Download01Icon className="w-3.5 h-3.5" />
+        دانلود
+      </Button>
+    </div>
+  </div>
+)
+
 const AnimeDetail = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -668,6 +699,11 @@ const AnimeDetail = () => {
       return String(a.id).localeCompare(String(b.id))
     })
   }, [anime])
+
+  const episodePackLink = useMemo(
+    () => anime?.episode_pack?.download_link?.trim() || null,
+    [anime?.episode_pack?.download_link]
+  )
 
   const downloadTabs = useMemo(() => {
     const tabs: { id: DownloadTabType; label: string }[] = [
@@ -952,7 +988,7 @@ const AnimeDetail = () => {
             <SegmentedTabs tabs={downloadTabs} active={downloadTab} onChange={setDownloadTab} />
 
             {downloadTab === 'episodes' &&
-              (episodesForList.length === 0 ? (
+              (episodesForList.length === 0 && !episodePackLink ? (
                 <EmptyBlock
                   message={
                     statusKey === 'RELEASING'
@@ -977,6 +1013,17 @@ const AnimeDetail = () => {
                 />
               ) : (
                 <div className="space-y-2">
+                  {episodePackLink && anime.episode_pack ? (
+                    <EpisodePackDownloadCard
+                      pack={anime.episode_pack}
+                      onDownload={() => window.open(episodePackLink, '_blank')}
+                    />
+                  ) : null}
+                  {episodesForList.length === 0 && episodePackLink ? (
+                    <p className="text-xs text-muted-foreground text-center py-1">
+                      لینک تک‌تک قسمت‌ها هنوز ثبت نشده.
+                    </p>
+                  ) : null}
                   {episodesForList.map((episode) => (
                     <div
                       key={episode.id}

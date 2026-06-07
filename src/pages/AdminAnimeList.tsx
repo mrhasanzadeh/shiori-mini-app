@@ -46,6 +46,8 @@ const formatLabel = (format?: string) => {
   return v || '—'
 }
 
+const genreLabel = (g: supa.GenreItem) => g.name_fa || g.name_en || g.slug
+
 const AnimeListRow = ({
   anime,
   hasEpisodes,
@@ -114,18 +116,25 @@ const AnimeGridCard = ({
   hasEpisodes: boolean
 }) => {
   const href = `/admin/anime/${encodeURIComponent(String(anime.id))}`
+  const genres = (anime.genres || []).slice(0, 3)
+  const metaParts = [
+    formatLabel(anime.format) !== '—' ? formatLabel(anime.format) : null,
+    anime.year ? String(anime.year) : null,
+    typeof anime.episodes_count === 'number' ? `${anime.episodes_count} قسمت` : null,
+  ].filter(Boolean)
 
   return (
     <Link
       to={href}
-      className="hover:border-primary-400/40 group overflow-hidden rounded-xl border bg-card shadow-sm transition-colors"
+      className="group block active:scale-[0.98] transition-transform"
+      aria-label={`ویرایش ${anime.title}`}
     >
-      <div className="bg-muted relative aspect-[3/4]">
+      <div className="relative aspect-[2/3] overflow-hidden rounded-xl border border-border bg-muted shadow-sm">
         {anime.image ? (
           <img
             src={anime.image}
-            alt={anime.title}
-            className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
             loading="lazy"
           />
         ) : (
@@ -133,29 +142,38 @@ const AnimeGridCard = ({
             <Film className="h-8 w-8 opacity-40" />
           </div>
         )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-transparent" />
+
         <div className="absolute inset-x-0 top-0 flex flex-wrap gap-1 p-2">
           {anime.isFeatured ? (
-            <Badge variant="default" className="gap-1 border-primary-400/30 bg-primary-600/80 backdrop-blur-sm">
+            <span className="inline-flex items-center gap-1 rounded-md border border-primary-400/30 bg-primary-400/90 px-1.5 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
               <Star className="h-3 w-3" />
               ویژه
-            </Badge>
+            </span>
           ) : null}
           {!hasEpisodes ? (
-            <Badge variant="secondary" className="gap-1 border-amber-500/40 bg-amber-600/90 text-white backdrop-blur-sm">
+            <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-600/90 px-1.5 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
               <AlertCircle className="h-3 w-3" />
               بدون قسمت
-            </Badge>
+            </span>
           ) : null}
         </div>
-      </div>
-      <div className="space-y-1.5 p-3">
-        <p className="text-foreground line-clamp-2 text-sm font-semibold leading-snug">{anime.title}</p>
-        <div className="flex flex-wrap items-center gap-1.5">
-          <Badge variant="outline" className="font-mono text-[10px]">
-            {formatLabel(anime.format)}
-          </Badge>
-          {anime.year ? (
-            <span className="text-muted-foreground text-xs">{anime.year}</span>
+
+        <div className="absolute left-0 bottom-0 p-2.5 pt-10">
+          <h3 className="text-xs font-semibold text-white text-left line-clamp-2 leading-5">{anime.title}</h3>
+          {genres.length > 0 ? (
+            <div className="mt-1 flex flex-wrap justify-end gap-1">
+              {genres.map((g) => (
+                <span
+                  key={g.slug}
+                  className="max-w-full truncate rounded-md border border-white/10 bg-white/15 px-1.5 py-1 text-[10px] leading-none text-white/90"
+                >
+                  {genreLabel(g)}
+                </span>
+              ))}
+            </div>
+          ) : metaParts.length > 0 ? (
+            <p className="mt-1 text-[10px] text-white/70 line-clamp-1">{metaParts.join(' · ')}</p>
           ) : null}
         </div>
       </div>
@@ -341,7 +359,7 @@ const AdminAnimeList = () => {
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+            <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
               {filtered.map((a) => (
                 <AnimeGridCard
                   key={String(a.id)}
