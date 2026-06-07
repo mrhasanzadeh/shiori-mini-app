@@ -124,7 +124,6 @@ const EditProgressButton = ({
 
 const FavoriteGridCard = ({
   anime,
-  progress,
   onEdit,
 }: {
   anime: FavoriteAnime
@@ -133,8 +132,6 @@ const FavoriteGridCard = ({
 }) => {
   const genres = anime.genres.slice(0, 3)
   const maxEpisodes = Math.max(anime.episodesCount, 1)
-  const watchPercent = getWatchPercent(progress, maxEpisodes)
-  const hasProgress = progress.episodesWatched > 0 || progress.userRating != null
 
   return (
     <div className="relative">
@@ -153,28 +150,14 @@ const FavoriteGridCard = ({
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-transparent" />
 
-          {progress.userRating != null && (
-            <span className="absolute top-2 left-2 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-black/55 text-amber-300 border border-amber-400/30 tabular-nums">
-              {toPersianNumber(progress.userRating)}
-            </span>
-          )}
-
           <div className="absolute inset-x-0 bottom-0 p-2.5 pt-10">
-            {hasProgress && (
-              <div className="mb-1.5 h-1 rounded-full bg-white/20 overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-primary-400"
-                  style={{ width: `${watchPercent}%` }}
-                />
-              </div>
-            )}
-            <h3 className="text-xs font-semibold text-white line-clamp-2 leading-5">{anime.title}</h3>
+            <h3 className="text-xs font-semibold text-left text-white line-clamp-1 leading-2">{anime.title}</h3>
             {genres.length > 0 ? (
-              <div className="mt-1.5 flex flex-wrap gap-1">
+              <div className="mt-1 flex flex-wrap gap-1 justify-end">
                 {genres.map((g) => (
                   <span
                     key={g.slug}
-                    className="max-w-full truncate rounded-md border border-white/10 bg-white/15 px-1.5 py-1 text-[9px] leading-none text-white/90"
+                    className="text-[9px] leading-none px-1 py-0.5 rounded-md bg-white/15 text-white/90 border border-white/10 max-w-full truncate"
                   >
                     {genreLabel(g)}
                   </span>
@@ -182,9 +165,7 @@ const FavoriteGridCard = ({
               </div>
             ) : (
               <p className="mt-1 text-[10px] text-white/60 tabular-nums">
-                {progress.episodesWatched > 0
-                  ? `${toPersianNumber(progress.episodesWatched)}/${toPersianNumber(maxEpisodes)} قسمت`
-                  : `${toPersianNumber(maxEpisodes)} قسمت`}
+                {toPersianNumber(maxEpisodes)} قسمت
               </p>
             )}
           </div>
@@ -211,45 +192,68 @@ const FavoriteListRow = ({
   const hasProgress = progress.episodesWatched > 0 || progress.userRating != null
 
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-border bg-card/60 p-2.5">
-      <div className="relative h-16 w-11 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
+    <div className="flex items-start gap-4 rounded-xl border border-border bg-card/60 p-2">
+      <div className="relative h-full w-16 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
         <img src={anime.image} alt="" className="h-full w-full object-cover" loading="lazy" />
-        <EditProgressButton
-          title={anime.title}
-          onClick={onEdit}
-          overlay
-          className="top-1 right-1 p-1"
-        />
       </div>
 
-      <AnimePrefetchLink
-        animeId={anime.id}
-        to={`/anime/${anime.id}`}
-        className="min-w-0 flex-1 active:scale-[0.99] transition-transform"
-        aria-label={`مشاهده ${anime.title}`}
-      >
-        <div className="space-y-1.5">
-          <p className="text-sm font-semibold text-foreground line-clamp-2 leading-6">{anime.title}</p>
+      <div className="min-w-0 flex-1 space-y-1.5">
+        <AnimePrefetchLink
+          animeId={anime.id}
+          to={`/anime/${anime.id}`}
+          className="block active:scale-[0.99] transition-transform"
+          aria-label={`مشاهده ${anime.title}`}
+        >
+          <p className="text-sm font-semibold text-foreground line-clamp-1 leading-6">{anime.title}</p>
+        </AnimePrefetchLink>
 
-          {genres.length > 0 ? (
-            <div className="flex flex-wrap gap-1">
-              {genres.map((g) => (
-                <span
-                  key={g.slug}
-                  className="rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] leading-none text-muted-foreground"
-                >
-                  {genreLabel(g)}
-                </span>
-              ))}
-            </div>
-          ) : (
-            <p className="text-[11px] text-muted-foreground tabular-nums">
-              {progress.episodesWatched > 0
-                ? `${toPersianNumber(progress.episodesWatched)}/${toPersianNumber(maxEpisodes)} قسمت`
-                : `${toPersianNumber(maxEpisodes)} قسمت`}
-            </p>
-          )}
+        <div className="flex items-center justify-between gap-2">
+          <AnimePrefetchLink
+            animeId={anime.id}
+            to={`/anime/${anime.id}`}
+            className="min-w-0 flex-1 active:scale-[0.99] transition-transform"
+          >
+            {genres.length > 0 ? (
+              <div className="flex flex-wrap gap-1">
+                {genres.map((g) => (
+                  <span
+                    key={g.slug}
+                    className="rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] leading-none text-muted-foreground"
+                  >
+                    {genreLabel(g)}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[11px] text-muted-foreground tabular-nums">
+                {progress.episodesWatched > 0
+                  ? `${toPersianNumber(progress.episodesWatched)}/${toPersianNumber(maxEpisodes)} قسمت`
+                  : `${toPersianNumber(maxEpisodes)} قسمت`}
+              </p>
+            )}
+          </AnimePrefetchLink>
 
+          <Button
+            type="button"
+            size="xs"
+            variant="secondary"
+            className="h-6 shrink-0 gap-1 px-2 text-[10px]"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              onEdit()
+            }}
+          >
+            <Edit02Icon className="h-3 w-3" />
+            ویرایش
+          </Button>
+        </div>
+
+        <AnimePrefetchLink
+          animeId={anime.id}
+          to={`/anime/${anime.id}`}
+          className="block space-y-1.5 active:scale-[0.99] transition-transform"
+        >
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
             {progress.episodesWatched > 0 && genres.length > 0 && (
               <span className="tabular-nums">
@@ -264,16 +268,16 @@ const FavoriteListRow = ({
             )}
           </div>
 
-          {hasProgress && (
-            <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+          <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+            {hasProgress && (
               <div
                 className="h-full rounded-full bg-primary-400 transition-all duration-300"
                 style={{ width: `${watchPercent}%` }}
               />
-            </div>
-          )}
-        </div>
-      </AnimePrefetchLink>
+            )}
+          </div>
+        </AnimePrefetchLink>
+      </div>
     </div>
   )
 }
@@ -369,27 +373,29 @@ const MyList = () => {
           </div>
 
           {!isEmpty && (
-            <div className="flex shrink-0 items-center gap-1 rounded-lg border border-border p-1">
-              <ViewToggleButton
-                active={view === 'grid'}
-                onClick={() => onViewChange('grid')}
-                label="گرید"
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </ViewToggleButton>
-              <ViewToggleButton
-                active={view === 'list'}
-                onClick={() => onViewChange('list')}
-                label="لیست"
-              >
-                <List className="h-4 w-4" />
-              </ViewToggleButton>
-              <Button asChild type="button" size="sm" variant="ghost" className="gap-1.5">
-                <Link to="/search">
-                  <Search01Icon className="h-4 w-4" />
-                  <span className="hidden sm:inline">جستجو</span>
-                </Link>
-              </Button>
+            <div className="flex shrink-0 items-center gap-2">
+              <div className="flex items-center gap-1 rounded-lg border border-border p-1">
+                <ViewToggleButton
+                  active={view === 'grid'}
+                  onClick={() => onViewChange('grid')}
+                  label="گرید"
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </ViewToggleButton>
+                <ViewToggleButton
+                  active={view === 'list'}
+                  onClick={() => onViewChange('list')}
+                  label="لیست"
+                >
+                  <List className="h-4 w-4" />
+                </ViewToggleButton>
+              </div>
+                <Button asChild type="button" size="sm" variant="outline" className="gap-1.5 w-10 h-10">
+                  <Link to="/search">
+                    <Search01Icon className="h-5 w-5" />
+                    <span className="hidden sm:inline">جستجو</span>
+                  </Link>
+                </Button>
             </div>
           )}
         </div>

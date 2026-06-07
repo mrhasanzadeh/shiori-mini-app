@@ -63,13 +63,13 @@ const AnimeGridCard = ({ anime }: { anime: UiAnimeCard }) => {
           </span>
         )}
         <div className="absolute inset-x-0 bottom-0 p-2.5 pt-10">
-          <h3 className="text-xs font-semibold text-white line-clamp-2 leading-5">{anime.title}</h3>
+          <h3 className="text-xs text-left font-semibold text-white line-clamp-2 leading-2">{anime.title}</h3>
           {genres.length > 0 ? (
-            <div className="flex flex-wrap gap-1 mt-1.5">
+            <div className="flex flex-wrap gap-1 mt-1 justify-end">
               {genres.map((g) => (
                 <span
                   key={g.slug}
-                  className="text-[9px] leading-none px-1.5 py-1 rounded-md bg-white/15 text-white/90 border border-white/10 truncate max-w-full"
+                  className="text-[9px] leading-none px-1 py-0.5 rounded-md bg-white/15 text-white/90 border border-white/10 max-w-full truncate"
                 >
                   {genreLabel(g)}
                 </span>
