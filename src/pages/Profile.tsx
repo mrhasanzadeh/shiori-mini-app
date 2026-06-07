@@ -141,7 +141,7 @@ const Profile = () => {
           </h1>
 
           {username && (
-            <p className="text-sm text-muted-foreground mt-1 dir-ltr">{username}</p>
+            <p className="text-sm text-muted-foreground mt-1 text-left">{username}</p>
           )}
 
           {user?.is_premium && (
