@@ -1,10 +1,11 @@
 import { useEffect } from 'react'
 import { useAnimeStore } from '../store/animeStore'
 import { useAnimeListQuery } from './queries/useAnimeQueries'
+import { useUserAnimeList } from './useUserAnimeList'
 
 export const useAnime = () => {
-  const { animeList, setAnimeList, favoriteAnime, addToFavorites, removeFromFavorites } =
-    useAnimeStore()
+  const { animeList, setAnimeList } = useAnimeStore()
+  const userList = useUserAnimeList()
 
   const { data: listData, isLoading, error: queryError } = useAnimeListQuery()
 
@@ -15,27 +16,17 @@ export const useAnime = () => {
   }, [listData, setAnimeList])
 
   const loading = isLoading && animeList.length === 0
-  const error = queryError
-    ? 'خطا در بارگذاری لیست انیمه‌ها'
-    : null
-
-  const toggleFavorite = (animeId: number | string) => {
-    if (favoriteAnime.includes(animeId)) {
-      removeFromFavorites(animeId)
-    } else {
-      addToFavorites(animeId)
-    }
-  }
-
-  const isFavorite = (animeId: number | string) => {
-    return favoriteAnime.includes(animeId)
-  }
+  const error = queryError ? 'خطا در بارگذاری لیست انیمه‌ها' : null
 
   return {
     animeList,
     loading,
     error,
-    toggleFavorite,
-    isFavorite,
+    toggleFavorite: userList.toggleFavorite,
+    isFavorite: userList.isFavorite,
+    getProgress: userList.getProgress,
+    saveProgress: userList.saveProgress,
+    listStats: userList.stats,
+    isSavingProgress: userList.isSaving,
   }
 }

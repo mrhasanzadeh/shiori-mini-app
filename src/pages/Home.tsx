@@ -90,7 +90,7 @@ const PosterCardContent = ({ anime }: { anime: Anime }) => {
               {genres.map((g) => (
                 <span
                   key={g.slug}
-                  className="text-[9px] leading-none px-1 py-0.5 rounded-sm bg-white/15 text-white/90 border border-white/10 max-w-full truncate"
+                  className="text-[9px] leading-none px-1 py-0.5 rounded-md bg-white/15 text-white/90 border border-white/10 max-w-full truncate"
                 >
                   {genreLabel(g)}
                 </span>

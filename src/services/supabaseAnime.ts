@@ -1,5 +1,21 @@
 import { supabase, hasSupabaseConfig } from '../lib/supabase'
 
+/** پیام خطای Supabase/PostgREST را برای نمایش در UI استخراج می‌کند */
+export const formatSupabaseError = (e: unknown): string => {
+  if (e && typeof e === 'object' && 'message' in e) {
+    const msg = String((e as { message: unknown }).message ?? '').trim()
+    if (msg) return msg
+  }
+  if (e instanceof Error) return e.message
+  return 'خطای ناشناخته'
+}
+
+const isMissingColumnError = (message: string, column: string): boolean => {
+  const m = message.toLowerCase()
+  const c = column.toLowerCase()
+  return m.includes(`'${c}'`) || m.includes(`"${c}"`) || m.includes(` ${c} `) || m.includes(c)
+}
+
 export type GenreItem = {
   slug: string
   name_en?: string
@@ -26,6 +42,11 @@ export type AnimeCard = {
   isFeatured?: boolean
   episode?: string
   averageScore?: number
+  malScore?: number
+  imdbScore?: number
+  anilist_id?: number
+  mal_id?: number
+  imdb_id?: string
 }
 
 // نام ستون تصویر در جدول anime — از .env می‌خوانیم؛ پیش‌فرض: cover_image
@@ -40,6 +61,11 @@ const ANIME_CARD_SELECT_WITH_GENRES = `
       format,
       airing_status,
       average_score,
+      mal_score,
+      imdb_score,
+      anilist_id,
+      mal_id,
+      imdb_id,
       episodes_count,
       studio,
       season,
@@ -111,6 +137,22 @@ const toAnimeCard = (row: any): AnimeCard => ({
   isFeatured: typeof row.is_featured === 'boolean' ? row.is_featured : undefined,
   episode: row.latest_episode ? `قسمت ${row.latest_episode}` : undefined,
   averageScore: typeof row.average_score === 'number' ? row.average_score : undefined,
+  malScore: typeof row.mal_score === 'number' ? row.mal_score : undefined,
+  imdbScore: typeof row.imdb_score === 'number' ? row.imdb_score : undefined,
+  anilist_id:
+    typeof row.anilist_id === 'number'
+      ? row.anilist_id
+      : row.anilist_id != null && row.anilist_id !== ''
+        ? Number(row.anilist_id) || undefined
+        : undefined,
+  mal_id:
+    typeof row.mal_id === 'number'
+      ? row.mal_id
+      : row.mal_id != null && row.mal_id !== ''
+        ? Number(row.mal_id) || undefined
+        : undefined,
+  imdb_id:
+    typeof row.imdb_id === 'string' && row.imdb_id.trim() ? row.imdb_id.trim() : undefined,
 })
 
 // دریافت تمام انیمه‌های موجود در دیتابیس
@@ -1082,6 +1124,10 @@ export type AnimeAdminRow = {
   season?: string | null
   year?: number | null
   anilist_id?: number | null
+  mal_id?: number | null
+  imdb_id?: string | null
+  mal_score?: number | null
+  imdb_score?: number | null
   featured_image?: string | null
   cover_image?: string | null
   is_featured?: boolean | null
@@ -1097,32 +1143,41 @@ export const getAnimeAdminById = async (animeId: string | number): Promise<Anime
   if (!hasSupabaseConfig) throw new Error('Supabase config missing')
 
   const selectWithAniList =
-    `id, title, synopsis, format, season, year, anilist_id, featured_image, ${IMAGE_COLUMN}, is_featured, airing_status, average_score, episodes_count, studio, start_date, end_date` as any as string
+    `id, title, synopsis, format, season, year, anilist_id, mal_id, imdb_id, mal_score, imdb_score, featured_image, ${IMAGE_COLUMN}, is_featured, airing_status, average_score, episodes_count, studio, start_date, end_date` as any as string
 
   const selectWithoutAniList =
     `id, title, synopsis, format, season, year, featured_image, ${IMAGE_COLUMN}, is_featured, airing_status, average_score, episodes_count, studio, start_date, end_date` as any as string
 
+  const selectWithExternalScores =
+    `id, title, synopsis, format, season, year, anilist_id, mal_id, imdb_id, mal_score, imdb_score, featured_image, ${IMAGE_COLUMN}, is_featured, airing_status, average_score, episodes_count, studio, start_date, end_date` as any as string
+
+  const selectMinimal =
+    `id, title, synopsis, format, season, year, anilist_id, featured_image, ${IMAGE_COLUMN}, is_featured, airing_status, average_score, episodes_count, studio, start_date, end_date` as any as string
+
   let data: any = null
 
-  const withAniListRes = await (supabase
-    .from('anime')
-    .select(selectWithAniList)
-    .eq('id', animeId)
-    .single() as any)
+  const queries = [selectWithExternalScores, selectWithAniList, selectMinimal, selectWithoutAniList]
+  let lastError: any = null
 
-  if (withAniListRes.error) {
-    const withoutAniListRes = await (supabase
-      .from('anime')
-      .select(selectWithoutAniList)
-      .eq('id', animeId)
-      .single() as any)
-    if (withoutAniListRes.error) throw withoutAniListRes.error
-    data = withoutAniListRes.data
-  } else {
-    data = withAniListRes.data
+  for (const select of queries) {
+    const res = await (supabase.from('anime').select(select).eq('id', animeId).single() as any)
+    if (!res.error) {
+      data = res.data
+      break
+    }
+    lastError = res.error
   }
 
+  if (!data) throw lastError ?? new Error('Anime not found')
+
   const row: any = data
+
+  const numOrNull = (v: unknown): number | null => {
+    if (typeof v === 'number' && Number.isFinite(v)) return v
+    if (v === null || v === undefined || v === '') return null
+    const n = Number(v)
+    return Number.isFinite(n) ? n : null
+  }
 
   return {
     id: row.id,
@@ -1131,12 +1186,11 @@ export const getAnimeAdminById = async (animeId: string | number): Promise<Anime
     format: row.format ?? null,
     season: row.season ?? null,
     year: typeof row.year === 'number' ? row.year : (row.year ?? null),
-    anilist_id:
-      typeof row.anilist_id === 'number'
-        ? row.anilist_id
-        : row.anilist_id === null || row.anilist_id === undefined
-          ? null
-          : Number(row.anilist_id) || null,
+    anilist_id: numOrNull(row.anilist_id),
+    mal_id: numOrNull(row.mal_id),
+    imdb_id: typeof row.imdb_id === 'string' && row.imdb_id.trim() ? row.imdb_id.trim() : null,
+    mal_score: numOrNull(row.mal_score),
+    imdb_score: numOrNull(row.imdb_score),
     featured_image: row.featured_image ?? null,
     cover_image: row[IMAGE_COLUMN] ?? null,
     is_featured: typeof row.is_featured === 'boolean' ? row.is_featured : (row.is_featured ?? null),
@@ -1159,6 +1213,10 @@ export const upsertAnimeAdmin = async (payload: {
   season: string | null
   year: number | null
   anilist_id?: number | null
+  mal_id?: number | null
+  imdb_id?: string | null
+  mal_score?: number | null
+  imdb_score?: number | null
   genre_slugs?: string[]
   featured_image: string | null
   cover_image: string | null
@@ -1172,7 +1230,9 @@ export const upsertAnimeAdmin = async (payload: {
 }): Promise<{ id: number | string }> => {
   if (!hasSupabaseConfig) throw new Error('Supabase config missing')
 
-  const row: any = {
+  const genreSlugs = payload.genre_slugs
+
+  const row: Record<string, unknown> = {
     title: payload.title,
     synopsis: payload.synopsis,
     format: payload.format,
@@ -1182,8 +1242,6 @@ export const upsertAnimeAdmin = async (payload: {
     is_featured: payload.is_featured,
   }
 
-  if (payload.genre_slugs !== undefined) row.genre_slugs = payload.genre_slugs
-
   if (payload.airing_status !== undefined) row.airing_status = payload.airing_status
   if (payload.average_score !== undefined) row.average_score = payload.average_score
   if (payload.episodes_count !== undefined) row.episodes_count = payload.episodes_count
@@ -1191,13 +1249,169 @@ export const upsertAnimeAdmin = async (payload: {
   if (payload.start_date !== undefined) row.start_date = payload.start_date
   if (payload.end_date !== undefined) row.end_date = payload.end_date
   if (payload.anilist_id !== undefined) row.anilist_id = payload.anilist_id
+  if (payload.mal_id !== undefined) row.mal_id = payload.mal_id
+  if (payload.imdb_id !== undefined) row.imdb_id = payload.imdb_id
+  if (payload.mal_score !== undefined) row.mal_score = payload.mal_score
+  if (payload.imdb_score !== undefined) row.imdb_score = payload.imdb_score
 
   row[IMAGE_COLUMN] = payload.cover_image
   if (payload.id !== undefined && payload.id !== null) row.id = payload.id
 
-  const { data, error } = await supabase.from('anime').upsert(row).select('id').single()
-  if (error) throw error
-  return { id: data.id }
+  const externalOnlyKeys = ['mal_id', 'imdb_id', 'mal_score', 'imdb_score'] as const
+
+  const runUpsert = async (body: Record<string, unknown>) => {
+    const { data, error } = await supabase
+      .from('anime')
+      .upsert(body, { onConflict: 'id' })
+      .select('id')
+      .single()
+    if (error) throw error
+    return data.id as string | number
+  }
+
+  let animeId: string | number
+
+  try {
+    animeId = await runUpsert(row)
+  } catch (firstError: unknown) {
+    const msg = formatSupabaseError(firstError)
+    const missingExternal = externalOnlyKeys.some((key) => isMissingColumnError(msg, key))
+
+    if (missingExternal) {
+      const fallback: Record<string, unknown> = { ...row }
+      for (const key of externalOnlyKeys) delete fallback[key]
+
+      try {
+        animeId = await runUpsert(fallback)
+      } catch {
+        throw firstError
+      }
+
+      throw new Error(
+        `${msg}\n\nستون‌های MAL/IMDb هنوز در Supabase ساخته نشده‌اند. فایل supabase-add-external-ids-scores.sql را در SQL Editor اجرا کنید.`
+      )
+    }
+
+    throw firstError
+  }
+
+  if (genreSlugs !== undefined) {
+    await replaceAnimeGenres(animeId, genreSlugs)
+  }
+
+  return { id: animeId }
+}
+
+export type AnimeExternalMeta = {
+  averageScore?: number
+  malScore?: number
+  imdbScore?: number
+  shioriScore?: number
+  anilist_id?: number
+  mal_id?: number
+  imdb_id?: string
+}
+
+const parseExternalMetaRow = (row: Record<string, unknown>): AnimeExternalMeta => {
+  const num = (v: unknown): number | undefined => {
+    if (typeof v === 'number' && Number.isFinite(v)) return v
+    if (v != null && v !== '') {
+      const n = Number(v)
+      if (Number.isFinite(n)) return n
+    }
+    return undefined
+  }
+
+  return {
+    averageScore: num(row.average_score),
+    malScore: num(row.mal_score),
+    imdbScore: num(row.imdb_score),
+    shioriScore: num(row.shiori_score),
+    anilist_id: num(row.anilist_id),
+    mal_id: num(row.mal_id),
+    imdb_id:
+      typeof row.imdb_id === 'string' && row.imdb_id.trim() ? row.imdb_id.trim() : undefined,
+  }
+}
+
+/** فیلدهای امتیاز/شناسه — مستقیم از DB برای صفحه جزئیات */
+export const getAnimeExternalMetaById = async (
+  animeId: string | number
+): Promise<AnimeExternalMeta> => {
+  if (!hasSupabaseConfig) return {}
+
+  const selects = [
+    'average_score, mal_score, imdb_score, shiori_score, mal_id, imdb_id, anilist_id',
+    'average_score, mal_score, imdb_score, mal_id, imdb_id, anilist_id',
+    'average_score, imdb_score, imdb_id, mal_id',
+    'average_score',
+  ]
+
+  for (const select of selects) {
+    const { data, error } = await supabase
+      .from('anime')
+      .select(select)
+      .eq('id', animeId)
+      .maybeSingle()
+
+    if (!error && data) {
+      return parseExternalMetaRow(data as unknown as Record<string, unknown>)
+    }
+  }
+
+  return {}
+}
+
+/** کش امتیازهای زنده در DB (فقط ستون‌های خالی؛ نیاز به RPC cache_anime_external_scores) */
+export const cacheExternalScoresToDb = async (
+  animeId: string | number,
+  scores: {
+    anilistScore?: number | null
+    malScore?: number | null
+    imdbScore?: number | null
+  },
+  existing: {
+    averageScore?: number | null
+    malScore?: number | null
+    imdbScore?: number | null
+  }
+): Promise<void> => {
+  if (!hasSupabaseConfig) return
+
+  const average_score =
+    existing.averageScore == null &&
+    typeof scores.anilistScore === 'number' &&
+    Number.isFinite(scores.anilistScore) &&
+    scores.anilistScore > 0
+      ? scores.anilistScore
+      : null
+
+  const mal_score =
+    existing.malScore == null &&
+    typeof scores.malScore === 'number' &&
+    Number.isFinite(scores.malScore)
+      ? scores.malScore
+      : null
+
+  const imdb_score =
+    existing.imdbScore == null &&
+    typeof scores.imdbScore === 'number' &&
+    Number.isFinite(scores.imdbScore)
+      ? scores.imdbScore
+      : null
+
+  if (average_score === null && mal_score === null && imdb_score === null) return
+
+  const { error } = await supabase.rpc('cache_anime_external_scores', {
+    p_anime_id: animeId,
+    p_average_score: average_score,
+    p_mal_score: mal_score,
+    p_imdb_score: imdb_score,
+  })
+
+  if (error && import.meta.env.DEV) {
+    console.warn('cacheExternalScoresToDb:', error.message)
+  }
 }
 
 export const getLocalAnimeIdByAniListId = async (

@@ -1,19 +1,38 @@
-import { useMemo } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { FavouriteIcon, Search01Icon } from 'hugeicons-react'
-import { useAnimeStore } from '../store/animeStore'
+import { LayoutGrid, List } from 'lucide-react'
+import { Edit02Icon, FavouriteIcon, Search01Icon, StarIcon } from 'hugeicons-react'
+import FavoriteAnimeEditor from '../components/FavoriteAnimeEditor'
+import { useUserAnimeList } from '../hooks/useUserAnimeList'
+import { useTelegramApp } from '../hooks/useTelegramApp'
 import { Button } from '@/components/ui/button'
 import AnimePrefetchLink from '../components/AnimePrefetchLink'
 import { useFavoriteAnimeDetailsQueries } from '../hooks/queries/useAnimeQueries'
 import emptyListImage from '../assets/images/frieren-03.webp'
 import type { GenreItem } from '../services/supabaseAnime'
+import type { FavoriteProgress } from '../store/animeStore'
+import { cn } from '@/lib/utils'
 
 type FavoriteAnime = {
   id: number | string
   title: string
   image: string
-  episodeLabel: string
+  episodesCount: number
   genres: GenreItem[]
+}
+
+type ViewMode = 'grid' | 'list'
+
+const VIEW_STORAGE_KEY = 'my_list_view'
+
+const readStoredView = (): ViewMode => {
+  try {
+    const stored = localStorage.getItem(VIEW_STORAGE_KEY)
+    if (stored === 'grid' || stored === 'list') return stored
+  } catch {
+    // ignore
+  }
+  return 'grid'
 }
 
 const toPersianNumber = (num: number | string): string => {
@@ -21,20 +40,258 @@ const toPersianNumber = (num: number | string): string => {
   return String(num).replace(/[0-9]/g, (w) => persianDigits[+w])
 }
 
+const genreLabel = (g: GenreItem) => g.name_fa || g.name_en || g.slug
+
+const getWatchPercent = (progress: FavoriteProgress, maxEpisodes: number) =>
+  Math.min(100, Math.round((progress.episodesWatched / maxEpisodes) * 100))
+
+const ViewToggleButton = ({
+  active,
+  onClick,
+  label,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  label: string
+  children: ReactNode
+}) => (
+  <Button
+    type="button"
+    size="sm"
+    variant={active ? 'secondary' : 'ghost'}
+    className="gap-1.5"
+    onClick={onClick}
+    aria-label={label}
+    aria-pressed={active}
+  >
+    {children}
+    <span className="hidden sm:inline">{label}</span>
+  </Button>
+)
+
 const SkeletonGrid = () => (
   <div className="grid grid-cols-3 gap-x-2 gap-y-4 px-4">
     {Array.from({ length: 6 }).map((_, i) => (
-      <div key={i} className="animate-pulse">
-        <div className="aspect-[2/3] rounded-xl bg-muted" />
-        <div className="h-4 bg-muted rounded mt-3 w-full" />
-        <div className="h-3 bg-muted rounded mt-2 w-2/3 mx-auto" />
+      <div key={i} className="aspect-[2/3] animate-pulse rounded-xl bg-muted" />
+    ))}
+  </div>
+)
+
+const SkeletonList = () => (
+  <div className="space-y-2 px-4">
+    {Array.from({ length: 5 }).map((_, i) => (
+      <div key={i} className="animate-pulse flex items-center gap-3 rounded-xl border border-border bg-card/40 p-3">
+        <div className="h-16 w-11 rounded-lg bg-muted shrink-0" />
+        <div className="flex-1 space-y-2">
+          <div className="h-4 bg-muted rounded w-3/4" />
+          <div className="h-3 bg-muted rounded w-1/2" />
+          <div className="h-1.5 bg-muted rounded w-full" />
+        </div>
       </div>
     ))}
   </div>
 )
 
+const EditProgressButton = ({
+  title,
+  onClick,
+  className,
+  overlay = false,
+}: {
+  title: string
+  onClick: () => void
+  className?: string
+  overlay?: boolean
+}) => (
+  <button
+    type="button"
+    className={cn(
+      'shrink-0 rounded-lg border border-border/80 bg-background/85 text-muted-foreground shadow-sm transition-colors hover:bg-background hover:text-foreground',
+      overlay ? 'absolute top-2 right-2 z-10 p-1.5' : 'p-1.5',
+      className
+    )}
+    aria-label={`ویرایش پیشرفت ${title}`}
+    onClick={(e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      onClick()
+    }}
+  >
+    <Edit02Icon className="w-3.5 h-3.5" />
+  </button>
+)
+
+const FavoriteGridCard = ({
+  anime,
+  progress,
+  onEdit,
+}: {
+  anime: FavoriteAnime
+  progress: FavoriteProgress
+  onEdit: () => void
+}) => {
+  const genres = anime.genres.slice(0, 3)
+  const maxEpisodes = Math.max(anime.episodesCount, 1)
+  const watchPercent = getWatchPercent(progress, maxEpisodes)
+  const hasProgress = progress.episodesWatched > 0 || progress.userRating != null
+
+  return (
+    <div className="relative">
+      <AnimePrefetchLink
+        animeId={anime.id}
+        to={`/anime/${anime.id}`}
+        className="group block active:scale-[0.98] transition-transform"
+        aria-label={`مشاهده ${anime.title}`}
+      >
+        <div className="relative aspect-[2/3] overflow-hidden rounded-xl border border-border bg-muted shadow-sm">
+          <img
+            src={anime.image}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            loading="lazy"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-transparent" />
+
+          {progress.userRating != null && (
+            <span className="absolute top-2 left-2 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-black/55 text-amber-300 border border-amber-400/30 tabular-nums">
+              {toPersianNumber(progress.userRating)}
+            </span>
+          )}
+
+          <div className="absolute inset-x-0 bottom-0 p-2.5 pt-10">
+            {hasProgress && (
+              <div className="mb-1.5 h-1 rounded-full bg-white/20 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-primary-400"
+                  style={{ width: `${watchPercent}%` }}
+                />
+              </div>
+            )}
+            <h3 className="text-xs font-semibold text-white line-clamp-2 leading-5">{anime.title}</h3>
+            {genres.length > 0 ? (
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                {genres.map((g) => (
+                  <span
+                    key={g.slug}
+                    className="max-w-full truncate rounded-md border border-white/10 bg-white/15 px-1.5 py-1 text-[9px] leading-none text-white/90"
+                  >
+                    {genreLabel(g)}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-1 text-[10px] text-white/60 tabular-nums">
+                {progress.episodesWatched > 0
+                  ? `${toPersianNumber(progress.episodesWatched)}/${toPersianNumber(maxEpisodes)} قسمت`
+                  : `${toPersianNumber(maxEpisodes)} قسمت`}
+              </p>
+            )}
+          </div>
+        </div>
+      </AnimePrefetchLink>
+
+      <EditProgressButton title={anime.title} onClick={onEdit} overlay />
+    </div>
+  )
+}
+
+const FavoriteListRow = ({
+  anime,
+  progress,
+  onEdit,
+}: {
+  anime: FavoriteAnime
+  progress: FavoriteProgress
+  onEdit: () => void
+}) => {
+  const genres = anime.genres.slice(0, 3)
+  const maxEpisodes = Math.max(anime.episodesCount, 1)
+  const watchPercent = getWatchPercent(progress, maxEpisodes)
+  const hasProgress = progress.episodesWatched > 0 || progress.userRating != null
+
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-border bg-card/60 p-2.5">
+      <div className="relative h-16 w-11 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
+        <img src={anime.image} alt="" className="h-full w-full object-cover" loading="lazy" />
+        <EditProgressButton
+          title={anime.title}
+          onClick={onEdit}
+          overlay
+          className="top-1 right-1 p-1"
+        />
+      </div>
+
+      <AnimePrefetchLink
+        animeId={anime.id}
+        to={`/anime/${anime.id}`}
+        className="min-w-0 flex-1 active:scale-[0.99] transition-transform"
+        aria-label={`مشاهده ${anime.title}`}
+      >
+        <div className="space-y-1.5">
+          <p className="text-sm font-semibold text-foreground line-clamp-2 leading-6">{anime.title}</p>
+
+          {genres.length > 0 ? (
+            <div className="flex flex-wrap gap-1">
+              {genres.map((g) => (
+                <span
+                  key={g.slug}
+                  className="rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] leading-none text-muted-foreground"
+                >
+                  {genreLabel(g)}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-[11px] text-muted-foreground tabular-nums">
+              {progress.episodesWatched > 0
+                ? `${toPersianNumber(progress.episodesWatched)}/${toPersianNumber(maxEpisodes)} قسمت`
+                : `${toPersianNumber(maxEpisodes)} قسمت`}
+            </p>
+          )}
+
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
+            {progress.episodesWatched > 0 && genres.length > 0 && (
+              <span className="tabular-nums">
+                {toPersianNumber(progress.episodesWatched)}/{toPersianNumber(maxEpisodes)} قسمت
+              </span>
+            )}
+            {progress.userRating != null && (
+              <span className="inline-flex items-center gap-0.5 text-amber-300 tabular-nums">
+                <StarIcon className="h-3 w-3 fill-amber-400 text-amber-400" />
+                {toPersianNumber(progress.userRating)}
+              </span>
+            )}
+          </div>
+
+          {hasProgress && (
+            <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-primary-400 transition-all duration-300"
+                style={{ width: `${watchPercent}%` }}
+              />
+            </div>
+          )}
+        </div>
+      </AnimePrefetchLink>
+    </div>
+  )
+}
+
 const MyList = () => {
-  const { favoriteAnime } = useAnimeStore()
+  const { showAlert } = useTelegramApp()
+  const {
+    favoriteAnime,
+    getProgress,
+    saveProgress,
+    toggleFavorite,
+    isSaving,
+    stats,
+  } = useUserAnimeList()
+
+  const [editingAnime, setEditingAnime] = useState<FavoriteAnime | null>(null)
+  const [view, setView] = useState<ViewMode>(() => readStoredView())
+
   const detailQueries = useFavoriteAnimeDetailsQueries(favoriteAnime)
 
   const loading =
@@ -45,16 +302,16 @@ const MyList = () => {
     return detailQueries
       .map((query) => query.data)
       .filter((details): details is NonNullable<typeof details> => details != null)
-      .map((details) => {
-        const epCount = details.episodes.length
-        return {
-          id: details.id,
-          title: details.title,
-          image: details.image,
-          episodeLabel: epCount > 0 ? `${toPersianNumber(epCount)} قسمت` : 'بدون قسمت',
-          genres: details.genres ?? [],
-        }
-      })
+      .map((details) => ({
+        id: details.id,
+        title: details.title,
+        image: details.image,
+        episodesCount:
+          typeof details.episodes_count === 'number' && details.episodes_count > 0
+            ? details.episodes_count
+            : details.episodes.length,
+        genres: details.genres ?? [],
+      }))
   }, [detailQueries])
 
   const retry = () => {
@@ -65,33 +322,80 @@ const MyList = () => {
 
   const isEmpty = !loading && !hasError && favoriteAnime.length === 0
 
+  const onViewChange = (mode: ViewMode) => {
+    setView(mode)
+    try {
+      localStorage.setItem(VIEW_STORAGE_KEY, mode)
+    } catch {
+      // ignore
+    }
+  }
+
+  const handleSave = async (progress: { episodesWatched: number; userRating: number | null }) => {
+    if (!editingAnime) return
+    try {
+      await saveProgress(editingAnime.id, progress)
+      setEditingAnime(null)
+      showAlert('ذخیره شد')
+    } catch {
+      showAlert('خطا در ذخیره')
+    }
+  }
+
+  const handleRemove = () => {
+    if (!editingAnime) return
+    toggleFavorite(editingAnime.id)
+    setEditingAnime(null)
+    showAlert('از علاقه‌مندی‌ها حذف شد')
+  }
+
   return (
     <div className="pb-24">
       <div className="px-4 pt-4 pb-2">
-        <div className="flex items-center justify-between gap-3">
-          <div>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
             <h1 className="text-lg font-semibold text-foreground flex items-center gap-2">
-              <FavouriteIcon className="w-5 h-5 text-red-500" />
+              <FavouriteIcon className="w-5 h-5 text-red-500 shrink-0" />
               علاقه‌مندی‌ها
             </h1>
             {!isEmpty && !loading && (
               <p className="text-xs text-muted-foreground mt-1">
-                {toPersianNumber(items.length)} انیمه
+                {toPersianNumber(stats.animeCount)} انیمه
+                {stats.episodesWatched > 0
+                  ? ` · ${toPersianNumber(stats.episodesWatched)} قسمت دیده‌شده`
+                  : ''}
               </p>
             )}
           </div>
+
           {!isEmpty && (
-            <Button asChild type="button" variant="secondary" size="sm">
-              <Link to="/search" className="gap-1.5">
-                <Search01Icon className="w-4 h-4" />
-                جستجو
-              </Link>
-            </Button>
+            <div className="flex shrink-0 items-center gap-1 rounded-lg border border-border p-1">
+              <ViewToggleButton
+                active={view === 'grid'}
+                onClick={() => onViewChange('grid')}
+                label="گرید"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </ViewToggleButton>
+              <ViewToggleButton
+                active={view === 'list'}
+                onClick={() => onViewChange('list')}
+                label="لیست"
+              >
+                <List className="h-4 w-4" />
+              </ViewToggleButton>
+              <Button asChild type="button" size="sm" variant="ghost" className="gap-1.5">
+                <Link to="/search">
+                  <Search01Icon className="h-4 w-4" />
+                  <span className="hidden sm:inline">جستجو</span>
+                </Link>
+              </Button>
+            </div>
           )}
         </div>
       </div>
 
-      {loading && <SkeletonGrid />}
+      {loading && (view === 'grid' ? <SkeletonGrid /> : <SkeletonList />)}
 
       {hasError && (
         <div className="px-4 py-12 text-center space-y-3">
@@ -124,41 +428,46 @@ const MyList = () => {
         </div>
       )}
 
-      {!loading && !hasError && items.length > 0 && (
+      {!loading && !hasError && items.length > 0 && view === 'grid' && (
         <div className="grid grid-cols-3 gap-x-2 gap-y-4 px-4 pt-2">
-          {items.map((anime) => {
-            const genreLabel =
-              anime.genres[0]?.name_fa || anime.genres[0]?.name_en || anime.genres[0]?.slug
-
-            return (
-              <AnimePrefetchLink
-                key={anime.id}
-                animeId={anime.id}
-                to={`/anime/${anime.id}`}
-                className="group block"
-                aria-label={`مشاهده ${anime.title}`}
-              >
-                <div className="relative aspect-[2/3] overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-transform group-active:scale-[0.98]">
-                  <img
-                    src={anime.image}
-                    alt={anime.title}
-                    className="w-full h-full object-cover absolute inset-0"
-                    loading="lazy"
-                  />
-                  <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/70 to-transparent" />
-                  <FavouriteIcon className="absolute top-2 right-2 w-5 h-5 text-red-500 drop-shadow-md fill-red-500" />
-                </div>
-                <h3 className="mt-2 text-xs font-medium text-foreground line-clamp-2 text-center leading-5">
-                  {anime.title}
-                </h3>
-                <p className="text-[11px] text-muted-foreground text-center mt-0.5 line-clamp-1">
-                  {genreLabel ? `${genreLabel} · ` : ''}
-                  {anime.episodeLabel}
-                </p>
-              </AnimePrefetchLink>
-            )
-          })}
+          {items.map((anime) => (
+            <FavoriteGridCard
+              key={anime.id}
+              anime={anime}
+              progress={getProgress(anime.id)}
+              onEdit={() => setEditingAnime(anime)}
+            />
+          ))}
         </div>
+      )}
+
+      {!loading && !hasError && items.length > 0 && view === 'list' && (
+        <div className="space-y-2 px-4 pt-2">
+          {items.map((anime) => (
+            <FavoriteListRow
+              key={anime.id}
+              anime={anime}
+              progress={getProgress(anime.id)}
+              onEdit={() => setEditingAnime(anime)}
+            />
+          ))}
+        </div>
+      )}
+
+      {editingAnime && (
+        <FavoriteAnimeEditor
+          open={Boolean(editingAnime)}
+          onOpenChange={(open) => {
+            if (!open) setEditingAnime(null)
+          }}
+          title={editingAnime.title}
+          image={editingAnime.image}
+          episodesCount={editingAnime.episodesCount}
+          progress={getProgress(editingAnime.id)}
+          saving={isSaving}
+          onSave={handleSave}
+          onRemove={handleRemove}
+        />
       )}
     </div>
   )

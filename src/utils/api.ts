@@ -174,6 +174,8 @@ export const fetchAnimeById = async (id: number | string) => {
     throw new Error(`Anime with id ${id} not found`)
   }
 
+  const externalMeta = await supa.getAnimeExternalMetaById(anime.id)
+
   // لیست قسمت‌ها فقط از جدول episodes خوانده می‌شود
   const episodesList = await supa.getEpisodesByAnimeId(anime.id)
   const subtitlesList = await supa.getSubtitlesByAnimeId(anime.id)
@@ -240,7 +242,13 @@ export const fetchAnimeById = async (id: number | string) => {
     episodes: mergedEpisodes,
     subtitle_packs: subtitlePacksList,
     episodes_count: typeof anime.episodes_count === 'number' ? anime.episodes_count : 0,
-    averageScore: typeof anime.averageScore === 'number' ? anime.averageScore : undefined,
+    averageScore: externalMeta.averageScore ?? anime.averageScore,
+    malScore: externalMeta.malScore ?? anime.malScore,
+    imdbScore: externalMeta.imdbScore ?? anime.imdbScore,
+    shioriScore: externalMeta.shioriScore,
+    anilist_id: externalMeta.anilist_id ?? anime.anilist_id,
+    mal_id: externalMeta.mal_id ?? anime.mal_id,
+    imdb_id: externalMeta.imdb_id ?? anime.imdb_id,
     studios: studioNames.length > 0 ? studioNames : anime.studio ? [anime.studio] : [],
     studio_links: studioLinks,
     producers: [],

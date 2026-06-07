@@ -205,7 +205,7 @@ const Schedule = () => {
               type="button"
               variant="secondary"
               size="sm"
-              className="shrink-0 rounded-sm border-red-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-50"
+              className="shrink-0 border-red-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-50"
               onClick={dismissToast}
             >
               بستن

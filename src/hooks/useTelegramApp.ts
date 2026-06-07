@@ -64,11 +64,24 @@ export const useTelegramApp = () => {
     });
   };
 
+  const openLink = (url: string) => {
+    WebApp.openLink(url);
+  };
+
+  const shareUrl = (url: string, text?: string) => {
+    const shareLink = new URL("https://t.me/share/url");
+    shareLink.searchParams.set("url", url);
+    if (text?.trim()) shareLink.searchParams.set("text", text.trim());
+    WebApp.openTelegramLink(shareLink.toString());
+  };
+
   return {
     user,
     isReady,
     showAlert,
     showConfirm,
     showPopup,
+    openLink,
+    shareUrl,
   };
 };

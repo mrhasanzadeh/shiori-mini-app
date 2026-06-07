@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { AlarmClockIcon, FavouriteIcon, UserIcon } from 'hugeicons-react'
 import { ChevronLeft } from 'lucide-react'
 import { useTelegramApp } from '../hooks/useTelegramApp'
-import { useAnimeStore } from '../store/animeStore'
+import { useUserAnimeList } from '../hooks/useUserAnimeList'
 import { useNotificationsStore } from '../store/notificationsStore'
 import logo from '../assets/images/shiori-logo.svg'
 
@@ -66,6 +66,7 @@ const ProfileSkeleton = () => (
     <div className="mx-4 mt-6 grid grid-cols-2 gap-2">
       <div className="h-16 rounded-xl bg-muted" />
       <div className="h-16 rounded-xl bg-muted" />
+      <div className="h-16 rounded-xl bg-muted" />
     </div>
     <div className="mx-4 mt-6 h-32 rounded-2xl bg-muted" />
   </div>
@@ -73,7 +74,7 @@ const ProfileSkeleton = () => (
 
 const Profile = () => {
   const { user, isReady } = useTelegramApp()
-  const favoriteAnime = useAnimeStore((s) => s.favoriteAnime)
+  const { stats } = useUserAnimeList()
   const unreadCount = useNotificationsStore((s) => s.notifications.filter((n) => !n.isRead).length)
   const [avatarFailed, setAvatarFailed] = useState(false)
 
@@ -86,7 +87,9 @@ const Profile = () => {
   const initials = useMemo(() => getInitials(displayName), [displayName])
   const username = user?.username ? `@${user.username}` : null
   const avatarUrl = user?.photo_url && !avatarFailed ? user.photo_url : null
-  const favoritesCount = favoriteAnime.length
+  const favoritesCount = stats.animeCount
+  const avgRatingLabel =
+    stats.averageRating != null ? toPersianNumber(stats.averageRating.toFixed(1)) : '—'
 
   if (!isReady) return <ProfileSkeleton />
 
@@ -149,22 +152,30 @@ const Profile = () => {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="mx-4 mt-5 grid grid-cols-2 gap-2">
-        <Link
-          to="/my-list"
-          className="rounded-xl border border-border bg-card/60 py-3 px-3 text-center active:scale-[0.98] transition-transform"
-        >
-          <p className="text-base font-bold text-foreground">{toPersianNumber(favoritesCount)}</p>
-          <p className="text-[11px] text-muted-foreground mt-0.5">انیمه ذخیره‌شده</p>
-        </Link>
-        <Link
-          to="/notifications"
-          className="rounded-xl border border-border bg-card/60 py-3 px-3 text-center active:scale-[0.98] transition-transform"
-        >
-          <p className="text-base font-bold text-foreground">{toPersianNumber(unreadCount)}</p>
-          <p className="text-[11px] text-muted-foreground mt-0.5">اعلان خوانده‌نشده</p>
-        </Link>
+      {/* Stats — فعالیت تماشا */}
+      <div className="mx-4 mt-5">
+        <h2 className="text-sm font-semibold text-muted-foreground mb-2">فعالیت تماشا</h2>
+        <div className="grid grid-cols-3 gap-2">
+          <Link
+            to="/my-list"
+            className="rounded-xl border border-border bg-card/60 py-3 px-2 text-center active:scale-[0.98] transition-transform"
+          >
+            <p className="text-base font-bold text-foreground tabular-nums">
+              {toPersianNumber(favoritesCount)}
+            </p>
+            <p className="text-[10px] text-muted-foreground mt-0.5 leading-4">انیمه</p>
+          </Link>
+          <div className="rounded-xl border border-border bg-card/60 py-3 px-2 text-center">
+            <p className="text-base font-bold text-foreground tabular-nums">
+              {toPersianNumber(stats.episodesWatched)}
+            </p>
+            <p className="text-[10px] text-muted-foreground mt-0.5 leading-4">قسمت دیده</p>
+          </div>
+          <div className="rounded-xl border border-border bg-card/60 py-3 px-2 text-center">
+            <p className="text-base font-bold text-foreground tabular-nums">{avgRatingLabel}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5 leading-4">میانگین امتیاز</p>
+          </div>
+        </div>
       </div>
 
       {/* Quick access */}
@@ -177,7 +188,11 @@ const Profile = () => {
           to="/my-list"
           icon={<FavouriteIcon className="w-5 h-5 text-red-500" />}
           label="علاقه‌مندی‌ها"
-          hint={favoritesCount > 0 ? `${toPersianNumber(favoritesCount)} انیمه` : 'لیست خالی است'}
+          hint={
+            favoritesCount > 0
+              ? `${toPersianNumber(favoritesCount)} انیمه · ${toPersianNumber(stats.episodesWatched)} قسمت`
+              : 'لیست خالی است'
+          }
         />
         <MenuItem
           to="/notifications"

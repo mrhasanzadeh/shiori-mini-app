@@ -5,6 +5,7 @@ import Layout from './components/Layout'
 import AdminGate from './components/AdminGate'
 import { useTheme } from './utils/theme'
 import { useTelegramApp } from './hooks/useTelegramApp'
+import { useTelegramStartNavigation } from './hooks/useTelegramStartNavigation'
 
 // Lazy load pages for better performance
 const Home = lazy(() => import('./pages/Home'))
@@ -29,6 +30,7 @@ const AdminFilePacks = lazy(() => import('./pages/AdminFilePacks'))
 function App() {
   const { isReady } = useTelegramApp()
   const { applyTheme } = useTheme()
+  useTelegramStartNavigation(isReady)
 
   useEffect(() => {
     if (isReady) {

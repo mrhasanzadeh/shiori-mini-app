@@ -10,6 +10,7 @@ import {
   type UiAnimeCard,
 } from '../../utils/api'
 import * as supa from '../../services/supabaseAnime'
+import { fetchExternalScores } from '../../services/externalScores'
 import { queryKeys } from './keys'
 
 export type AnimeSearchBaseFilters = Omit<AnimeSearchFilters, 'limit' | 'offset'>
@@ -110,6 +111,26 @@ export const useAdminAnimeListQuery = () =>
       const animeIdsWithEpisodes = await supa.getAnimeIdsWithAnyEpisodes(list.map((x) => x.id))
       return { list, animeIdsWithEpisodes }
     },
+  })
+
+export const useExternalScoresQuery = (
+  ids: {
+    anilist_id?: number | null
+    mal_id?: number | null
+    imdb_id?: string | null
+  },
+  enabled = true
+) =>
+  useQuery({
+    queryKey: queryKeys.externalScores(ids),
+    queryFn: () => fetchExternalScores(ids),
+    enabled:
+      enabled &&
+      (Boolean(ids.anilist_id && ids.anilist_id > 0) ||
+        Boolean(ids.mal_id && ids.mal_id > 0) ||
+        Boolean(ids.imdb_id && String(ids.imdb_id).trim())),
+    staleTime: 60 * 60 * 1000,
+    gcTime: 2 * 60 * 60 * 1000,
   })
 
 /** فیلتر section روی لیست cache‌شده (بدون درخواست جدید) */

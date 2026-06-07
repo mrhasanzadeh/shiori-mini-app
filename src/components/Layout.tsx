@@ -218,7 +218,7 @@ const Layout = ({ children }: LayoutProps) => {
                       key={item.to}
                       to={item.to}
                       title={adminSidebarCollapsed ? item.label : undefined}
-                      className={`flex items-center rounded-md transition-colors h-10 ${
+                      className={`flex items-center rounded-lg transition-colors h-10 ${
                         adminSidebarCollapsed ? 'w-10  justify-center' : 'px-4  gap-2 w-full'
                       } ${
                         active

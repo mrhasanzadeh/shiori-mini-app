@@ -1,12 +1,21 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import {
+  ArrowRight01Icon,
+  Download01Icon,
+  Link01Icon,
+  RefreshIcon,
+  StarIcon,
+  UserIcon,
+} from 'hugeicons-react'
+import { ExternalLink } from 'lucide-react'
 import * as supa from '../services/supabaseAnime'
+import { syncAnimeExternalScores } from '../services/syncAnimeExternalScores'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
-import { ExternalLink } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -14,12 +23,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
 import { format as formatDate } from 'date-fns'
 import { invalidateAnimeQueries } from '../hooks/queries/invalidate'
+import { formatSupabaseError } from '../services/supabaseAnime'
+import { cn } from '@/lib/utils'
 
 type DraftAnime = {
   id?: number | string
@@ -30,6 +40,10 @@ type DraftAnime = {
   season: string
   year: string
   anilist_id: string
+  mal_id: string
+  imdb_id: string
+  mal_score: string
+  imdb_score: string
   featured_image: string
   cover_image: string
   is_featured: boolean
@@ -60,6 +74,180 @@ type TranslatorLinkDraft = {
   role: string
 }
 
+type AdminTab = 'info' | 'relations' | 'media' | 'translators'
+type MediaSubTab = 'episodes' | 'subtitles' | 'packs'
+
+const ADMIN_TABS: { id: AdminTab; label: string }[] = [
+  { id: 'info', label: 'اطلاعات' },
+  { id: 'relations', label: 'روابط' },
+  { id: 'media', label: 'فایل‌ها' },
+  { id: 'translators', label: 'مترجم' },
+]
+
+const MEDIA_SUB_TABS: { id: MediaSubTab; label: string }[] = [
+  { id: 'episodes', label: 'قسمت‌ها' },
+  { id: 'subtitles', label: 'زیرنویس' },
+  { id: 'packs', label: 'پک' },
+]
+
+const SegmentedTabs = <T extends string>({
+  tabs,
+  active,
+  onChange,
+  className,
+}: {
+  tabs: { id: T; label: string }[]
+  active: T
+  onChange: (id: T) => void
+  className?: string
+}) => (
+  <div className={cn('relative flex rounded-xl border border-border bg-muted/20 p-0.5', className)}>
+    {tabs.map((tab) => {
+      const isActive = active === tab.id
+      return (
+        <button
+          key={tab.id}
+          type="button"
+          onClick={() => onChange(tab.id)}
+          aria-pressed={isActive}
+          className={cn(
+            'relative flex-1 py-2 rounded-lg text-xs sm:text-sm transition-all duration-200',
+            isActive
+              ? 'text-primary-400 font-semibold'
+              : 'text-muted-foreground hover:text-foreground'
+          )}
+        >
+          {isActive && (
+            <span
+              aria-hidden
+              className="absolute inset-0 rounded-lg bg-primary-400/15 border border-primary-400/35"
+            />
+          )}
+          <span className="relative">{tab.label}</span>
+        </button>
+      )
+    })}
+  </div>
+)
+
+const AdminSection = ({
+  title,
+  description,
+  children,
+  action,
+}: {
+  title: string
+  description?: string
+  children: ReactNode
+  action?: ReactNode
+}) => (
+  <section className="rounded-xl border border-border bg-card/60 overflow-hidden">
+    <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-border/80">
+      <div>
+        <h2 className="text-sm font-semibold text-foreground">{title}</h2>
+        {description ? (
+          <p className="text-xs text-muted-foreground mt-1 leading-5">{description}</p>
+        ) : null}
+      </div>
+      {action}
+    </div>
+    <div className="p-4 space-y-3">{children}</div>
+  </section>
+)
+
+const Field = ({
+  label,
+  children,
+  className,
+}: {
+  label: string
+  children: ReactNode
+  className?: string
+}) => (
+  <div className={className}>
+    <Label className="text-xs text-muted-foreground mb-1.5 block">{label}</Label>
+    {children}
+  </div>
+)
+
+const AdminEditSkeleton = () => (
+  <div className="pb-32 animate-pulse">
+    <div className="h-44 bg-muted/50" />
+    <div className="mx-4 -mt-16 flex gap-4">
+      <div className="w-24 aspect-[2/3] rounded-xl bg-muted border-4 border-background" />
+      <div className="flex-1 pt-14 space-y-2">
+        <div className="h-6 w-3/4 bg-muted rounded" />
+        <div className="h-4 w-1/2 bg-muted rounded" />
+      </div>
+    </div>
+    <div className="mx-4 mt-6 h-10 bg-muted rounded-xl" />
+    <div className="mx-4 mt-4 space-y-3">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="h-24 bg-muted rounded-xl" />
+      ))}
+    </div>
+  </div>
+)
+
+const ChipToggle = ({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  children: ReactNode
+}) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={cn(
+      'text-xs px-2.5 py-1 rounded-lg border transition-colors',
+      active
+        ? 'border-primary-400/35 bg-primary-500/20 text-primary-300 font-medium'
+        : 'border-border bg-card/40 text-muted-foreground hover:bg-muted/40 hover:text-foreground'
+    )}
+  >
+    {children}
+  </button>
+)
+
+const MediaListRow = ({
+  title,
+  subtitle,
+  onEdit,
+  onDelete,
+  disabled,
+}: {
+  title: string
+  subtitle: string
+  onEdit: () => void
+  onDelete: () => void
+  disabled?: boolean
+}) => (
+  <div className="rounded-xl border border-border bg-card/40 p-3 flex items-center justify-between gap-3">
+    <div className="min-w-0">
+      <p className="text-sm font-semibold text-foreground">{title}</p>
+      <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{subtitle || '—'}</p>
+    </div>
+    <div className="flex gap-1.5 shrink-0">
+      <Button type="button" size="sm" variant="secondary" disabled={disabled} onClick={onEdit}>
+        ویرایش
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        variant="destructive"
+        disabled={disabled}
+        className="bg-red-500/15 text-red-400 hover:bg-red-500/25"
+        onClick={onDelete}
+      >
+        حذف
+      </Button>
+    </div>
+  </div>
+)
+
 const AdminAnimeEdit = () => {
   const { id } = useParams<{ id: string }>()
   const isNew = id === 'new'
@@ -68,6 +256,10 @@ const AdminAnimeEdit = () => {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  const [toastKind, setToastKind] = useState<'error' | 'success'>('error')
+  const [activeTab, setActiveTab] = useState<AdminTab>('info')
+  const [mediaSubTab, setMediaSubTab] = useState<MediaSubTab>('episodes')
+  const [syncScoresLoading, setSyncScoresLoading] = useState(false)
 
   const [allGenres, setAllGenres] = useState<supa.GenreAdminItem[]>([])
   const [selectedGenreSlugs, setSelectedGenreSlugs] = useState<Set<string>>(new Set())
@@ -84,6 +276,10 @@ const AdminAnimeEdit = () => {
     season: '',
     year: '',
     anilist_id: '',
+    mal_id: '',
+    imdb_id: '',
+    mal_score: '',
+    imdb_score: '',
     featured_image: '',
     cover_image: '',
     is_featured: false,
@@ -455,7 +651,47 @@ const AdminAnimeEdit = () => {
   }
 
   const showError = (msg: string) => {
+    setToastKind('error')
     setToast(msg)
+  }
+
+  const showSuccess = (msg: string) => {
+    setToastKind('success')
+    setToast(msg)
+  }
+
+  const previewAnimeId = anime?.id ?? draft.id ?? (!isNew ? id : null)
+
+  const canSyncExternalScores =
+    Boolean(draft.anilist_id.trim()) ||
+    Boolean(draft.mal_id.trim()) ||
+    Boolean(draft.imdb_id.trim())
+
+  const handleSyncExternalScores = async () => {
+    if (!previewAnimeId) {
+      showError('اول انیمه را ذخیره کن')
+      return
+    }
+    if (!canSyncExternalScores) {
+      showError('حداقل یک شناسه خارجی وارد کن')
+      return
+    }
+
+    setSyncScoresLoading(true)
+    try {
+      await syncAnimeExternalScores(previewAnimeId, {
+        anilist_id: draft.anilist_id.trim() ? Number(draft.anilist_id) : undefined,
+        mal_id: draft.mal_id.trim() ? Number(draft.mal_id) : undefined,
+        imdb_id: draft.imdb_id.trim() || undefined,
+      })
+      if (previewAnimeId) await reload(previewAnimeId)
+      invalidateAnimeQueries()
+      showSuccess('امتیازهای خارجی به‌روز شد')
+    } catch (e) {
+      showError(e instanceof Error ? e.message : 'خطا در سینک امتیاز')
+    } finally {
+      setSyncScoresLoading(false)
+    }
   }
 
   const onAddSubtitlePack = async () => {
@@ -529,6 +765,20 @@ const AdminAnimeEdit = () => {
       season: a.season ?? '',
       year: typeof a.year === 'number' ? String(a.year) : '',
       anilist_id: typeof a.anilist_id === 'number' ? String(a.anilist_id) : '',
+      mal_id: typeof a.mal_id === 'number' ? String(a.mal_id) : '',
+      imdb_id: a.imdb_id ?? '',
+      mal_score:
+        typeof a.mal_score === 'number'
+          ? String(a.mal_score)
+          : a.mal_score
+            ? String(a.mal_score)
+            : '',
+      imdb_score:
+        typeof a.imdb_score === 'number'
+          ? String(a.imdb_score)
+          : a.imdb_score
+            ? String(a.imdb_score)
+            : '',
       featured_image: a.featured_image ?? '',
       cover_image: a.cover_image ?? '',
       is_featured: Boolean(a.is_featured),
@@ -611,6 +861,10 @@ const AdminAnimeEdit = () => {
         season: draft.season.trim() || null,
         year: draft.year.trim() ? Number(draft.year) : null,
         anilist_id: draft.anilist_id.trim() ? Number(draft.anilist_id) : null,
+        mal_id: draft.mal_id.trim() ? Number(draft.mal_id) : null,
+        imdb_id: draft.imdb_id.trim() || null,
+        mal_score: draft.mal_score.trim() ? Number(draft.mal_score) : null,
+        imdb_score: draft.imdb_score.trim() ? Number(draft.imdb_score) : null,
         genre_slugs: Array.from(selectedGenreSlugs),
         featured_image: draft.featured_image.trim() || null,
         cover_image: draft.cover_image.trim() || null,
@@ -634,9 +888,9 @@ const AdminAnimeEdit = () => {
 
       await reload(animeId)
       invalidateAnimeQueries()
+      showSuccess('انیمه ذخیره شد')
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'خطا در ذخیره'
-      showError(msg)
+      showError(formatSupabaseError(e) || 'خطا در ذخیره')
     } finally {
       setSaving(false)
     }
@@ -715,12 +969,30 @@ const AdminAnimeEdit = () => {
     }
   }
 
+  const heroImage = draft.cover_image.trim() || draft.featured_image.trim()
+  const formatLabel =
+    formatOptions.find((o) => o.value === draft.format)?.label ?? draft.format
+
   return (
-    <div>
+    <div className="pb-32 bg-background text-foreground">
       {toast && (
-        <div className="fixed bottom-6 left-0 right-0 z-[60] px-4">
-          <div className="max-w-xl mx-auto rounded-2xl border border-red-500/30 bg-red-500/10 px-3 py-2 flex items-start justify-between gap-3">
-            <div className="text-red-200 text-sm leading-6">{toast}</div>
+        <div className="fixed top-16 inset-x-0 z-[70] px-4 pointer-events-none">
+          <div
+            className={cn(
+              'max-w-xl mx-auto rounded-2xl border px-3 py-2.5 flex items-start justify-between gap-3 pointer-events-auto shadow-lg backdrop-blur-md',
+              toastKind === 'success'
+                ? 'border-green-500/30 bg-green-500/10'
+                : 'border-red-500/30 bg-red-500/10'
+            )}
+          >
+            <p
+              className={cn(
+                'text-sm leading-6',
+                toastKind === 'success' ? 'text-green-200' : 'text-red-200'
+              )}
+            >
+              {toast}
+            </p>
             <Button type="button" variant="secondary" size="sm" onClick={() => setToast(null)}>
               بستن
             </Button>
@@ -728,81 +1000,131 @@ const AdminAnimeEdit = () => {
         </div>
       )}
 
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-foreground text-lg font-bold">
-          {isNew ? 'افزودن انیمه' : 'ویرایش انیمه'}
-        </h1>
+      <div className="relative mx-4 mt-3 rounded-2xl overflow-hidden">
+        <div className="absolute inset-0 pointer-events-none">
+          {heroImage ? (
+            <img
+              src={heroImage}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover opacity-40 scale-105"
+            />
+          ) : (
+            <div className="absolute inset-0 bg-muted/60" />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-b from-background/15 via-background/40 to-background" />
+        </div>
 
-        {(anime?.id ?? draft.id ?? (!isNew ? id : null)) ? (
-          <Button
-            type="button"
-            variant="link"
-            asChild
-            className="text-muted-foreground hover:text-foreground gap-2 px-0 hover:no-underline"
-          >
-            <Link
-              to={`/anime/${String(anime?.id ?? draft.id ?? id)}`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              مشاهده انیمه
-              <ExternalLink className="h-4 w-4" />
-            </Link>
-          </Button>
-        ) : (
-          <Button
-            type="button"
-            variant="link"
-            disabled
-            className="text-muted-foreground gap-2 px-0"
-          >
-            مشاهده انیمه
-            <ExternalLink className="h-4 w-4" />
-          </Button>
-        )}
+        <div className="relative z-10 px-5 pt-3.5 pb-4">
+          <div className="flex items-center justify-between gap-3">
+            <Button asChild type="button" variant="ghost" size="sm" className="gap-1.5">
+              <Link to="/admin/anime">
+                <ArrowRight01Icon className="w-4 h-4" />
+                لیست انیمه
+              </Link>
+            </Button>
+            {previewAnimeId ? (
+              <Button asChild type="button" variant="outline" size="sm" className="gap-1.5">
+                <Link
+                  to={`/anime/${String(previewAnimeId)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  پیش‌نمایش
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </Link>
+              </Button>
+            ) : null}
+          </div>
+
+          <div className="flex gap-4 items-start mt-5 px-0.5">
+            <div className="w-24 aspect-[2/3] rounded-xl overflow-hidden border-4 border-background bg-muted shadow-lg shrink-0 ring-2 ring-primary-400/20">
+              {heroImage ? (
+                <img src={heroImage} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
+                  بدون تصویر
+                </div>
+              )}
+            </div>
+
+            <div className="flex-1 min-w-0 pt-1">
+              <h1 className="text-lg font-bold leading-7 line-clamp-3">
+                {isNew ? 'افزودن انیمه' : draft.title.trim() || 'ویرایش انیمه'}
+              </h1>
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {draft.format ? (
+                  <Badge variant="secondary" className="text-[10px] font-normal">
+                    {formatLabel}
+                  </Badge>
+                ) : null}
+                {draft.airing_status ? (
+                  <Badge variant="outline" className="text-[10px] font-normal">
+                    {airingStatusLabel(draft.airing_status)}
+                  </Badge>
+                ) : null}
+                {draft.is_featured ? (
+                  <Badge className="text-[10px] gap-1 border-primary-400/30 bg-primary-600/25">
+                    <StarIcon className="w-3 h-3" />
+                    ویژه
+                  </Badge>
+                ) : null}
+              </div>
+              {!isNew && previewAnimeId ? (
+                <p className="text-[11px] text-muted-foreground mt-2 font-mono truncate dir-ltr">
+                  {String(previewAnimeId)}
+                </p>
+              ) : null}
+            </div>
+          </div>
+
+          {!loading && (
+            <div className="grid grid-cols-3 gap-2 mt-4 px-0.5">
+              <div className="rounded-xl border border-border bg-card/60 py-3 px-2 text-center">
+                <p className="text-base font-bold tabular-nums">{episodes.length}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">قسمت ثبت‌شده</p>
+              </div>
+              <div className="rounded-xl border border-border bg-card/60 py-3 px-2 text-center">
+                <p className="text-base font-bold tabular-nums">{selectedGenreSlugs.size}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">ژانر</p>
+              </div>
+              <div className="rounded-xl border border-border bg-card/60 py-3 px-2 text-center">
+                <p className="text-base font-bold tabular-nums">{translatorLinks.length}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">مترجم</p>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {loading ? (
-        <div className="mt-6 text-muted-foreground text-sm">در حال بارگذاری...</div>
+        <AdminEditSkeleton />
       ) : (
         <>
-          <Tabs defaultValue="main" dir="rtl" className="mt-6">
-            <TabsList className="w-full grid grid-cols-5">
-              <TabsTrigger value="main">اطلاعات</TabsTrigger>
-              <TabsTrigger value="relations">روابط</TabsTrigger>
-              <TabsTrigger value="translators">مترجم‌ها</TabsTrigger>
-              <TabsTrigger value="episodes">قسمت‌ها</TabsTrigger>
-              <TabsTrigger value="subtitles">زیرنویس‌ها</TabsTrigger>
-            </TabsList>
+          <div className="sticky top-14 z-30 px-4 pt-4 pb-2 bg-background/90 backdrop-blur-md border-b border-border/50">
+            <SegmentedTabs tabs={ADMIN_TABS} active={activeTab} onChange={setActiveTab} />
+          </div>
 
-            <TabsContent value="main">
-              <Card>
-                <CardHeader>
-                  <CardTitle>اطلاعات اصلی</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <div className="mt-2">
-                    <div className="text-muted-foreground text-xs mb-2">عنوان</div>
+          <div className="px-4 pt-4 space-y-4">
+            {activeTab === 'info' && (
+              <>
+                <AdminSection title="اطلاعات اصلی" description="عنوان، خلاصه و متادیتای پخش">
+                  <Field label="عنوان">
                     <Input
                       value={draft.title}
                       onChange={(e) => setDraft((p) => ({ ...p, title: e.target.value }))}
-                      placeholder="عنوان"
+                      placeholder="عنوان انیمه"
                     />
-                  </div>
-
-                  <div>
-                    <div className="text-muted-foreground text-xs mb-2">خلاصه داستان</div>
+                  </Field>
+                  <Field label="خلاصه داستان">
                     <Textarea
-                      className="min-h-32"
+                      className="min-h-28 leading-6"
                       value={draft.synopsis}
                       onChange={(e) => setDraft((p) => ({ ...p, synopsis: e.target.value }))}
                       placeholder="خلاصه داستان..."
                     />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <div>
-                      <div className="text-muted-foreground text-xs mb-2">نوع انیمه</div>
+                  </Field>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Field label="نوع">
                       <Select
                         value={draft.format}
                         onValueChange={(v) => setDraft((p) => ({ ...p, format: v }))}
@@ -818,9 +1140,8 @@ const AdminAnimeEdit = () => {
                           ))}
                         </SelectContent>
                       </Select>
-                    </div>
-                    <div>
-                      <div className="text-muted-foreground text-xs mb-2">وضعیت پخش</div>
+                    </Field>
+                    <Field label="وضعیت پخش">
                       <Select
                         value={draft.airing_status || EMPTY_SELECT_VALUE}
                         onValueChange={(v) =>
@@ -844,63 +1165,37 @@ const AdminAnimeEdit = () => {
                             ))}
                         </SelectContent>
                       </Select>
-                    </div>
+                    </Field>
                   </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <div>
-                      <div className="text-muted-foreground text-xs mb-2">تعداد قسمت‌ها</div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Field label="تعداد قسمت‌ها">
                       <Input
                         value={draft.episodes_count}
                         onChange={(e) =>
-                          setDraft((p) => ({
-                            ...p,
-                            episodes_count: e.target.value,
-                          }))
+                          setDraft((p) => ({ ...p, episodes_count: e.target.value }))
                         }
                         placeholder="مثلاً: 12"
                         inputMode="numeric"
                       />
-                    </div>
-                    <div>
-                      <div className="text-muted-foreground text-xs mb-2">نمایش در اسلایدر</div>
-                      <div className="rounded-md border border-border bg-background flex items-center justify-between h-10 px-3">
-                        <Label className="text-foreground text-sm">
-                          نمایش در اسلایدر (Featured)
-                        </Label>
-                        <Switch
-                          checked={Boolean(draft.is_featured)}
-                          onCheckedChange={(v: boolean) =>
-                            setDraft((p) => ({ ...p, is_featured: Boolean(v) }))
-                          }
-                        />
-                      </div>
-                    </div>
+                    </Field>
+                    <Field label="استودیو (متن legacy)">
+                      <Input
+                        value={draft.studio}
+                        onChange={(e) => setDraft((p) => ({ ...p, studio: e.target.value }))}
+                        placeholder="نام استودیو"
+                      />
+                    </Field>
                   </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <div>
-                      <div className="text-muted-foreground text-xs mb-2">سال انتشار</div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Field label="سال">
                       <Input
                         value={draft.year}
                         onChange={(e) => setDraft((p) => ({ ...p, year: e.target.value }))}
-                        placeholder="مثلاً: 2024"
-                      />
-                    </div>
-                    <div>
-                      <div className="text-muted-foreground text-xs mb-2">AniList ID</div>
-                      <Input
-                        value={draft.anilist_id}
-                        onChange={(e) => setDraft((p) => ({ ...p, anilist_id: e.target.value }))}
+                        placeholder="2024"
                         inputMode="numeric"
-                        placeholder="مثلاً: 196935"
                       />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <div>
-                      <div className="text-muted-foreground text-xs mb-2">فصل انتشار</div>
+                    </Field>
+                    <Field label="فصل">
                       <Select
                         value={draft.season || EMPTY_SELECT_VALUE}
                         onValueChange={(v) =>
@@ -924,19 +1219,18 @@ const AdminAnimeEdit = () => {
                             ))}
                         </SelectContent>
                       </Select>
-                    </div>
+                    </Field>
                   </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <div>
-                      <div className="text-muted-foreground text-xs mb-2">تاریخ شروع</div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Field label="تاریخ شروع">
                       <Popover>
                         <PopoverTrigger asChild>
                           <Button
                             type="button"
-                            className="w-full justify-start text-left font-normal h-10 rounded-md bg-background border border-input text-muted-foreground"
+                            variant="outline"
+                            className="w-full justify-start font-normal h-10"
                           >
-                            {draft.start_date ? draft.start_date : 'انتخاب تاریخ'}
+                            {draft.start_date || 'انتخاب تاریخ'}
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="p-0">
@@ -952,16 +1246,16 @@ const AdminAnimeEdit = () => {
                           />
                         </PopoverContent>
                       </Popover>
-                    </div>
-                    <div>
-                      <div className="text-muted-foreground text-xs mb-2">تاریخ پایان</div>
+                    </Field>
+                    <Field label="تاریخ پایان">
                       <Popover>
                         <PopoverTrigger asChild>
                           <Button
                             type="button"
-                            className="w-full justify-start text-left font-normal h-10 rounded-md bg-background border border-input text-muted-foreground"
+                            variant="outline"
+                            className="w-full justify-start font-normal h-10"
                           >
-                            {draft.end_date ? draft.end_date : 'انتخاب تاریخ'}
+                            {draft.end_date || 'انتخاب تاریخ'}
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="p-0">
@@ -977,546 +1271,504 @@ const AdminAnimeEdit = () => {
                           />
                         </PopoverContent>
                       </Popover>
-                    </div>
+                    </Field>
                   </div>
+                  <div className="flex items-center justify-between rounded-xl border border-border bg-muted/20 px-3 py-2.5">
+                    <Label className="text-sm">نمایش در اسلایدر Home</Label>
+                    <Switch
+                      checked={Boolean(draft.is_featured)}
+                      onCheckedChange={(v: boolean) =>
+                        setDraft((p) => ({ ...p, is_featured: Boolean(v) }))
+                      }
+                    />
+                  </div>
+                </AdminSection>
 
-                  <div>
-                    <div className="text-muted-foreground text-xs mb-2">کاور (URL)</div>
+                <AdminSection
+                  title="شناسه‌ها و امتیازهای خارجی"
+                  description="AniList از DB؛ MAL/IMDb با fetch زنده. فیلدهای دستی fallback هستند."
+                  action={
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5 shrink-0"
+                      disabled={!previewAnimeId || !canSyncExternalScores || syncScoresLoading}
+                      onClick={() => void handleSyncExternalScores()}
+                    >
+                      <RefreshIcon
+                        className={cn('w-3.5 h-3.5', syncScoresLoading && 'animate-spin')}
+                      />
+                      سینک
+                    </Button>
+                  }
+                >
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Field label="AniList ID">
+                      <Input
+                        value={draft.anilist_id}
+                        onChange={(e) => setDraft((p) => ({ ...p, anilist_id: e.target.value }))}
+                        inputMode="numeric"
+                        placeholder="15125"
+                      />
+                    </Field>
+                    <Field label="امتیاز AniList (٪)">
+                      <Input
+                        value={draft.average_score}
+                        onChange={(e) =>
+                          setDraft((p) => ({ ...p, average_score: e.target.value }))
+                        }
+                        inputMode="decimal"
+                        placeholder="84"
+                      />
+                    </Field>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Field label="MAL ID">
+                      <Input
+                        value={draft.mal_id}
+                        onChange={(e) => setDraft((p) => ({ ...p, mal_id: e.target.value }))}
+                        inputMode="numeric"
+                        placeholder="5114"
+                      />
+                    </Field>
+                    <Field label="امتیاز MAL">
+                      <Input
+                        value={draft.mal_score}
+                        onChange={(e) => setDraft((p) => ({ ...p, mal_score: e.target.value }))}
+                        inputMode="decimal"
+                        placeholder="8.6"
+                      />
+                    </Field>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Field label="IMDb ID">
+                      <Input
+                        value={draft.imdb_id}
+                        onChange={(e) => setDraft((p) => ({ ...p, imdb_id: e.target.value }))}
+                        placeholder="tt0213338"
+                        className="font-mono text-sm"
+                      />
+                    </Field>
+                    <Field label="امتیاز IMDb">
+                      <Input
+                        value={draft.imdb_score}
+                        onChange={(e) => setDraft((p) => ({ ...p, imdb_score: e.target.value }))}
+                        inputMode="decimal"
+                        placeholder="8.2"
+                      />
+                    </Field>
+                  </div>
+                </AdminSection>
+
+                <AdminSection title="تصاویر" description="URL پoster و تصویر hero">
+                  <Field label="کاور (poster)">
                     <Input
                       value={draft.cover_image}
                       onChange={(e) => setDraft((p) => ({ ...p, cover_image: e.target.value }))}
                       placeholder="https://..."
+                      className="font-mono text-xs"
                     />
-                  </div>
-                  <div>
-                    <div className="text-muted-foreground text-xs mb-2">تصویر ویژه (URL)</div>
+                  </Field>
+                  <Field label="تصویر ویژه (hero)">
                     <Input
                       value={draft.featured_image}
-                      onChange={(e) => setDraft((p) => ({ ...p, featured_image: e.target.value }))}
+                      onChange={(e) =>
+                        setDraft((p) => ({ ...p, featured_image: e.target.value }))
+                      }
                       placeholder="https://..."
+                      className="font-mono text-xs"
                     />
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
+                  </Field>
+                </AdminSection>
+              </>
+            )}
 
-            <TabsContent value="translators">
-              <Card>
-                <CardHeader>
-                  <CardTitle>مترجم‌ها</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="text-muted-foreground text-sm">
-                    برای اتصال مترجم به این اثر، مترجم را انتخاب کن.
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <div className="text-muted-foreground text-xs mb-1">مترجم</div>
-                      <Select
-                        value={translatorLinkDraft.translator_id || EMPTY_SELECT_VALUE}
-                        onValueChange={(v) =>
-                          setTranslatorLinkDraft((p) => ({
-                            ...p,
-                            translator_id: v === EMPTY_SELECT_VALUE ? '' : v,
-                          }))
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="انتخاب..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={EMPTY_SELECT_VALUE}>انتخاب...</SelectItem>
-                          {allTranslators.map((t) => (
-                            <SelectItem key={String(t.id ?? t.slug)} value={String(t.id ?? '')}>
-                              {t.name} ({t.slug})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div>
-                      <div className="text-muted-foreground text-xs mb-1">نقش (اختیاری)</div>
-                      <Input
-                        value={translatorLinkDraft.role}
-                        onChange={(e) =>
-                          setTranslatorLinkDraft((p) => ({
-                            ...p,
-                            role: e.target.value,
-                          }))
-                        }
-                        placeholder="مثلاً: مترجم / بازبین"
-                      />
-                    </div>
-                  </div>
-
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={onAddTranslatorLink}
-                    disabled={saving}
-                  >
-                    افزودن
-                  </Button>
-
-                  <div className="mt-2 space-y-2">
-                    <div className="grid grid-cols-2 gap-2">
-                      {translatorLinks.map((l) => {
-                        return (
-                          <div
-                            key={String(l.id)}
-                            className="p-3 rounded-2xl border border-border bg-muted/30 flex items-center justify-between gap-2"
-                          >
-                            <div className="flex flex-col gap-1 min-w-0">
-                              <div className="text-foreground text-sm font-semibold line-clamp-1">
-                                {l.translator.name}
-                              </div>
-                              <div className="text-muted-foreground text-xs line-clamp-2">
-                                {l.role ? l.role : '---'}
-                              </div>
-                            </div>
-                            <Button
-                              type="button"
-                              variant="destructive"
-                              size="sm"
-                              className="bg-red-500/20 text-red-500 hover:bg-red-500/30 rounded-md"
-                              onClick={() => onDeleteTranslatorLink(l)}
-                            >
-                              حذف
-                            </Button>
-                          </div>
-                        )
-                      })}
-                    </div>
-                    {translatorLinks.length === 0 && (
-                      <div className="text-muted-foreground text-sm">
-                        مترجمی برای این اثر ثبت نشده
-                      </div>
+            {activeTab === 'relations' && (
+              <AdminSection
+                title="استودیوها و ژانرها"
+                description="روابط many-to-many — بعد از ذخیره انیمه اعمال می‌شوند"
+              >
+                <div>
+                  <p className="text-xs font-medium text-foreground mb-2">استودیوها</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {allStudios.map((s) => {
+                      const slug = String(s.slug)
+                      return (
+                        <ChipToggle
+                          key={slug}
+                          active={selectedStudioSlugs.has(slug)}
+                          onClick={() => toggleStudio(slug)}
+                        >
+                          {s.name || s.slug}
+                        </ChipToggle>
+                      )
+                    })}
+                    {allStudios.length === 0 && (
+                      <p className="text-sm text-muted-foreground">استودیویی ثبت نشده</p>
                     )}
                   </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="relations">
-              <Card>
-                <CardHeader>
-                  <CardTitle>استودیوها و ژانرها</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <div className="text-foreground text-sm font-semibold">استودیوها</div>
-                    <div className="text-muted-foreground text-xs mt-2">
-                      (چند انتخابی — نیازمند جدول studios/anime_studios در دیتابیس)
-                    </div>
-                    <div className="flex flex-wrap gap-2 mt-3">
-                      {allStudios.map((s) => {
-                        const slug = String(s.slug)
-                        const on = selectedStudioSlugs.has(slug)
-                        return (
-                          <Button
-                            key={slug}
-                            type="button"
-                            onClick={() => toggleStudio(slug)}
-                            variant={on ? 'default' : 'outline'}
-                            size="sm"
-                            className={
-                              on
-                                ? 'h-8 bg-primary-500/30 border border-primary-400/40 text-foreground rounded-sm font-mono'
-                                : 'h-8 text-foreground rounded-sm font-mono'
-                            }
-                          >
-                            {s.name || s.slug}
-                          </Button>
-                        )
-                      })}
-                      {allStudios.length === 0 && (
-                        <div className="text-muted-foreground text-sm">استودیویی ثبت نشده</div>
-                      )}
-                    </div>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-foreground mb-2">ژانرها</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {genreList.map((g) => {
+                      const slug = String(g.slug)
+                      return (
+                        <ChipToggle
+                          key={slug}
+                          active={selectedGenreSlugs.has(slug)}
+                          onClick={() => toggleGenre(slug)}
+                        >
+                          {g.name_fa || g.name_en || g.slug}
+                        </ChipToggle>
+                      )
+                    })}
+                    {genreList.length === 0 && (
+                      <p className="text-sm text-muted-foreground">ژانری ثبت نشده</p>
+                    )}
                   </div>
+                </div>
+              </AdminSection>
+            )}
 
-                  <div>
-                    <div className="text-foreground text-sm font-semibold">ژانرها</div>
-                    <div className="flex flex-wrap gap-2 mt-3">
-                      {genreList.map((g) => {
-                        const slug = String(g.slug)
-                        const on = selectedGenreSlugs.has(slug)
-                        return (
-                          <Button
-                            key={slug}
-                            type="button"
-                            onClick={() => toggleGenre(slug)}
-                            variant={on ? 'default' : 'outline'}
-                            size="sm"
-                            className={
-                              on
-                                ? 'h-8 bg-primary-500/30 border border-primary-400/40 text-foreground rounded-sm'
-                                : 'h-8 text-foreground rounded-sm'
-                            }
-                          >
-                            {g.name_fa || g.name_en || g.slug}
-                          </Button>
-                        )
-                      })}
-                      {genreList.length === 0 && (
-                        <div className="text-muted-foreground text-sm">ژانری ثبت نشده</div>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
+            {activeTab === 'media' && (
+              <div className="space-y-4">
+                <SegmentedTabs
+                  tabs={MEDIA_SUB_TABS}
+                  active={mediaSubTab}
+                  onChange={setMediaSubTab}
+                />
 
-            <TabsContent value="episodes">
-              <Card>
-                <CardHeader>
-                  <CardTitle>قسمت‌ها</CardTitle>
-                </CardHeader>
-                <CardContent className="flex flex-col gap-3">
-                  <div className="text-foreground text-sm font-semibold">
-                    {editingEpisodeId ? 'ویرایش قسمت' : 'افزودن قسمت'}
-                  </div>
-                  <div className="flex gap-2">
-                    <div className="flex-1">
-                      <div className="text-muted-foreground text-xs mb-1">شماره قسمت</div>
-                      <Input
-                        value={String(episodeDraft.episode_number)}
-                        onChange={(e) =>
-                          setEpisodeDraft((p) => ({
-                            ...p,
-                            episode_number: Number(e.target.value || 1),
-                          }))
-                        }
-                        placeholder="مثلاً: 1"
-                      />
+                {mediaSubTab === 'episodes' && (
+                  <AdminSection
+                    title={editingEpisodeId ? 'ویرایش قسمت' : 'افزودن قسمت'}
+                    description={`${episodes.length} قسمت ثبت شده`}
+                  >
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <Field label="شماره قسمت">
+                        <Input
+                          value={String(episodeDraft.episode_number)}
+                          onChange={(e) =>
+                            setEpisodeDraft((p) => ({
+                              ...p,
+                              episode_number: Number(e.target.value || 1),
+                            }))
+                          }
+                          inputMode="numeric"
+                        />
+                      </Field>
+                      <Field label="لینک دانلود">
+                        <Input
+                          value={episodeDraft.download_link}
+                          onChange={(e) =>
+                            setEpisodeDraft((p) => ({ ...p, download_link: e.target.value }))
+                          }
+                          placeholder="https://..."
+                          className="font-mono text-xs"
+                        />
+                      </Field>
                     </div>
-                    <div className="flex-1">
-                      <div className="text-muted-foreground text-xs mb-1">لینک دانلود</div>
-                      <Input
-                        value={episodeDraft.download_link}
-                        onChange={(e) =>
-                          setEpisodeDraft((p) => ({ ...p, download_link: e.target.value }))
-                        }
-                        placeholder="https://..."
-                      />
-                    </div>
-                    <div className="flex gap-2 mt-5">
+                    <div className="flex gap-2">
                       {editingEpisodeId ? (
                         <>
                           <Button
                             type="button"
-                            onClick={onCancelEditEpisode}
-                            disabled={saving}
                             variant="secondary"
-                            className="h-10"
+                            disabled={saving}
+                            onClick={onCancelEditEpisode}
                           >
                             انصراف
                           </Button>
-                          <Button
-                            type="button"
-                            onClick={onSaveEpisodeEdit}
-                            disabled={saving}
-                            className="h-10"
-                          >
+                          <Button type="button" disabled={saving} onClick={onSaveEpisodeEdit}>
                             ذخیره تغییرات
                           </Button>
                         </>
                       ) : (
                         <Button
                           type="button"
-                          size={'lg'}
-                          onClick={onAddEpisode}
-                          disabled={saving}
                           variant="secondary"
-                          className="h-10"
+                          disabled={saving}
+                          className="gap-1.5"
+                          onClick={onAddEpisode}
                         >
-                          افزودن
+                          <Download01Icon className="w-4 h-4" />
+                          افزودن قسمت
                         </Button>
                       )}
                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    {episodesForList.map((e) => (
-                      <div
-                        key={String(e.id)}
-                        className="p-3 rounded-xl border border-border bg-muted/30 flex items-center justify-between"
-                      >
-                        <div className="flex flex-col gap-1">
-                          <div className="text-foreground text-sm">
-                            قسمت {e.episode_number ?? 0}
-                          </div>
-                          <div className="text-muted-foreground text-xs">
-                            {e.download_link || '---'}
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            size="sm"
-                            className="w-fit rounded-sm border border-input"
-                            onClick={() => onEditEpisode(e)}
-                          >
-                            ویرایش
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            size="sm"
-                            className="w-fit bg-red-500/20 text-red-500 hover:bg-red-500/30 rounded-sm"
-                            onClick={() => onDeleteEpisode(e)}
-                          >
-                            حذف
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                    {episodes.length === 0 && (
-                      <div className="text-muted-foreground text-sm">قسمتی ثبت نشده</div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="subtitles">
-              <Card>
-                <CardHeader>
-                  <CardTitle>زیرنویس‌ها</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-foreground text-sm font-semibold">
-                    {editingSubtitleId ? 'ویرایش زیرنویس' : 'افزودن زیرنویس'}
-                  </div>
-                  <div className="flex gap-2 mt-3">
-                    <div className="flex-1">
-                      <div className="text-muted-foreground text-xs mb-1">شماره قسمت</div>
-                      <Input
-                        value={String(subtitleDraft.episode_number)}
-                        onChange={(e) =>
-                          setSubtitleDraft((p) => ({
-                            ...p,
-                            episode_number: Number(e.target.value || 1),
-                          }))
-                        }
-                        placeholder="مثلاً: 1"
-                      />
+                    <div className="space-y-2 pt-2 border-t border-border/60">
+                      {episodesForList.map((e) => (
+                        <MediaListRow
+                          key={String(e.id)}
+                          title={`قسمت ${e.episode_number ?? 0}`}
+                          subtitle={e.download_link ?? ''}
+                          disabled={saving}
+                          onEdit={() => onEditEpisode(e)}
+                          onDelete={() => onDeleteEpisode(e)}
+                        />
+                      ))}
+                      {episodes.length === 0 && (
+                        <p className="text-sm text-muted-foreground py-4 text-center">
+                          قسمتی ثبت نشده
+                        </p>
+                      )}
                     </div>
-                    <div className="flex-1">
-                      <div className="text-muted-foreground text-xs mb-1">لینک زیرنویس</div>
-                      <Input
-                        value={subtitleDraft.subtitle_link}
-                        onChange={(e) =>
-                          setSubtitleDraft((p) => ({
-                            ...p,
-                            subtitle_link: e.target.value,
-                          }))
-                        }
-                        placeholder="https://..."
-                      />
+                  </AdminSection>
+                )}
+
+                {mediaSubTab === 'subtitles' && (
+                  <AdminSection
+                    title={editingSubtitleId ? 'ویرایش زیرنویس' : 'افزودن زیرنویس'}
+                    description={`${subtitles.length} زیرنویس ثبت شده`}
+                  >
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <Field label="شماره قسمت">
+                        <Input
+                          value={String(subtitleDraft.episode_number)}
+                          onChange={(e) =>
+                            setSubtitleDraft((p) => ({
+                              ...p,
+                              episode_number: Number(e.target.value || 1),
+                            }))
+                          }
+                          inputMode="numeric"
+                        />
+                      </Field>
+                      <Field label="لینک زیرنویس">
+                        <Input
+                          value={subtitleDraft.subtitle_link}
+                          onChange={(e) =>
+                            setSubtitleDraft((p) => ({ ...p, subtitle_link: e.target.value }))
+                          }
+                          placeholder="https://..."
+                          className="font-mono text-xs"
+                        />
+                      </Field>
                     </div>
-                    <div className="flex mt-5 gap-2">
+                    <div className="flex gap-2">
                       {editingSubtitleId ? (
                         <>
                           <Button
                             type="button"
-                            onClick={onCancelEditSubtitle}
-                            disabled={saving}
                             variant="secondary"
-                            className="h-10"
+                            disabled={saving}
+                            onClick={onCancelEditSubtitle}
                           >
                             انصراف
                           </Button>
-                          <Button
-                            type="button"
-                            onClick={onSaveSubtitleEdit}
-                            disabled={saving}
-                            className="h-10"
-                          >
+                          <Button type="button" disabled={saving} onClick={onSaveSubtitleEdit}>
                             ذخیره تغییرات
                           </Button>
                         </>
                       ) : (
                         <Button
                           type="button"
-                          onClick={onAddSubtitle}
-                          disabled={saving}
                           variant="secondary"
-                          className="h-10"
+                          disabled={saving}
+                          className="gap-1.5"
+                          onClick={onAddSubtitle}
                         >
-                          افزودن
+                          <Link01Icon className="w-4 h-4" />
+                          افزودن زیرنویس
                         </Button>
                       )}
                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 mt-3">
-                    {subtitlesForList.map((s) => (
-                      <div
-                        key={String(s.id)}
-                        className="p-3 rounded-xl border border-border bg-muted/30 flex items-center justify-between"
-                      >
-                        <div className="flex flex-col">
-                          <div className="text-foreground text-sm">
-                            قسمت {s.episode_number ?? 0}
-                          </div>
-                          <div className="text-muted-foreground text-xs mt-1 line-clamp-1">
-                            {s.subtitle_link || '---'}
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            size="sm"
-                            className="w-fit border border-input rounded-sm"
-                            onClick={() => onEditSubtitle(s)}
-                          >
-                            ویرایش
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            size="sm"
-                            className="w-fit bg-red-500/20 text-red-500 hover:bg-red-500/30 rounded-sm"
-                            onClick={() => onDeleteSubtitle(s)}
-                          >
-                            حذف
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {subtitles.length === 0 && (
-                    <div className="text-muted-foreground text-sm">زیرنویسی ثبت نشده</div>
-                  )}
-
-                  <div className="mt-6 border-t border-border pt-4">
-                    <div className="text-foreground text-sm font-semibold">
-                      {editingSubtitlePackId ? 'ویرایش پک زیرنویس' : 'افزودن پک زیرنویس'}
+                    <div className="space-y-2 pt-2 border-t border-border/60">
+                      {subtitlesForList.map((s) => (
+                        <MediaListRow
+                          key={String(s.id)}
+                          title={`قسمت ${s.episode_number ?? 0}`}
+                          subtitle={s.subtitle_link ?? ''}
+                          disabled={saving}
+                          onEdit={() => onEditSubtitle(s)}
+                          onDelete={() => onDeleteSubtitle(s)}
+                        />
+                      ))}
+                      {subtitles.length === 0 && (
+                        <p className="text-sm text-muted-foreground py-4 text-center">
+                          زیرنویسی ثبت نشده
+                        </p>
+                      )}
                     </div>
-                    <div className="flex gap-2 mt-3">
-                      <div className="flex-1">
-                        <div className="text-muted-foreground text-xs mb-1">عنوان (اختیاری)</div>
+                  </AdminSection>
+                )}
+
+                {mediaSubTab === 'packs' && (
+                  <AdminSection
+                    title={editingSubtitlePackId ? 'ویرایش پک' : 'افزودن پک زیرنویس'}
+                    description={`${subtitlePacks.length} پک ثبت شده`}
+                  >
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <Field label="عنوان">
                         <Input
                           value={subtitlePackDraft.title}
                           onChange={(e) =>
                             setSubtitlePackDraft((p) => ({ ...p, title: e.target.value }))
                           }
-                          placeholder="مثلاً: پک فصل ۱"
+                          placeholder="پک فصل ۱"
                         />
-                      </div>
-                      <div className="flex-1">
-                        <div className="text-muted-foreground text-xs mb-1">لینک پک</div>
+                      </Field>
+                      <Field label="لینک پک">
                         <Input
                           value={subtitlePackDraft.subtitle_link}
                           onChange={(e) =>
                             setSubtitlePackDraft((p) => ({ ...p, subtitle_link: e.target.value }))
                           }
                           placeholder="https://..."
+                          className="font-mono text-xs"
                         />
-                      </div>
-                      <div className="flex gap-2 mt-5">
-                        {editingSubtitlePackId ? (
-                          <>
-                            <Button
-                              type="button"
-                              onClick={onCancelEditSubtitlePack}
-                              disabled={saving}
-                              variant="secondary"
-                              className="h-10"
-                            >
-                              انصراف
-                            </Button>
-                            <Button
-                              type="button"
-                              onClick={onSaveSubtitlePackEdit}
-                              disabled={saving}
-                              className="h-10"
-                            >
-                              ذخیره تغییرات
-                            </Button>
-                          </>
-                        ) : (
+                      </Field>
+                    </div>
+                    <div className="flex gap-2">
+                      {editingSubtitlePackId ? (
+                        <>
                           <Button
                             type="button"
-                            onClick={onAddSubtitlePack}
-                            disabled={saving}
                             variant="secondary"
-                            className="h-10"
+                            disabled={saving}
+                            onClick={onCancelEditSubtitlePack}
                           >
-                            افزودن پک
+                            انصراف
                           </Button>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="mt-4 space-y-2">
-                      {subtitlePacks.map((p) => (
-                        <div
-                          key={String(p.id)}
-                          className="p-3 rounded-2xl border border-border bg-muted/30 flex items-center justify-between"
+                          <Button
+                            type="button"
+                            disabled={saving}
+                            onClick={onSaveSubtitlePackEdit}
+                          >
+                            ذخیره تغییرات
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          disabled={saving}
+                          onClick={onAddSubtitlePack}
                         >
-                          <div className="flex flex-col gap-2">
-                            <div className="text-foreground text-sm">{p.title || '---'}</div>
-                            <div className="text-muted-foreground text-xs line-clamp-1">
-                              {p.subtitle_link || '---'}
-                            </div>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button
-                              type="button"
-                              variant="secondary"
-                              size="sm"
-                              className="w-fit border border-input rounded-sm"
-                              onClick={() => onEditSubtitlePack(p)}
-                            >
-                              ویرایش
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="destructive"
-                              size="sm"
-                              className="w-fit bg-red-500/20 text-red-500 hover:bg-red-500/30 rounded-sm"
-                              onClick={() => onDeleteSubtitlePack(p)}
-                            >
-                              حذف
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                      {subtitlePacks.length === 0 && (
-                        <div className="text-muted-foreground text-sm">پکی ثبت نشده</div>
+                          افزودن پک
+                        </Button>
                       )}
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+                    <div className="space-y-2 pt-2 border-t border-border/60">
+                      {subtitlePacks.map((p) => (
+                        <MediaListRow
+                          key={String(p.id)}
+                          title={p.title || 'پک زیرنویس'}
+                          subtitle={p.subtitle_link ?? ''}
+                          disabled={saving}
+                          onEdit={() => onEditSubtitlePack(p)}
+                          onDelete={() => onDeleteSubtitlePack(p)}
+                        />
+                      ))}
+                      {subtitlePacks.length === 0 && (
+                        <p className="text-sm text-muted-foreground py-4 text-center">
+                          پکی ثبت نشده
+                        </p>
+                      )}
+                    </div>
+                  </AdminSection>
+                )}
+              </div>
+            )}
 
-          <div className="mt-4 rounded-xl border border-border bg-card p-3">
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                onClick={onSaveAnime}
-                disabled={saving}
-                size={'lg'}
-                className="px-4 bg-primary-500 text-foreground"
-              >
-                ذخیره
-              </Button>
-              <Button asChild variant="secondary" className="border border-input" size={'lg'}>
-                <Link to="/admin/anime">بازگشت</Link>
-              </Button>
-            </div>
+            {activeTab === 'translators' && (
+              <AdminSection title="مترجم‌های این اثر" description="اتصال مترجم به انیمه">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Field label="مترجم">
+                    <Select
+                      value={translatorLinkDraft.translator_id || EMPTY_SELECT_VALUE}
+                      onValueChange={(v) =>
+                        setTranslatorLinkDraft((p) => ({
+                          ...p,
+                          translator_id: v === EMPTY_SELECT_VALUE ? '' : v,
+                        }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="انتخاب..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={EMPTY_SELECT_VALUE}>انتخاب...</SelectItem>
+                        {allTranslators.map((t) => (
+                          <SelectItem key={String(t.id ?? t.slug)} value={String(t.id ?? '')}>
+                            {t.name} ({t.slug})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Field label="نقش (اختیاری)">
+                    <Input
+                      value={translatorLinkDraft.role}
+                      onChange={(e) =>
+                        setTranslatorLinkDraft((p) => ({ ...p, role: e.target.value }))
+                      }
+                      placeholder="مترجم / بازبین"
+                    />
+                  </Field>
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={saving}
+                  className="gap-1.5"
+                  onClick={onAddTranslatorLink}
+                >
+                  <UserIcon className="w-4 h-4" />
+                  افزودن مترجم
+                </Button>
+                <div className="space-y-2 pt-2 border-t border-border/60">
+                  {translatorLinks.map((l) => (
+                    <div
+                      key={String(l.id)}
+                      className="rounded-xl border border-border bg-card/40 p-3 flex items-center justify-between gap-3"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold line-clamp-1">{l.translator.name}</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          {l.role || '—'}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="destructive"
+                        disabled={saving}
+                        className="bg-red-500/15 text-red-400 hover:bg-red-500/25 shrink-0"
+                        onClick={() => onDeleteTranslatorLink(l)}
+                      >
+                        حذف
+                      </Button>
+                    </div>
+                  ))}
+                  {translatorLinks.length === 0 && (
+                    <p className="text-sm text-muted-foreground py-4 text-center">
+                      مترجمی ثبت نشده
+                    </p>
+                  )}
+                </div>
+              </AdminSection>
+            )}
           </div>
         </>
       )}
+
+      <div className="fixed bottom-0 inset-x-0 z-50 px-4 pb-[calc(env(safe-area-inset-bottom,0px)+4.5rem)] pt-3 bg-gradient-to-t from-background via-background/95 to-transparent pointer-events-none">
+        <div className="flex justify-center gap-2 pointer-events-auto">
+          <Button
+            type="button"
+            className="font-semibold px-8 min-w-[9.5rem]"
+            disabled={saving}
+            onClick={onSaveAnime}
+          >
+            {saving ? 'در حال ذخیره…' : 'ذخیره انیمه'}
+          </Button>
+          <Button asChild type="button" variant="secondary" className="px-5">
+            <Link to="/admin/anime">انصراف</Link>
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }
