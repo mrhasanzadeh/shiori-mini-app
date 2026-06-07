@@ -23,4 +23,7 @@ export const queryKeys = {
     ] as const,
   userAnimeList: (telegramUserId: number) =>
     ['user', 'anime-list', telegramUserId] as const,
+  animeFavoriteCounts: ['anime', 'favorite-counts'] as const,
+  animeFavoriteCount: (animeId: string | number) =>
+    ['anime', 'favorite-count', String(animeId)] as const,
 }

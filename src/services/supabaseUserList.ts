@@ -14,6 +14,8 @@ export type UserAnimeListStats = {
   averageRating: number | null
 }
 
+export type AnimeFavoriteCountMap = Record<string, number>
+
 const entryKey = (animeId: number | string) => String(animeId)
 
 export const getUserAnimeList = async (
@@ -89,6 +91,41 @@ export const removeUserAnimeListEntry = async (
     .eq('anime_id', animeId)
 
   if (error) throw new Error(formatSupabaseError(error))
+}
+
+export const getAnimeFavoriteCounts = async (): Promise<AnimeFavoriteCountMap> => {
+  if (!hasSupabaseConfig) return {}
+
+  const { data, error } = await supabase.rpc('get_anime_favorite_counts')
+
+  if (error) {
+    if (import.meta.env.DEV) console.warn('getAnimeFavoriteCounts:', error.message)
+    return {}
+  }
+
+  const map: AnimeFavoriteCountMap = {}
+  for (const row of data ?? []) {
+    const id = row?.anime_id
+    if (id == null) continue
+    map[String(id)] = Number(row.favorite_count) || 0
+  }
+  return map
+}
+
+export const getAnimeFavoriteCount = async (animeId: number | string): Promise<number> => {
+  if (!hasSupabaseConfig) return 0
+
+  const { count, error } = await supabase
+    .from('user_anime_list')
+    .select('*', { count: 'exact', head: true })
+    .eq('anime_id', animeId)
+
+  if (error) {
+    if (import.meta.env.DEV) console.warn('getAnimeFavoriteCount:', error.message)
+    return 0
+  }
+
+  return count ?? 0
 }
 
 export const computeUserListStats = (rows: UserAnimeListRow[]): UserAnimeListStats => {

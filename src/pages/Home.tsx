@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button'
 import {
   filterAnimeCardsBySection,
   useAnimeCardsQuery,
+  useAnimeFavoriteCountsQuery,
   type UiAnimeCard,
 } from '../hooks/queries/useAnimeQueries'
 
@@ -118,6 +119,7 @@ const SectionSkeleton = () => (
 const Home = () => {
   const [selectedType, setSelectedType] = useState<ContentType>('anime')
   const { data: allCards = [], isLoading, isError, error, refetch } = useAnimeCardsQuery()
+  const { data: favoriteCounts = {} } = useAnimeFavoriteCountsQuery()
 
   const fallbackSeason = getFallbackSeason()
   const currentYearNumber = new Date().getFullYear()
@@ -125,15 +127,22 @@ const Home = () => {
   const currentSeasonFa = translateSeason(fallbackSeason)
   const seasonLabel = `فصل ${currentSeasonFa} ${toPersianNumber(currentYearNumber)}`
 
-  const sectionData = useMemo(
-    (): Record<SectionId, Anime[]> => ({
+  const sectionData = useMemo((): Record<SectionId, Anime[]> => {
+    const popularBase = filterAnimeCardsBySection(allCards, 'popular')
+    const popularSorted = [...popularBase].sort((a, b) => {
+      const countA = favoriteCounts[String(a.id)] ?? 0
+      const countB = favoriteCounts[String(b.id)] ?? 0
+      if (countB !== countA) return countB - countA
+      return a.title.localeCompare(b.title, 'fa')
+    })
+
+    return {
       latest: filterAnimeCardsBySection(allCards, 'latest'),
-      popular: filterAnimeCardsBySection(allCards, 'popular'),
+      popular: popularSorted,
       donghua: filterAnimeCardsBySection(allCards, 'donghua'),
       movies: filterAnimeCardsBySection(allCards, 'movies'),
-    }),
-    [allCards]
-  )
+    }
+  }, [allCards, favoriteCounts])
 
   const featuredSectionKey: SectionId =
     selectedType === 'movie' ? 'movies' : selectedType === 'donghua' ? 'donghua' : 'latest'

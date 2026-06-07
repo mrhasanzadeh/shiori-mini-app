@@ -147,12 +147,14 @@ export const useUserAnimeList = () => {
         })
       }
     },
-    onSuccess: () => {
+    onSuccess: (_data, animeId) => {
       if (typeof telegramUserId === 'number') {
         void queryClient.invalidateQueries({
           queryKey: queryKeys.userAnimeList(telegramUserId),
         })
       }
+      void queryClient.invalidateQueries({ queryKey: queryKeys.animeFavoriteCounts })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.animeFavoriteCount(animeId) })
     },
   })
 
@@ -169,6 +171,8 @@ export const useUserAnimeList = () => {
           queryKey: queryKeys.userAnimeList(telegramUserId),
         })
       }
+      void queryClient.invalidateQueries({ queryKey: queryKeys.animeFavoriteCounts })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.animeFavoriteCount(animeId) })
       void queryClient.invalidateQueries({ queryKey: queryKeys.animeDetail(animeId) })
     },
   })

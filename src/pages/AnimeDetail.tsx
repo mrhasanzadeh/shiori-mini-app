@@ -13,23 +13,19 @@ import {
   Download01Icon,
   UserIcon,
   Share08Icon,
-  RefreshIcon,
 } from 'hugeicons-react'
 import { ExternalLink } from 'lucide-react'
 import { useAnime } from '../hooks/useAnime'
-import { useIsAdmin } from '../hooks/useIsAdmin'
 import { useTelegramApp } from '../hooks/useTelegramApp'
 import {
   useAnimeDetailQuery,
+  useAnimeFavoriteCountQuery,
   useExternalScoresQuery,
   useSimilarAnimeQuery,
   useTranslatorLinksQuery,
 } from '../hooks/queries/useAnimeQueries'
 import { prefetchAnimeDetail, prefetchSimilarAnime } from '../hooks/queries/prefetch'
-import { queryKeys } from '../hooks/queries/keys'
-import { queryClient } from '../lib/queryClient'
 import { formatAnilistPercent } from '../services/externalScores'
-import { syncAnimeExternalScores } from '../services/syncAnimeExternalScores'
 import { cacheExternalScoresToDb } from '../services/supabaseAnime'
 import type { GenreItem } from '../services/supabaseAnime'
 import {
@@ -284,9 +280,13 @@ const ScoreChip = ({
 
 const FavoriteStatCard = ({
   active,
+  favoriteCount,
+  favoriteCountLoading,
   onClick,
 }: {
   active: boolean
+  favoriteCount?: number
+  favoriteCountLoading?: boolean
   onClick: () => void
 }) => (
   <button
@@ -309,6 +309,13 @@ const FavoriteStatCard = ({
     <p className="text-[11px] text-muted-foreground mt-1.5">
       {active ? 'در لیست من' : 'علاقه‌مندی'}
     </p>
+    {favoriteCountLoading ? (
+      <span className="mt-1 inline-block h-3 w-10 rounded bg-muted animate-pulse" aria-hidden />
+    ) : typeof favoriteCount === 'number' ? (
+      <p className="text-[10px] text-muted-foreground/80 mt-1 tabular-nums">
+        {toPersianNumber(favoriteCount)} علاقه‌مند
+      </p>
+    ) : null}
   </button>
 )
 
@@ -447,7 +454,6 @@ const AnimeDetail = () => {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { toggleFavorite, isFavorite, getProgress, saveProgress, isSavingProgress } = useAnime()
-  const { isAdmin } = useIsAdmin()
   const { showAlert, openLink, shareUrl } = useTelegramApp()
 
   const {
@@ -456,6 +462,8 @@ const AnimeDetail = () => {
     isError,
     refetch,
   } = useAnimeDetailQuery(id)
+
+  const { data: favoriteCount, isLoading: favoriteCountLoading } = useAnimeFavoriteCountQuery(id)
 
   const anime = (animeData ?? null) as Anime | null
 
@@ -494,7 +502,6 @@ const AnimeDetail = () => {
   )
   const [downloadTab, setDownloadTab] = useState<DownloadTabType>('episodes')
   const [showFullDescription, setShowFullDescription] = useState(false)
-  const [syncScoresLoading, setSyncScoresLoading] = useState(false)
   const [progressEditorOpen, setProgressEditorOpen] = useState(false)
 
   const genreSlugs = useMemo(
@@ -613,27 +620,6 @@ const AnimeDetail = () => {
     if (!anime || !id) return
     const link = buildAnimeMiniAppLink(id, activeTab)
     shareUrl(link, `${anime.title} — شیوری`)
-  }
-
-  const canSyncExternalScores =
-    Boolean(anime?.anilist_id && anime.anilist_id > 0) ||
-    Boolean(anime?.mal_id && anime.mal_id > 0) ||
-    Boolean(anime?.imdb_id && String(anime.imdb_id).trim())
-
-  const handleSyncScores = async () => {
-    if (!anime?.id || syncScoresLoading) return
-
-    setSyncScoresLoading(true)
-    try {
-      await syncAnimeExternalScores(anime.id, externalIds)
-      await queryClient.invalidateQueries({ queryKey: queryKeys.animeDetail(anime.id) })
-      await queryClient.invalidateQueries({ queryKey: queryKeys.externalScores(externalIds) })
-      showAlert('امتیازها از منابع خارجی به‌روز شد')
-    } catch (e) {
-      showAlert(e instanceof Error ? e.message : 'خطا در سینک امتیازها')
-    } finally {
-      setSyncScoresLoading(false)
-    }
   }
 
   /** امتیاز شیوری — میانگین امتیاز کاربران */
@@ -799,22 +785,6 @@ const AnimeDetail = () => {
               onOpenLink={openLink}
             />
           </div>
-
-          {isAdmin && (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="mt-2.5 gap-1.5 text-xs h-8 border-dashed"
-              disabled={!canSyncExternalScores || syncScoresLoading}
-              onClick={() => void handleSyncScores()}
-            >
-              <RefreshIcon
-                className={cn('w-3.5 h-3.5', syncScoresLoading && 'animate-spin')}
-              />
-              {syncScoresLoading ? 'در حال سینک…' : 'سینک امتیازها'}
-            </Button>
-          )}
         </div>
       </div>
 
@@ -825,7 +795,12 @@ const AnimeDetail = () => {
           value={toPersianNumber(anime.episodes_count || episodesForList.length)}
           label="قسمت"
         />
-        <FavoriteStatCard active={favoriteActive} onClick={handleFavorite} />
+        <FavoriteStatCard
+          active={favoriteActive}
+          favoriteCount={favoriteCount}
+          favoriteCountLoading={favoriteCountLoading}
+          onClick={handleFavorite}
+        />
       </div>
 
       {favoriteActive && (

@@ -11,6 +11,7 @@ import {
 } from '../../utils/api'
 import * as supa from '../../services/supabaseAnime'
 import { fetchExternalScores } from '../../services/externalScores'
+import { getAnimeFavoriteCount, getAnimeFavoriteCounts } from '../../services/supabaseUserList'
 import { queryKeys } from './keys'
 
 export type AnimeSearchBaseFilters = Omit<AnimeSearchFilters, 'limit' | 'offset'>
@@ -27,6 +28,21 @@ export const useAnimeCardsQuery = () =>
   useQuery({
     queryKey: queryKeys.animeCards,
     queryFn: fetchAllAnimeCards,
+  })
+
+export const useAnimeFavoriteCountsQuery = () =>
+  useQuery({
+    queryKey: queryKeys.animeFavoriteCounts,
+    queryFn: getAnimeFavoriteCounts,
+    staleTime: 60_000,
+  })
+
+export const useAnimeFavoriteCountQuery = (animeId: string | number | undefined) =>
+  useQuery({
+    queryKey: queryKeys.animeFavoriteCount(animeId ?? ''),
+    queryFn: () => getAnimeFavoriteCount(animeId!),
+    enabled: Boolean(animeId),
+    staleTime: 60_000,
   })
 
 export const useAnimeDetailQuery = (id: string | number | undefined) =>
