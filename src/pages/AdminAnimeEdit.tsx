@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { format as formatDate } from 'date-fns'
+import { invalidateAnimeQueries } from '../hooks/queries/invalidate'
 
 type DraftAnime = {
   id?: number | string
@@ -444,6 +445,7 @@ const AdminAnimeEdit = () => {
       if (editingEpisodeId === row.id) onCancelEditEpisode()
       const eps = await supa.getEpisodesAdminByAnimeId(animeId)
       setEpisodes(eps)
+      invalidateAnimeQueries()
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'خطا در حذف قسمت'
       showError(msg)
@@ -625,11 +627,13 @@ const AdminAnimeEdit = () => {
       await supa.replaceAnimeStudiosAdmin(animeId, Array.from(selectedStudioSlugs))
 
       if (isNew) {
+        invalidateAnimeQueries()
         navigate(`/admin/anime/${encodeURIComponent(String(animeId))}`, { replace: true })
         return
       }
 
       await reload(animeId)
+      invalidateAnimeQueries()
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'خطا در ذخیره'
       showError(msg)
@@ -669,6 +673,7 @@ const AdminAnimeEdit = () => {
       setEpisodeDraft((p) => ({ ...p, download_link: '' }))
       const eps = await supa.getEpisodesAdminByAnimeId(animeId)
       setEpisodes(eps)
+      invalidateAnimeQueries()
     } catch (e) {
       const code = typeof (e as any)?.code === 'string' ? (e as any).code : null
       if (code === '23505') {

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import AnimePrefetchLink from '../components/AnimePrefetchLink'
 import {
   FavouriteIcon,
   Clock01Icon,
@@ -11,7 +12,11 @@ import {
 } from 'hugeicons-react'
 import { useAnime } from '../hooks/useAnime'
 import { useTelegramApp } from '../hooks/useTelegramApp'
-import * as supa from '../services/supabaseAnime'
+import {
+  useAnimeDetailQuery,
+  useSimilarAnimeQuery,
+  useTranslatorLinksQuery,
+} from '../hooks/queries/useAnimeQueries'
 import type { GenreItem } from '../services/supabaseAnime'
 
 import malLogo from '../assets/images/mal-logo.png'
@@ -64,24 +69,45 @@ type DownloadTabType = 'episodes' | 'subtitle_packs' | 'translators'
 const AnimeDetail = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { loadAnimeById, toggleFavorite, isFavorite } = useAnime()
+  const { toggleFavorite, isFavorite } = useAnime()
   const { showAlert } = useTelegramApp()
-  const [anime, setAnime] = useState<Anime | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+
+  const {
+    data: animeData,
+    isLoading,
+    isError,
+  } = useAnimeDetailQuery(id)
+
+  const anime = (animeData ?? null) as Anime | null
+
+  const { data: translatorLinks = [] } = useTranslatorLinksQuery(anime?.id)
+
   const [activeTab, setActiveTab] = useState<TabType>('info')
   const [downloadTab, setDownloadTab] = useState<DownloadTabType>('episodes')
   const [showFullDescription, setShowFullDescription] = useState(false)
 
-  const [translatorLinks, setTranslatorLinks] = useState<supa.TranslatorAnimeLink[]>([])
-  const [similarAnime, setSimilarAnime] = useState<Array<{ id: number | string; title: string; image: string }>>([])
-  const [similarLoading, setSimilarLoading] = useState(false)
+  const genreSlugs = useMemo(
+    () => (anime?.genres || []).map((g) => g.slug).filter(Boolean),
+    [anime?.genres]
+  )
 
-  // Reset active tab when anime ID changes
+  const { data: similarCards = [], isLoading: similarLoading } = useSimilarAnimeQuery(
+    anime?.id,
+    genreSlugs,
+    activeTab === 'similar' && Boolean(anime)
+  )
+
+  const similarAnime = useMemo(
+    () => similarCards.map((c) => ({ id: c.id, title: c.title, image: c.image })),
+    [similarCards]
+  )
+
+  const loading = isLoading && !anime
+  const error = isError ? 'خطا در بارگذاری اطلاعات انیمه' : null
+
   useEffect(() => {
     setActiveTab('info')
     setDownloadTab('episodes')
-    setSimilarAnime([])
   }, [id])
 
   const isFinished =
@@ -191,61 +217,6 @@ const AnimeDetail = () => {
     const pad2 = (n: number) => String(n).padStart(2, '0')
     return toPersianNumber(`${jy}/${pad2(jm)}/${pad2(jd)}`)
   }
-
-  useEffect(() => {
-    const fetchAnime = async () => {
-      if (!id) return
-
-      try {
-        setLoading(true)
-        const data = await loadAnimeById(id!)
-        if (data) {
-          const nextAnime = data as Anime
-          setAnime(nextAnime)
-
-          try {
-            const links = await supa.getTranslatorLinksByAnimeId(nextAnime.id)
-            setTranslatorLinks(links)
-          } catch (e) {
-            setTranslatorLinks([])
-          }
-        } else {
-          setError('انیمه مورد نظر یافت نشد')
-        }
-      } catch (err) {
-        setError('خطا در بارگذاری اطلاعات انیمه')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchAnime()
-  }, [id])
-
-  useEffect(() => {
-    if (activeTab !== 'similar' || !anime) return
-
-    let cancelled = false
-    const loadSimilar = async () => {
-      try {
-        setSimilarLoading(true)
-        const slugs = (anime.genres || []).map((g) => g.slug).filter(Boolean)
-        const cards = await supa.getSimilarAnimeCards(anime.id, slugs, 12)
-        if (!cancelled) {
-          setSimilarAnime(cards.map((c) => ({ id: c.id, title: c.title, image: c.image })))
-        }
-      } catch {
-        if (!cancelled) setSimilarAnime([])
-      } finally {
-        if (!cancelled) setSimilarLoading(false)
-      }
-    }
-
-    loadSimilar()
-    return () => {
-      cancelled = true
-    }
-  }, [activeTab, anime?.id])
 
   const displayScore =
     typeof anime?.averageScore === 'number'
@@ -721,8 +692,9 @@ const AnimeDetail = () => {
               ) : similarAnime.length > 0 ? (
                 <div className="grid grid-cols-3 gap-x-2 gap-y-4">
                   {similarAnime.map((item) => (
-                    <Link
+                    <AnimePrefetchLink
                       key={item.id}
+                      animeId={item.id}
                       to={`/anime/${item.id}`}
                       className="block"
                       aria-label={`مشاهده ${item.title}`}
@@ -742,7 +714,7 @@ const AnimeDetail = () => {
                           </h3>
                         </div>
                       </div>
-                    </Link>
+                    </AnimePrefetchLink>
                   ))}
                 </div>
               ) : (

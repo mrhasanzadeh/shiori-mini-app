@@ -1,69 +1,23 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useAnimeStore } from '../store/animeStore'
-import { fetchAnimeList, fetchAnimeById } from '../utils/api'
-import type { GenreItem } from '../services/supabaseAnime'
-
-interface Episode {
-  id: string | number
-  season_number?: number
-  number: number
-  title: string
-  download_link?: string
-}
-
-interface AnimeDetails {
-  id: number | string
-  title: string
-  image: string
-  featured_image: string
-  description: string
-  status: string
-  has_special_season?: boolean
-  special_season_insert_after?: number | null
-  genres: GenreItem[]
-  episodes: Episode[]
-  episodes_count?: number
-  studios: string[]
-  producers: string[]
-  season: string
-  startDate: string
-  endDate: string
-}
+import { useAnimeListQuery } from './queries/useAnimeQueries'
 
 export const useAnime = () => {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const { animeList, setAnimeList, favoriteAnime, addToFavorites, removeFromFavorites } =
     useAnimeStore()
 
-  const loadAnimeList = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      const data = await fetchAnimeList()
-      setAnimeList(data)
-    } catch (err) {
-      setError('خطا در بارگذاری لیست انیمه‌ها')
-      console.error('Failed to load anime list:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { data: listData, isLoading, error: queryError } = useAnimeListQuery()
 
-  const loadAnimeById = async (id: number | string): Promise<AnimeDetails | null> => {
-    try {
-      setLoading(true)
-      setError(null)
-      const data = await fetchAnimeById(id)
-      return data as unknown as AnimeDetails
-    } catch (err) {
-      setError('خطا در بارگذاری اطلاعات انیمه')
-      console.error('Failed to load anime:', err)
-      return null
-    } finally {
-      setLoading(false)
+  useEffect(() => {
+    if (listData && listData.length > 0) {
+      setAnimeList(listData)
     }
-  }
+  }, [listData, setAnimeList])
+
+  const loading = isLoading && animeList.length === 0
+  const error = queryError
+    ? 'خطا در بارگذاری لیست انیمه‌ها'
+    : null
 
   const toggleFavorite = (animeId: number | string) => {
     if (favoriteAnime.includes(animeId)) {
@@ -77,18 +31,10 @@ export const useAnime = () => {
     return favoriteAnime.includes(animeId)
   }
 
-  useEffect(() => {
-    if (animeList.length === 0) {
-      loadAnimeList()
-    }
-  }, [])
-
   return {
     animeList,
     loading,
     error,
-    loadAnimeList,
-    loadAnimeById,
     toggleFavorite,
     isFavorite,
   }

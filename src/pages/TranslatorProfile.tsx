@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
+import AnimePrefetchLink from '../components/AnimePrefetchLink'
 import { UserIcon } from 'hugeicons-react'
 import * as supa from '../services/supabaseAnime'
 import type { GenreItem } from '../services/supabaseAnime'
@@ -34,7 +35,8 @@ const AnimeGridCard = ({ anime }: { anime: supa.AnimeCard }) => {
   const genres = (anime.genres || []).slice(0, 2)
 
   return (
-    <Link
+    <AnimePrefetchLink
+      animeId={anime.id}
       to={`/anime/${anime.id}`}
       className="group block active:scale-[0.98] transition-transform"
       aria-label={`مشاهده ${anime.title}`}
@@ -63,7 +65,7 @@ const AnimeGridCard = ({ anime }: { anime: supa.AnimeCard }) => {
           )}
         </div>
       </div>
-    </Link>
+    </AnimePrefetchLink>
   )
 }
 

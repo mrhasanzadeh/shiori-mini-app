@@ -1,0 +1,118 @@
+import { useInfiniteQuery, useQueries, useQuery } from '@tanstack/react-query'
+import {
+  fetchAllAnimeCards,
+  fetchAnimeById,
+  fetchAnimeList,
+  fetchAnimeSearch,
+  fetchSchedule,
+  fetchSimilarAnime,
+  type AnimeSearchFilters,
+  type UiAnimeCard,
+} from '../../utils/api'
+import * as supa from '../../services/supabaseAnime'
+import { queryKeys } from './keys'
+
+export type AnimeSearchBaseFilters = Omit<AnimeSearchFilters, 'limit' | 'offset'>
+
+export const buildAnimeSearchQueryKey = (filters: AnimeSearchBaseFilters) =>
+  queryKeys.animeSearch({
+    query: filters.query ?? '',
+    year: filters.year ?? null,
+    season: filters.season ?? null,
+    genreSlug: filters.genreSlug ?? null,
+  })
+
+export const useAnimeCardsQuery = () =>
+  useQuery({
+    queryKey: queryKeys.animeCards,
+    queryFn: fetchAllAnimeCards,
+  })
+
+export const useAnimeDetailQuery = (id: string | number | undefined) =>
+  useQuery({
+    queryKey: queryKeys.animeDetail(id ?? ''),
+    queryFn: () => fetchAnimeById(id!),
+    enabled: Boolean(id),
+  })
+
+export const useAnimeListQuery = () =>
+  useQuery({
+    queryKey: queryKeys.animeList,
+    queryFn: () => fetchAnimeList(),
+  })
+
+export const useScheduleQuery = () =>
+  useQuery({
+    queryKey: queryKeys.schedule,
+    queryFn: fetchSchedule,
+  })
+
+export const useAnimeSearchQuery = (filters: AnimeSearchFilters, enabled = true) =>
+  useQuery({
+    queryKey: buildAnimeSearchQueryKey(filters),
+    queryFn: () => fetchAnimeSearch(filters),
+    enabled,
+  })
+
+const DEFAULT_SEARCH_PAGE_SIZE = 48
+
+export const useInfiniteAnimeSearchQuery = (
+  filters: AnimeSearchBaseFilters,
+  pageSize = DEFAULT_SEARCH_PAGE_SIZE
+) =>
+  useInfiniteQuery({
+    queryKey: [...buildAnimeSearchQueryKey(filters), 'infinite', pageSize] as const,
+    queryFn: ({ pageParam }) =>
+      fetchAnimeSearch({
+        ...filters,
+        limit: pageSize,
+        offset: pageParam,
+      }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) => {
+      if (!lastPage.hasMore) return undefined
+      return allPages.reduce((sum, page) => sum + page.items.length, 0)
+    },
+  })
+
+export const useFavoriteAnimeDetailsQueries = (ids: (string | number)[]) =>
+  useQueries({
+    queries: ids.map((id) => ({
+      queryKey: queryKeys.animeDetail(id),
+      queryFn: () => fetchAnimeById(id),
+      enabled: ids.length > 0,
+    })),
+  })
+
+export const useSimilarAnimeQuery = (
+  animeId: string | number | undefined,
+  genreSlugs: string[],
+  enabled: boolean
+) =>
+  useQuery({
+    queryKey: queryKeys.similarAnime(animeId ?? '', genreSlugs),
+    queryFn: () => fetchSimilarAnime(animeId!, genreSlugs, 12),
+    enabled: enabled && Boolean(animeId) && genreSlugs.length > 0,
+  })
+
+export const useTranslatorLinksQuery = (animeId: string | number | undefined) =>
+  useQuery({
+    queryKey: queryKeys.translatorLinks(animeId ?? ''),
+    queryFn: () => supa.getTranslatorLinksByAnimeId(animeId!),
+    enabled: Boolean(animeId),
+  })
+
+export const useAdminAnimeListQuery = () =>
+  useQuery({
+    queryKey: queryKeys.adminAnimeList,
+    queryFn: async () => {
+      const list = await supa.getAllAnime()
+      const animeIdsWithEpisodes = await supa.getAnimeIdsWithAnyEpisodes(list.map((x) => x.id))
+      return { list, animeIdsWithEpisodes }
+    },
+  })
+
+/** فیلتر section روی لیست cache‌شده (بدون درخواست جدید) */
+export { filterAnimeCardsBySection } from '../../utils/api'
+
+export type { UiAnimeCard }

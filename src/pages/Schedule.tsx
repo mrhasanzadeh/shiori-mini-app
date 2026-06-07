@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useState, type MouseEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useMemo, useState, type MouseEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
+import AnimePrefetchLink from '../components/AnimePrefetchLink'
 import { Calendar01Icon, Alert02Icon } from 'hugeicons-react'
-import { fetchSchedule } from '../utils/api'
 import * as supa from '../services/supabaseAnime'
 import type { GenreItem } from '../services/supabaseAnime'
 import { Button } from '@/components/ui/button'
+import { useScheduleQuery } from '../hooks/queries/useAnimeQueries'
 
 type Anime = {
   id: number
@@ -116,11 +117,8 @@ const ScheduleSkeleton = () => (
 const Schedule = () => {
   const navigate = useNavigate()
 
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { data, isLoading, isError, refetch } = useScheduleQuery()
   const [activeDay, setActiveDay] = useState<PersianDay>(getCurrentPersianDay())
-  const [currentSeason, setCurrentSeason] = useState('')
-  const [currentYear, setCurrentYear] = useState(0)
   const [toast, setToast] = useState<string | null>(null)
   const [toastClosing, setToastClosing] = useState(false)
 
@@ -131,34 +129,23 @@ const Schedule = () => {
       setToastClosing(false)
     }, 220)
   }
-  const [schedule, setSchedule] = useState<Record<PersianDay, Anime[]>>(EMPTY_SCHEDULE)
 
-  const loadSchedule = useCallback(async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      const data = (await fetchSchedule()) as ScheduleInfo
+  const scheduleInfo = data as ScheduleInfo | undefined
+  const currentSeason = scheduleInfo?.currentSeason ?? ''
+  const currentYear = scheduleInfo?.currentYear ?? 0
 
-      const nextSchedule = { ...EMPTY_SCHEDULE }
+  const schedule = useMemo(() => {
+    const nextSchedule = { ...EMPTY_SCHEDULE }
+    if (scheduleInfo?.schedule) {
       for (const day of PERSIAN_DAYS) {
-        nextSchedule[day] = data.schedule?.[day] ?? []
+        nextSchedule[day] = scheduleInfo.schedule[day] ?? []
       }
-
-      setSchedule(nextSchedule)
-      setCurrentSeason(data.currentSeason ?? '')
-      setCurrentYear(data.currentYear ?? 0)
-      setActiveDay(getCurrentPersianDay())
-    } catch (err) {
-      setError('خطا در بارگذاری برنامه پخش')
-      console.error('Failed to load schedule:', err)
-    } finally {
-      setLoading(false)
     }
-  }, [])
+    return nextSchedule
+  }, [scheduleInfo])
 
-  useEffect(() => {
-    loadSchedule()
-  }, [loadSchedule])
+  const error = isError ? 'خطا در بارگذاری برنامه پخش' : null
+  const loading = isLoading && !scheduleInfo
 
   const activeList = useMemo(
     () => filterScheduleList(schedule[activeDay] ?? []),
@@ -189,7 +176,7 @@ const Schedule = () => {
     return (
       <div className="px-4 py-16 text-center space-y-3 pb-24">
         <p className="text-red-500 text-sm">{error}</p>
-        <Button type="button" variant="secondary" onClick={loadSchedule}>
+        <Button type="button" variant="secondary" onClick={() => refetch()}>
           تلاش مجدد
         </Button>
       </div>
@@ -276,8 +263,9 @@ const Schedule = () => {
       {activeList.length > 0 ? (
         <div className="grid grid-cols-3 gap-3 px-4">
           {activeList.map((anime) => (
-            <Link
+            <AnimePrefetchLink
               key={anime.id}
+              animeId={anime.id}
               to={`/anime/${anime.id}`}
               onClick={(e) => handleAnimeClick(e, anime)}
               className="group block active:scale-[0.98] transition-transform"
@@ -306,7 +294,7 @@ const Schedule = () => {
                   </p>
                 </div>
               </div>
-            </Link>
+            </AnimePrefetchLink>
           ))}
         </div>
       ) : (

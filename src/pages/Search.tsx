@@ -1,12 +1,12 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useState, useEffect, useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Search01Icon } from 'hugeicons-react'
-import { fetchAnimeSearch, type UiAnimeCard } from '../utils/api'
+import type { UiAnimeCard } from '../utils/api'
 import type { GenreItem } from '../services/supabaseAnime'
 import { Button } from '@/components/ui/button'
+import AnimePrefetchLink from '../components/AnimePrefetchLink'
+import { useInfiniteAnimeSearchQuery } from '../hooks/queries/useAnimeQueries'
 import frieren from '../assets/images/frieren-03.webp'
-
-const PAGE_SIZE = 48
 
 const toPersianNumber = (num: number | string): string => {
   const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹']
@@ -43,7 +43,8 @@ const AnimeGridCard = ({ anime }: { anime: UiAnimeCard }) => {
   const genres = (anime.genres || []).slice(0, 3)
 
   return (
-    <Link
+    <AnimePrefetchLink
+      animeId={anime.id}
       to={`/anime/${anime.id}`}
       className="group block active:scale-[0.98] transition-transform"
       aria-label={`مشاهده ${anime.title}`}
@@ -79,19 +80,13 @@ const AnimeGridCard = ({ anime }: { anime: UiAnimeCard }) => {
           )}
         </div>
       </div>
-    </Link>
+    </AnimePrefetchLink>
   )
 }
 
 const Search = () => {
   const [searchParams] = useSearchParams()
   const [searchTerm, setSearchTerm] = useState('')
-  const [results, setResults] = useState<UiAnimeCard[]>([])
-  const [total, setTotal] = useState(0)
-  const [hasMore, setHasMore] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [loadingMore, setLoadingMore] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
 
   const yearParam = searchParams.get('year')
@@ -134,43 +129,29 @@ const Search = () => {
     return () => clearTimeout(timer)
   }, [searchTerm])
 
-  const loadPage = useCallback(
-    async (offset: number, append: boolean) => {
-      try {
-        if (append) {
-          setLoadingMore(true)
-        } else {
-          setLoading(true)
-        }
-        setError(null)
-
-        const { items, total: count, hasMore: more } = await fetchAnimeSearch({
-          query: debouncedSearchTerm.trim() || undefined,
-          year: selectedYear !== null && Number.isFinite(selectedYear) ? selectedYear : null,
-          season: selectedSeason,
-          genreSlug: selectedGenre,
-          limit: PAGE_SIZE,
-          offset,
-        })
-
-        setTotal(count)
-        setHasMore(more)
-        setResults((prev) => (append ? [...prev, ...items] : items))
-      } catch (err) {
-        setError('خطا در بارگذاری لیست انیمه‌ها')
-        console.error('Failed to search anime:', err)
-        if (!append) setResults([])
-      } finally {
-        setLoading(false)
-        setLoadingMore(false)
-      }
-    },
+  const searchFilters = useMemo(
+    () => ({
+      query: debouncedSearchTerm.trim() || undefined,
+      year: selectedYear !== null && Number.isFinite(selectedYear) ? selectedYear : null,
+      season: selectedSeason,
+      genreSlug: selectedGenre,
+    }),
     [debouncedSearchTerm, selectedYear, selectedSeason, selectedGenre]
   )
 
-  useEffect(() => {
-    loadPage(0, false)
-  }, [loadPage])
+  const {
+    data,
+    isLoading,
+    isError,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    refetch,
+  } = useInfiniteAnimeSearchQuery(searchFilters)
+
+  const results = useMemo(() => data?.pages.flatMap((page) => page.items) ?? [], [data])
+  const total = data?.pages[0]?.total ?? 0
+  const hasMore = Boolean(hasNextPage)
 
   return (
     <div className="pb-24">
@@ -193,25 +174,25 @@ const Search = () => {
         </div>
       </div>
 
-      {!loading && !error && total > 0 && (
+      {!isLoading && !isError && total > 0 && (
         <p className="px-4 pb-1 text-xs text-muted-foreground">
           {toPersianNumber(total)} نتیجه
           {results.length < total ? ` · ${toPersianNumber(results.length)} نمایش داده شده` : ''}
         </p>
       )}
 
-      {loading && <SkeletonGrid />}
+      {isLoading && <SkeletonGrid />}
 
-      {error && (
+      {isError && (
         <div className="px-4 py-8 text-center space-y-3">
-          <p className="text-red-500">{error}</p>
-          <Button type="button" variant="secondary" onClick={() => loadPage(0, false)}>
+          <p className="text-red-500">خطا در بارگذاری لیست انیمه‌ها</p>
+          <Button type="button" variant="secondary" onClick={() => refetch()}>
             تلاش مجدد
           </Button>
         </div>
       )}
 
-      {!loading && !error && results.length > 0 && (
+      {!isLoading && !isError && results.length > 0 && (
         <>
           <div className="grid grid-cols-3 gap-3 px-4 pt-2">
             {results.map((anime) => (
@@ -224,17 +205,17 @@ const Search = () => {
               <Button
                 type="button"
                 variant="secondary"
-                disabled={loadingMore}
-                onClick={() => loadPage(results.length, true)}
+                disabled={isFetchingNextPage}
+                onClick={() => fetchNextPage()}
               >
-                {loadingMore ? 'در حال بارگذاری…' : 'بارگذاری بیشتر'}
+                {isFetchingNextPage ? 'در حال بارگذاری…' : 'بارگذاری بیشتر'}
               </Button>
             </div>
           )}
         </>
       )}
 
-      {!loading && !error && results.length === 0 && (
+      {!isLoading && !isError && results.length === 0 && (
         <EmptyState
           image={frieren}
           title="چیزی پیدا نشد"

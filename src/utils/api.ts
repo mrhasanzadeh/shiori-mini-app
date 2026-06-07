@@ -80,36 +80,60 @@ const toListItem = (c: any): AnimeListItem => ({
 })
 
 // Returns items shaped for AnimeList store (AnimeListItem[])
-export const fetchAnimeList = async (_section?: string): Promise<AnimeListItem[]> => {
+export const normalizeAnimeFormat = (f: unknown) =>
+  String(f ?? '')
+    .trim()
+    .toUpperCase()
+
+let allAnimeRawCache: { data: Awaited<ReturnType<typeof supa.getAllAnime>>; ts: number } | null =
+  null
+const ALL_ANIME_CACHE_TTL_MS = 5 * 60 * 1000
+
+const getAllAnimeCached = async () => {
+  if (allAnimeRawCache && Date.now() - allAnimeRawCache.ts < ALL_ANIME_CACHE_TTL_MS) {
+    return allAnimeRawCache.data
+  }
   const data = await supa.getAllAnime()
+  allAnimeRawCache = { data, ts: Date.now() }
+  return data
+}
+
+/** پاک کردن cache (مثلاً بعد از edit در پنل ادمین) */
+export const invalidateAnimeCache = () => {
+  allAnimeRawCache = null
+}
+
+export const fetchAllAnimeCards = async (): Promise<UiAnimeCard[]> => {
+  const data = await getAllAnimeCached()
+  return data.map(toCacheAnime)
+}
+
+export const filterAnimeCardsBySection = (
+  mapped: UiAnimeCard[],
+  section?: string
+): UiAnimeCard[] => {
+  if (section === 'movies') {
+    return mapped.filter((a) => normalizeAnimeFormat(a.format) === 'MOVIE')
+  }
+  if (section === 'donghua') {
+    return mapped.filter((a) => normalizeAnimeFormat(a.format) === 'ONA (CHINESE)')
+  }
+  if (section === 'popular') {
+    const allowed = new Set(['TV', 'ONA', 'SPECIAL', 'MOVIE'])
+    return mapped.filter((a) => allowed.has(normalizeAnimeFormat(a.format)))
+  }
+  return mapped
+}
+
+export const fetchAnimeList = async (_section?: string): Promise<AnimeListItem[]> => {
+  const data = await getAllAnimeCached()
   return data.map(toListItem)
 }
 
 // Returns items shaped for cache cards on Home/Search (UiAnimeCard[])
-// آرگومان section برای سازگاری با کد موجود پذیرفته می‌شود اما نادیده گرفته می‌شود
 export const fetchAnimeCards = async (_section?: string): Promise<UiAnimeCard[]> => {
-  const data = await supa.getAllAnime()
-  const mapped = data.map(toCacheAnime)
-
-  const normalizeFormat = (f: unknown) =>
-    String(f ?? '')
-      .trim()
-      .toUpperCase()
-
-  if (_section === 'movies') {
-    return mapped.filter((a) => normalizeFormat(a.format) === 'MOVIE')
-  }
-
-  if (_section === 'donghua') {
-    return mapped.filter((a) => normalizeFormat(a.format) === 'ONA (CHINESE)')
-  }
-
-  if (_section === 'popular') {
-    const allowed = new Set(['TV', 'ONA', 'SPECIAL', 'MOVIE'])
-    return mapped.filter((a) => allowed.has(normalizeFormat(a.format)))
-  }
-
-  return mapped
+  const mapped = await fetchAllAnimeCards()
+  return filterAnimeCardsBySection(mapped, _section)
 }
 
 export type AnimeSearchFilters = {
@@ -143,7 +167,7 @@ export const fetchSimilarAnime = async (
 
 // دریافت جزئیات یک انیمه + لیست قسمت‌ها از جدول episodes (با لینک دانلود هر قسمت)
 export const fetchAnimeById = async (id: number | string) => {
-  const allAnime = await supa.getAllAnime()
+  const allAnime = await getAllAnimeCached()
   const anime = allAnime.find((a) => String(a.id) === String(id))
 
   if (!anime) {

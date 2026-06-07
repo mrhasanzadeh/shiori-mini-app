@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { fetchAnimeCards } from '../utils/api'
+import AnimePrefetchLink from '../components/AnimePrefetchLink'
 import { Swiper, SwiperSlide } from 'swiper/react'
 import { Autoplay, FreeMode, Pagination } from 'swiper/modules'
 import 'swiper/css'
@@ -12,26 +12,15 @@ import {
 } from 'hugeicons-react'
 import type { GenreItem } from '../services/supabaseAnime'
 import { Button } from '@/components/ui/button'
+import {
+  filterAnimeCardsBySection,
+  useAnimeCardsQuery,
+  type UiAnimeCard,
+} from '../hooks/queries/useAnimeQueries'
 
 type ContentType = 'anime' | 'movie' | 'donghua'
 
-type Anime = {
-  id: number | string
-  title: string
-  image: string
-  featuredImage?: string
-  description?: string
-  status?: string
-  genres?: GenreItem[]
-  episodes?: number
-  isNew?: boolean
-  isFeatured?: boolean
-  episode?: string
-  averageScore?: number
-  format?: string
-  season?: string
-  year?: number
-}
+type Anime = UiAnimeCard
 
 type SectionId = 'latest' | 'popular' | 'donghua' | 'movies'
 
@@ -75,7 +64,8 @@ const PosterCardContent = ({ anime }: { anime: Anime }) => {
   const genres = (anime.genres || []).slice(0, 3)
 
   return (
-    <Link
+    <AnimePrefetchLink
+      animeId={anime.id}
       to={`/anime/${anime.id}`}
       className="group block active:scale-[0.98] transition-transform"
       aria-label={`مشاهده ${anime.title}`}
@@ -111,7 +101,7 @@ const PosterCardContent = ({ anime }: { anime: Anime }) => {
           )}
         </div>
       </div>
-    </Link>
+    </AnimePrefetchLink>
   )
 }
 
@@ -127,16 +117,39 @@ const SectionSkeleton = () => (
 
 const Home = () => {
   const [selectedType, setSelectedType] = useState<ContentType>('anime')
-  const [loading, setLoading] = useState<Record<string, boolean>>({})
-  const [error, setError] = useState<Record<string, string | null>>({})
-  const [sectionData, setSectionData] = useState<Record<string, Anime[]>>({})
-  const [featuredAnime, setFeaturedAnime] = useState<Anime[]>([])
+  const { data: allCards = [], isLoading, isError, error, refetch } = useAnimeCardsQuery()
 
   const fallbackSeason = getFallbackSeason()
   const currentYearNumber = new Date().getFullYear()
   const currentSeasonKey = fallbackSeason
   const currentSeasonFa = translateSeason(fallbackSeason)
   const seasonLabel = `فصل ${currentSeasonFa} ${toPersianNumber(currentYearNumber)}`
+
+  const sectionData = useMemo(
+    (): Record<SectionId, Anime[]> => ({
+      latest: filterAnimeCardsBySection(allCards, 'latest'),
+      popular: filterAnimeCardsBySection(allCards, 'popular'),
+      donghua: filterAnimeCardsBySection(allCards, 'donghua'),
+      movies: filterAnimeCardsBySection(allCards, 'movies'),
+    }),
+    [allCards]
+  )
+
+  const featuredSectionKey: SectionId =
+    selectedType === 'movie' ? 'movies' : selectedType === 'donghua' ? 'donghua' : 'latest'
+
+  const featuredAnime = useMemo(
+    () =>
+      filterAnimeCardsBySection(allCards, featuredSectionKey).filter((a) => Boolean(a.isFeatured)),
+    [allCards, featuredSectionKey]
+  )
+
+  const initialLoading = isLoading && allCards.length === 0
+  const loadError = isError
+    ? error instanceof Error
+      ? error.message
+      : 'خطا در بارگذاری'
+    : null
 
   const sectionMeta = useMemo(
     (): Record<
@@ -154,47 +167,6 @@ const Home = () => {
     [currentSeasonFa, currentSeasonKey, currentYearNumber]
   )
 
-  const loadSection = useCallback(async (id: SectionId, fetchData: () => Promise<Anime[]>) => {
-    try {
-      setLoading((prev) => ({ ...prev, [id]: true }))
-      setError((prev) => ({ ...prev, [id]: null }))
-      const data = await fetchData()
-      setSectionData((prev) => ({ ...prev, [id]: data }))
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'خطا در بارگذاری'
-      setError((prev) => ({ ...prev, [id]: message }))
-      console.error(`Failed to load ${id}:`, err)
-    } finally {
-      setLoading((prev) => ({ ...prev, [id]: false }))
-    }
-  }, [])
-
-  useEffect(() => {
-    loadSection('latest', () => fetchAnimeCards('latest') as Promise<Anime[]>)
-    loadSection('popular', () => fetchAnimeCards('popular') as Promise<Anime[]>)
-    loadSection('donghua', () => fetchAnimeCards('donghua') as Promise<Anime[]>)
-    loadSection('movies', () => fetchAnimeCards('movies') as Promise<Anime[]>)
-  }, [loadSection])
-
-  useEffect(() => {
-    const loadFeatured = async () => {
-      try {
-        setLoading((prev) => ({ ...prev, featured: true }))
-        setError((prev) => ({ ...prev, featured: null }))
-        const sectionKey =
-          selectedType === 'movie' ? 'movies' : selectedType === 'donghua' ? 'donghua' : 'latest'
-        const data = await fetchAnimeCards(sectionKey)
-        setFeaturedAnime(data.filter((a) => Boolean(a.isFeatured)))
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'خطا در بارگذاری پیشنهاد ویژه'
-        setError((prev) => ({ ...prev, featured: message }))
-      } finally {
-        setLoading((prev) => ({ ...prev, featured: false }))
-      }
-    }
-    loadFeatured()
-  }, [selectedType])
-
   const filterLatest = (list: Anime[]) =>
     list.filter(
       (a) =>
@@ -208,13 +180,8 @@ const Home = () => {
     return id === 'latest' ? filterLatest(raw) : raw
   }
 
-  const featuredLoading = loading.featured
-  const featuredError = error.featured
-
   const renderSection = (id: SectionId) => {
     const list = getSectionList(id)
-    const isLoading = loading[id]
-    const err = error[id]
     const meta = sectionMeta[id]
 
     return (
@@ -230,25 +197,17 @@ const Home = () => {
           </Link>
         </div>
 
-        {isLoading && list.length === 0 ? (
+        {initialLoading && list.length === 0 ? (
           <SectionSkeleton />
-        ) : err && list.length === 0 ? (
+        ) : loadError && list.length === 0 ? (
           <div className="px-4">
-            <p className="text-sm text-red-500 text-center py-4">{err}</p>
+            <p className="text-sm text-red-500 text-center py-4">{loadError}</p>
             <Button
               type="button"
               variant="secondary"
               size="sm"
               className="mx-auto flex"
-              onClick={() => {
-                const fetchers: Record<SectionId, () => Promise<Anime[]>> = {
-                  latest: () => fetchAnimeCards('latest') as Promise<Anime[]>,
-                  popular: () => fetchAnimeCards('popular') as Promise<Anime[]>,
-                  donghua: () => fetchAnimeCards('donghua') as Promise<Anime[]>,
-                  movies: () => fetchAnimeCards('movies') as Promise<Anime[]>,
-                }
-                loadSection(id, fetchers[id])
-              }}
+              onClick={() => refetch()}
             >
               تلاش مجدد
             </Button>
@@ -316,11 +275,11 @@ const Home = () => {
           <span className="text-xs text-primary-400 font-medium">{seasonLabel}</span>
         </div>
 
-        {featuredLoading ? (
+        {initialLoading ? (
           <div className="h-52 rounded-2xl bg-muted animate-pulse" />
-        ) : featuredError ? (
+        ) : loadError ? (
           <div className="h-40 rounded-2xl border border-dashed border-border flex items-center justify-center px-4">
-            <p className="text-sm text-red-500 text-center">{featuredError}</p>
+            <p className="text-sm text-red-500 text-center">{loadError}</p>
           </div>
         ) : featuredAnime.length > 0 ? (
           <div className="home-featured-wrap">
@@ -336,7 +295,11 @@ const Home = () => {
             >
             {featuredAnime.slice(0, 8).map((anime) => (
               <SwiperSlide key={anime.id}>
-                <Link to={`/anime/${anime.id}`} className="block group h-52">
+                <AnimePrefetchLink
+                  animeId={anime.id}
+                  to={`/anime/${anime.id}`}
+                  className="block group h-52"
+                >
                   <div className="relative h-full w-full rounded-2xl overflow-hidden border border-border">
                     <img
                       src={anime.featuredImage || anime.image}
@@ -363,7 +326,7 @@ const Home = () => {
                       )}
                     </div>
                   </div>
-                </Link>
+                </AnimePrefetchLink>
               </SwiperSlide>
             ))}
             </Swiper>

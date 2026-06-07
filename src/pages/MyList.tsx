@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { FavouriteIcon, Search01Icon } from 'hugeicons-react'
 import { useAnimeStore } from '../store/animeStore'
-import { fetchAnimeById } from '../utils/api'
 import { Button } from '@/components/ui/button'
+import AnimePrefetchLink from '../components/AnimePrefetchLink'
+import { useFavoriteAnimeDetailsQueries } from '../hooks/queries/useAnimeQueries'
 import emptyListImage from '../assets/images/frieren-03.webp'
 import type { GenreItem } from '../services/supabaseAnime'
 
@@ -34,49 +35,35 @@ const SkeletonGrid = () => (
 
 const MyList = () => {
   const { favoriteAnime } = useAnimeStore()
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [items, setItems] = useState<FavoriteAnime[]>([])
+  const detailQueries = useFavoriteAnimeDetailsQueries(favoriteAnime)
 
-  const loadFavorites = useCallback(async () => {
-    if (favoriteAnime.length === 0) {
-      setItems([])
-      setError(null)
-      return
-    }
+  const loading =
+    favoriteAnime.length > 0 && detailQueries.some((query) => query.isLoading || query.isFetching)
+  const hasError = detailQueries.some((query) => query.isError)
 
-    try {
-      setLoading(true)
-      setError(null)
+  const items = useMemo((): FavoriteAnime[] => {
+    return detailQueries
+      .map((query) => query.data)
+      .filter((details): details is NonNullable<typeof details> => details != null)
+      .map((details) => {
+        const epCount = details.episodes.length
+        return {
+          id: details.id,
+          title: details.title,
+          image: details.image,
+          episodeLabel: epCount > 0 ? `${toPersianNumber(epCount)} قسمت` : 'بدون قسمت',
+          genres: details.genres ?? [],
+        }
+      })
+  }, [detailQueries])
 
-      const results = await Promise.all(
-        favoriteAnime.map(async (id) => {
-          const details = await fetchAnimeById(id)
-          const epCount = details.episodes.length
-          return {
-            id: details.id,
-            title: details.title,
-            image: details.image,
-            episodeLabel:
-              epCount > 0 ? `${toPersianNumber(epCount)} قسمت` : 'بدون قسمت',
-            genres: details.genres ?? [],
-          } satisfies FavoriteAnime
-        })
-      )
-      setItems(results)
-    } catch (err) {
-      setError('خطا در بارگذاری علاقه‌مندی‌ها')
-      console.error('Failed to load favorites:', err)
-    } finally {
-      setLoading(false)
-    }
-  }, [favoriteAnime])
+  const retry = () => {
+    detailQueries.forEach((query) => {
+      void query.refetch()
+    })
+  }
 
-  useEffect(() => {
-    loadFavorites()
-  }, [loadFavorites])
-
-  const isEmpty = !loading && !error && favoriteAnime.length === 0
+  const isEmpty = !loading && !hasError && favoriteAnime.length === 0
 
   return (
     <div className="pb-24">
@@ -106,10 +93,10 @@ const MyList = () => {
 
       {loading && <SkeletonGrid />}
 
-      {error && (
+      {hasError && (
         <div className="px-4 py-12 text-center space-y-3">
-          <p className="text-red-500 text-sm">{error}</p>
-          <Button type="button" variant="secondary" onClick={loadFavorites}>
+          <p className="text-red-500 text-sm">خطا در بارگذاری علاقه‌مندی‌ها</p>
+          <Button type="button" variant="secondary" onClick={retry}>
             تلاش مجدد
           </Button>
         </div>
@@ -119,27 +106,34 @@ const MyList = () => {
         <div className="flex flex-col items-center justify-center min-h-[65vh] px-6 text-center">
           <img src={emptyListImage} alt="" className="w-44 mb-5 opacity-90" />
           <h2 className="text-base font-semibold text-foreground mb-2">
-لیست علاقه‌مندی‌هات خالیه <small className="text-xs">＞﹏＜</small>
+            لیست علاقه‌مندی‌هات خالیه <small className="text-xs">＞﹏＜</small>
           </h2>
           <p className="text-sm text-muted-foreground leading-7 max-w-xs mb-6">
-            در صفحهٔ جزئیات هر انیمه، با زدن دکمهی<br/>قلب انیمه رو این‌جا ذخیره کن.
+            در صفحهٔ جزئیات هر انیمه، با زدن دکمهی
+            <br />
+            قلب انیمه رو این‌جا ذخیره کن.
           </p>
-          <Button asChild type="button" size="lg" className="bg-primary-500 text-white font-bold rounded-lg px-6 py-3 hover:bg-primary-500/90">
+          <Button
+            asChild
+            type="button"
+            size="lg"
+            className="bg-primary-500 text-white font-bold rounded-lg px-6 py-3 hover:bg-primary-500/90"
+          >
             <Link to="/search">مرور انیمه‌ها</Link>
           </Button>
-     
         </div>
       )}
 
-      {!loading && !error && items.length > 0 && (
+      {!loading && !hasError && items.length > 0 && (
         <div className="grid grid-cols-3 gap-x-2 gap-y-4 px-4 pt-2">
           {items.map((anime) => {
             const genreLabel =
               anime.genres[0]?.name_fa || anime.genres[0]?.name_en || anime.genres[0]?.slug
 
             return (
-              <Link
+              <AnimePrefetchLink
                 key={anime.id}
+                animeId={anime.id}
                 to={`/anime/${anime.id}`}
                 className="group block"
                 aria-label={`مشاهده ${anime.title}`}
@@ -161,7 +155,7 @@ const MyList = () => {
                   {genreLabel ? `${genreLabel} · ` : ''}
                   {anime.episodeLabel}
                 </p>
-              </Link>
+              </AnimePrefetchLink>
             )
           })}
         </div>

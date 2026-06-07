@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import {
   AlertCircle,
@@ -13,6 +13,7 @@ import {
   Star,
 } from 'lucide-react'
 import * as supa from '../services/supabaseAnime'
+import { useAdminAnimeListQuery } from '../hooks/queries/useAnimeQueries'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -163,11 +164,19 @@ const AnimeGridCard = ({
 }
 
 const AdminAnimeList = () => {
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [q, setQ] = useState('')
   const [filter, setFilter] = useState<FilterKey>('all')
   const [view, setView] = useState<ViewMode>(() => readStoredView())
+
+  const { data, isLoading, isError, error, refetch } = useAdminAnimeListQuery()
+  const list = data?.list ?? []
+  const animeIdsWithEpisodes = data?.animeIdsWithEpisodes ?? new Set<string>()
+  const loading = isLoading
+  const errorMessage = isError
+    ? error instanceof Error
+      ? error.message
+      : 'خطا در دریافت لیست انیمه‌ها'
+    : null
 
   const onViewChange = (mode: ViewMode) => {
     setView(mode)
@@ -177,28 +186,6 @@ const AdminAnimeList = () => {
       // ignore
     }
   }
-  const [list, setList] = useState<supa.AnimeCard[]>([])
-  const [animeIdsWithEpisodes, setAnimeIdsWithEpisodes] = useState<Set<string>>(new Set())
-
-  useEffect(() => {
-    const run = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-        const data = await supa.getAllAnime()
-        setList(data)
-        const withEpisodes = await supa.getAnimeIdsWithAnyEpisodes(data.map((x) => x.id))
-        setAnimeIdsWithEpisodes(withEpisodes)
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : 'خطا در دریافت لیست انیمه‌ها'
-        setError(msg)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    run()
-  }, [])
 
   const stats = useMemo(() => {
     const withEpisodes = list.filter((a) => animeIdsWithEpisodes.has(String(a.id))).length
@@ -262,7 +249,7 @@ const AdminAnimeList = () => {
         </Button>
       </header>
 
-      {!loading && !error ? (
+      {!loading && !errorMessage ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <StatCard label="کل انیمه‌ها" value={stats.total} />
           <StatCard label="دارای قسمت" value={stats.withEpisodes} accent="success" />
@@ -275,12 +262,17 @@ const AdminAnimeList = () => {
         </div>
       ) : null}
 
-      {error ? (
+      {errorMessage ? (
         <div
           className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300"
           role="alert"
         >
-          {error}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span>{errorMessage}</span>
+            <Button type="button" size="sm" variant="secondary" onClick={() => refetch()}>
+              تلاش مجدد
+            </Button>
+          </div>
         </div>
       ) : null}
 
