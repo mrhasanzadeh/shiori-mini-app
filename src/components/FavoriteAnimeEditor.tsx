@@ -12,12 +12,18 @@ import {
 } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 
-const DISMISS_DRAG_PX = 72
-const MAX_UPWARD_DRAG_PX = 16
+const DISMISS_DRAG_PX = 80
+const MAX_UPWARD_DRAG_PX = 24
 
 const toPersianNumber = (num: number | string): string => {
   const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹']
   return String(num).replace(/[0-9]/g, (w) => persianDigits[+w])
+}
+
+const dragTranslateY = (offset: number) => {
+  if (offset > 0) return offset
+  if (offset < 0) return offset * 0.35
+  return 0
 }
 
 type Props = {
@@ -48,6 +54,8 @@ const FavoriteAnimeEditor = ({
   const [userRating, setUserRating] = useState<number | null>(progress.userRating)
   const [dragOffset, setDragOffset] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
+  const [isClosingByDrag, setIsClosingByDrag] = useState(false)
+  const sheetRef = useRef<HTMLDivElement>(null)
   const dragStartY = useRef(0)
   const dragOffsetRef = useRef(0)
   const isDraggingRef = useRef(false)
@@ -66,6 +74,9 @@ const FavoriteAnimeEditor = ({
     if (open) return
     setDragOffset(0)
     setIsDragging(false)
+    setIsClosingByDrag(false)
+    dragOffsetRef.current = 0
+    isDraggingRef.current = false
   }, [open])
 
   const progressPercent = Math.min(100, Math.round((episodesWatched / maxEpisodes) * 100))
@@ -74,18 +85,31 @@ const FavoriteAnimeEditor = ({
     setEpisodesWatched((prev) => Math.min(maxEpisodes, Math.max(0, prev + delta)))
   }
 
+  const setDrag = (offset: number) => {
+    dragOffsetRef.current = offset
+    setDragOffset(offset)
+  }
+
   const finishDrag = useCallback(() => {
     const offset = dragOffsetRef.current
     isDraggingRef.current = false
     setIsDragging(false)
+
     if (offset > DISMISS_DRAG_PX) {
-      onOpenChange(false)
+      const height = sheetRef.current?.getBoundingClientRect().height ?? 480
+      setIsClosingByDrag(true)
+      setDrag(height + 32)
+      window.setTimeout(() => {
+        onOpenChange(false)
+      }, 300)
+      return
     }
-    setDragOffset(0)
-    dragOffsetRef.current = 0
+
+    setDrag(0)
   }, [onOpenChange])
 
   const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (saving) return
     event.preventDefault()
     dragStartY.current = event.clientY
     isDraggingRef.current = true
@@ -96,34 +120,40 @@ const FavoriteAnimeEditor = ({
   const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
     if (!isDraggingRef.current) return
     const delta = event.clientY - dragStartY.current
-    const next = Math.min(MAX_UPWARD_DRAG_PX, Math.max(-MAX_UPWARD_DRAG_PX, delta))
-    dragOffsetRef.current = next
-    setDragOffset(next)
+    const next = delta >= 0 ? delta : Math.max(-MAX_UPWARD_DRAG_PX, delta)
+    setDrag(next)
   }
 
   const handlePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingRef.current) return
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId)
     }
     finishDrag()
   }
 
-  const sheetTranslateY =
-    dragOffset > 0 ? dragOffset : dragOffset < 0 ? dragOffset * 0.35 : 0
+  const dragY = dragTranslateY(dragOffset)
+  const isSheetMoved = dragOffset !== 0 || isDragging || isClosingByDrag
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
+        ref={sheetRef}
         side="bottom"
+        overlayClassName={cn(isSheetMoved && 'transition-none')}
+        overlayStyle={
+          dragY > 0
+            ? { opacity: Math.max(0, 0.8 * (1 - dragY / 420)) }
+            : undefined
+        }
         className={cn(
-          'flex max-h-[88vh] flex-col overflow-hidden rounded-t-2xl px-0 pb-8 pt-0',
-          'duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]',
-          isDragging && 'transition-none'
+          'flex max-h-[88vh] flex-col overflow-hidden rounded-t-2xl border-t border-border bg-background p-0 pb-8',
+          isSheetMoved && '[animation:none!important]',
+          !isDragging &&
+            dragOffset !== 0 &&
+            'transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]'
         )}
-        style={{
-          transform:
-            sheetTranslateY !== 0 ? `translateY(${sheetTranslateY}px)` : undefined,
-        }}
+        style={isSheetMoved ? { transform: `translateY(${dragY}px)` } : undefined}
       >
         <div
           className="flex touch-none cursor-grab flex-col active:cursor-grabbing"

@@ -90,6 +90,32 @@
     animation: schedule-toast-out 0.22s cubic-bezier(0.4, 0, 1, 1) forwards;
   }
 
+  @keyframes sheet-in-bottom {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes sheet-out-bottom {
+    from {
+      transform: translateY(0);
+    }
+    to {
+      transform: translateY(100%);
+    }
+  }
+
+  .animate-sheet-in-bottom {
+    animation: sheet-in-bottom 0.45s cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+
+  .animate-sheet-out-bottom {
+    animation: sheet-out-bottom 0.32s cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+
   .home-featured-wrap {
     --swiper-theme-color: #a78bfa;
     --swiper-pagination-color: #a78bfa;

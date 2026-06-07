@@ -28,18 +28,21 @@ SheetOverlay.displayName = SheetPrimitive.Overlay.displayName
 
 type SheetContentProps = React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content> & {
   side?: 'top' | 'bottom' | 'left' | 'right'
+  overlayClassName?: string
+  overlayStyle?: React.CSSProperties
 }
 
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = 'left', className, children, ...props }, ref) => (
+>(({ side = 'left', className, overlayClassName, overlayStyle, children, ...props }, ref) => (
   <SheetPortal>
-    <SheetOverlay />
+    <SheetOverlay className={overlayClassName} style={overlayStyle} />
     <SheetPrimitive.Content
       ref={ref}
       className={cn(
-        'fixed z-50 gap-4 bg-background p-0 shadow-lg transition-transform duration-300 ease-in-out will-change-transform',
+        'fixed z-50 gap-4 bg-background p-0 shadow-lg will-change-transform',
+        side !== 'bottom' && 'transition-transform duration-300 ease-in-out',
         side === 'right' &&
           'inset-y-0 right-0 h-full w-3/4 border-l border-border data-[state=open]:translate-x-0 data-[state=closed]:translate-x-full sm:max-w-sm',
         side === 'left' &&
@@ -47,7 +50,7 @@ const SheetContent = React.forwardRef<
         side === 'top' &&
           'inset-x-0 top-0 border-b border-border data-[state=open]:translate-y-0 data-[state=closed]:-translate-y-full',
         side === 'bottom' &&
-          'inset-x-0 bottom-0 border-t border-border data-[state=open]:translate-y-0 data-[state=closed]:translate-y-full',
+          'inset-x-0 bottom-0 border-t border-border data-[state=open]:animate-sheet-in-bottom data-[state=closed]:animate-sheet-out-bottom',
         className
       )}
       {...props}
