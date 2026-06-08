@@ -6,14 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet'
+import { AdminEditSheet, AdminEditSheetActions } from '@/components/admin/AdminEditSheet'
 import {
   AdminCrudCount,
   AdminCrudEmpty,
@@ -259,95 +252,83 @@ const AdminTranslators = () => {
         </>
       )}
 
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent dir="rtl" className="flex flex-col overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>{draft.id ? 'ویرایش مترجم' : 'مترجم جدید'}</SheetTitle>
-            <SheetDescription>اطلاعات پروفایل مترجم را تکمیل کنید.</SheetDescription>
-          </SheetHeader>
-
-          <div className="flex flex-1 flex-col gap-4 p-4">
-            <div className="space-y-2">
-              <Label htmlFor="translator-name">نام</Label>
-              <Input
-                id="translator-name"
-                value={draft.name}
-                onChange={(e) => setDraft((p) => ({ ...p, name: e.target.value }))}
-                placeholder="نام مترجم"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="translator-slug">اسلاگ</Label>
-              <Input
-                id="translator-slug"
-                value={draft.slug}
-                onChange={(e) => setDraft((p) => ({ ...p, slug: e.target.value }))}
-                placeholder="hasan"
-                className="font-mono text-sm"
-                dir="ltr"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="translator-avatar">آدرس آواتار (اختیاری)</Label>
-              <Input
-                id="translator-avatar"
-                value={draft.avatar_url}
-                onChange={(e) => setDraft((p) => ({ ...p, avatar_url: e.target.value }))}
-                placeholder="https://..."
-                dir="ltr"
-                className="font-mono text-xs"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="translator-cover">آدرس کاور (اختیاری)</Label>
-              <Input
-                id="translator-cover"
-                value={draft.cover_url}
-                onChange={(e) => setDraft((p) => ({ ...p, cover_url: e.target.value }))}
-                placeholder="https://..."
-                dir="ltr"
-                className="font-mono text-xs"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="translator-bio">بیو (اختیاری)</Label>
-              <Textarea
-                id="translator-bio"
-                value={draft.bio}
-                onChange={(e) => setDraft((p) => ({ ...p, bio: e.target.value }))}
-                placeholder="توضیحات کوتاه..."
-                className="min-h-24"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="translator-exp">سابقه (اختیاری)</Label>
-              <Textarea
-                id="translator-exp"
-                value={draft.experience}
-                onChange={(e) => setDraft((p) => ({ ...p, experience: e.target.value }))}
-                placeholder="مثلاً: ۳ سال فعالیت"
-                className="min-h-20"
-              />
-            </div>
-          </div>
-
-          <SheetFooter>
-            <div className="flex w-full flex-col gap-2">
-              <Button
-                type="button"
-                size="lg"
-                disabled={saving || !draft.name.trim() || !draft.slug.trim()}
-                onClick={() => void onSave()}
-              >
-                ذخیره
-              </Button>
-              <Button type="button" size="lg" variant="secondary" onClick={() => setSheetOpen(false)} disabled={saving}>
-                انصراف
-              </Button>
-            </div>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+      <AdminEditSheet
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        title={draft.id ? 'ویرایش مترجم' : 'مترجم جدید'}
+        description="اطلاعات پروفایل مترجم را تکمیل کنید."
+        footer={
+          <AdminEditSheetActions
+            saving={saving}
+            saveDisabled={!draft.name.trim() || !draft.slug.trim()}
+            onSave={() => void onSave()}
+            onCancel={() => setSheetOpen(false)}
+          />
+        }
+      >
+        <div className="space-y-2">
+          <Label htmlFor="translator-name">نام</Label>
+          <Input
+            id="translator-name"
+            value={draft.name}
+            onChange={(e) => setDraft((p) => ({ ...p, name: e.target.value }))}
+            placeholder="نام مترجم"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="translator-slug">اسلاگ</Label>
+          <Input
+            id="translator-slug"
+            value={draft.slug}
+            onChange={(e) => setDraft((p) => ({ ...p, slug: e.target.value }))}
+            placeholder="hasan"
+            className="font-mono text-sm"
+            dir="ltr"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="translator-avatar">آدرس آواتار (اختیاری)</Label>
+          <Input
+            id="translator-avatar"
+            value={draft.avatar_url}
+            onChange={(e) => setDraft((p) => ({ ...p, avatar_url: e.target.value }))}
+            placeholder="https://..."
+            dir="ltr"
+            className="font-mono text-xs"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="translator-cover">آدرس کاور (اختیاری)</Label>
+          <Input
+            id="translator-cover"
+            value={draft.cover_url}
+            onChange={(e) => setDraft((p) => ({ ...p, cover_url: e.target.value }))}
+            placeholder="https://..."
+            dir="ltr"
+            className="font-mono text-xs"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="translator-bio">بیو (اختیاری)</Label>
+          <Textarea
+            id="translator-bio"
+            value={draft.bio}
+            onChange={(e) => setDraft((p) => ({ ...p, bio: e.target.value }))}
+            placeholder="توضیحات کوتاه..."
+            className="min-h-24"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="translator-exp">سابقه (اختیاری)</Label>
+          <Textarea
+            id="translator-exp"
+            value={draft.experience}
+            onChange={(e) => setDraft((p) => ({ ...p, experience: e.target.value }))}
+            placeholder="مثلاً: ۳ سال فعالیت"
+            className="min-h-20"
+          />
+        </div>
+      </AdminEditSheet>
     </AdminCrudPage>
   )
 }

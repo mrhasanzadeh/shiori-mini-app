@@ -13,3 +13,11 @@ export const isAppUserRole = (value: unknown): value is AppUserRole =>
 
 export const normalizeAppUserRole = (value: unknown): AppUserRole =>
   isAppUserRole(value) ? value : 'user'
+
+export const roleBadgeVariant = (
+  role: AppUserRole
+): 'admin' | 'outline' | 'secondary' => {
+  if (role === 'admin') return 'admin'
+  if (role === 'moderator') return 'outline'
+  return 'secondary'
+}

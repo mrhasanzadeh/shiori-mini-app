@@ -5,14 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet'
+import { AdminEditSheet, AdminEditSheetActions } from '@/components/admin/AdminEditSheet'
 import {
   AdminCrudCount,
   AdminCrudEmpty,
@@ -216,58 +209,51 @@ const AdminGenres = () => {
         </>
       )}
 
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent dir="rtl" className="flex flex-col">
-          <SheetHeader>
-            <SheetTitle>{draft.id ? 'ویرایش ژانر' : 'ژانر جدید'}</SheetTitle>
-            <SheetDescription>اسلاگ یکتا و نام‌های نمایشی را وارد کنید.</SheetDescription>
-          </SheetHeader>
-
-          <div className="flex flex-1 flex-col gap-4 p-4">
-            <div className="space-y-2">
-              <Label htmlFor="genre-slug">اسلاگ</Label>
-              <Input
-                id="genre-slug"
-                value={draft.slug}
-                onChange={(e) => setDraft((p) => ({ ...p, slug: e.target.value }))}
-                placeholder="action"
-                className="font-mono text-sm"
-                dir="ltr"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="genre-name-fa">نام فارسی</Label>
-              <Input
-                id="genre-name-fa"
-                value={draft.name_fa ?? ''}
-                onChange={(e) => setDraft((p) => ({ ...p, name_fa: e.target.value }))}
-                placeholder="اکشن"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="genre-name-en">نام انگلیسی</Label>
-              <Input
-                id="genre-name-en"
-                value={draft.name_en ?? ''}
-                onChange={(e) => setDraft((p) => ({ ...p, name_en: e.target.value }))}
-                placeholder="Action"
-                dir="ltr"
-              />
-            </div>
-          </div>
-
-          <SheetFooter>
-            <div className="flex w-full flex-col gap-2">
-              <Button type="button" size="lg" disabled={saving || !draft.slug.trim()} onClick={() => void onSave()}>
-                ذخیره
-              </Button>
-              <Button type="button" size="lg" variant="secondary" onClick={() => setSheetOpen(false)} disabled={saving}>
-                انصراف
-              </Button>
-            </div>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+      <AdminEditSheet
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        title={draft.id ? 'ویرایش ژانر' : 'ژانر جدید'}
+        description="اسلاگ یکتا و نام‌های نمایشی را وارد کنید."
+        footer={
+          <AdminEditSheetActions
+            saving={saving}
+            saveDisabled={!draft.slug.trim()}
+            onSave={() => void onSave()}
+            onCancel={() => setSheetOpen(false)}
+          />
+        }
+      >
+        <div className="space-y-2">
+          <Label htmlFor="genre-slug">اسلاگ</Label>
+          <Input
+            id="genre-slug"
+            value={draft.slug}
+            onChange={(e) => setDraft((p) => ({ ...p, slug: e.target.value }))}
+            placeholder="action"
+            className="font-mono text-sm"
+            dir="ltr"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="genre-name-fa">نام فارسی</Label>
+          <Input
+            id="genre-name-fa"
+            value={draft.name_fa ?? ''}
+            onChange={(e) => setDraft((p) => ({ ...p, name_fa: e.target.value }))}
+            placeholder="اکشن"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="genre-name-en">نام انگلیسی</Label>
+          <Input
+            id="genre-name-en"
+            value={draft.name_en ?? ''}
+            onChange={(e) => setDraft((p) => ({ ...p, name_en: e.target.value }))}
+            placeholder="Action"
+            dir="ltr"
+          />
+        </div>
+      </AdminEditSheet>
     </AdminCrudPage>
   )
 }

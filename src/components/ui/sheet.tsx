@@ -42,11 +42,10 @@ const SheetContent = React.forwardRef<
       ref={ref}
       className={cn(
         'fixed z-50 gap-4 bg-background p-0 shadow-lg will-change-transform',
-        side !== 'bottom' && 'transition-transform duration-300 ease-in-out',
         side === 'right' &&
-          'inset-y-0 right-0 h-full w-3/4 border-l border-border data-[state=open]:translate-x-0 data-[state=closed]:translate-x-full sm:max-w-sm',
+          'inset-y-0 right-0 h-full w-full max-w-full border-l border-border sm:max-w-md data-[state=open]:animate-sheet-in-right data-[state=closed]:animate-sheet-out-right',
         side === 'left' &&
-          'inset-y-0 left-0 h-full w-3/4 border-r border-border data-[state=open]:translate-x-0 data-[state=closed]:-translate-x-full sm:max-w-sm',
+          'inset-y-0 left-0 h-full w-full max-w-full border-r border-border sm:max-w-md data-[state=open]:animate-sheet-in-left data-[state=closed]:animate-sheet-out-left',
         side === 'top' &&
           'inset-x-0 top-0 border-b border-border data-[state=open]:translate-y-0 data-[state=closed]:-translate-y-full',
         side === 'bottom' &&

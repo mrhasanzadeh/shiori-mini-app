@@ -116,6 +116,58 @@
     animation: sheet-out-bottom 0.32s cubic-bezier(0.32, 0.72, 0, 1) both;
   }
 
+  @keyframes sheet-in-left {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes sheet-out-left {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-100%);
+    }
+  }
+
+  @keyframes sheet-in-right {
+    from {
+      transform: translateX(100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes sheet-out-right {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(100%);
+    }
+  }
+
+  .animate-sheet-in-left {
+    animation: sheet-in-left 0.45s cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+
+  .animate-sheet-out-left {
+    animation: sheet-out-left 0.32s cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+
+  .animate-sheet-in-right {
+    animation: sheet-in-right 0.45s cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+
+  .animate-sheet-out-right {
+    animation: sheet-out-right 0.32s cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+
   @property --episode-pack-angle {
     syntax: '<angle>';
     initial-value: 0deg;

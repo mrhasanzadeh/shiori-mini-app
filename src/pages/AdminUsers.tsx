@@ -27,6 +27,7 @@ import {
 import {
   APP_USER_ROLE_LABELS,
   APP_USER_ROLES,
+  roleBadgeVariant,
   type AppUserRole,
 } from '@/constants/userRoles'
 import { cn } from '@/lib/utils'
@@ -57,12 +58,6 @@ const sortOptions: { key: SortKey; label: string }[] = [
 const displayName = (user: usersService.TelegramUserRow) => {
   const parts = [user.first_name, user.last_name].filter(Boolean)
   return parts.join(' ').trim() || 'کاربر'
-}
-
-const roleBadgeVariant = (role: AppUserRole): 'default' | 'secondary' | 'outline' => {
-  if (role === 'admin') return 'default'
-  if (role === 'moderator') return 'outline'
-  return 'secondary'
 }
 
 const AdminUsers = () => {
@@ -437,10 +432,10 @@ const UserRow = ({
             )}
           </div>
 
-          <div className="min-w-0 flex-1 space-y-1">
+          <div className="min-w-0 flex-1 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="text-foreground text-sm font-semibold">{name}</p>
-              {user.is_premium ? <Badge variant="secondary">پریمیوم</Badge> : null}
+              <p className="text-foreground font-semibold">{name}</p>
+              {user.is_premium ? <Badge variant="premium">پریمیوم</Badge> : null}
             </div>
             <p className="text-muted-foreground font-mono text-[11px] sm:hidden" dir="ltr">
               ID: {user.telegram_user_id}

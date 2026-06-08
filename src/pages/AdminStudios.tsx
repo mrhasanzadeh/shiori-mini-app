@@ -5,14 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet'
+import { AdminEditSheet, AdminEditSheetActions } from '@/components/admin/AdminEditSheet'
 import {
   AdminCrudCount,
   AdminCrudEmpty,
@@ -217,53 +210,41 @@ const AdminStudios = () => {
         </>
       )}
 
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent dir="rtl" className="flex flex-col">
-          <SheetHeader>
-            <SheetTitle>{draft.id ? 'ویرایش استودیو' : 'استودیو جدید'}</SheetTitle>
-            <SheetDescription>نام نمایشی و اسلاگ یکتا را وارد کنید.</SheetDescription>
-          </SheetHeader>
-
-          <div className="flex flex-1 flex-col gap-4 p-4">
-            <div className="space-y-2">
-              <Label htmlFor="studio-name">نام</Label>
-              <Input
-                id="studio-name"
-                value={draft.name}
-                onChange={(e) => setDraft((p) => ({ ...p, name: e.target.value }))}
-                placeholder="MAPPA"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="studio-slug">اسلاگ</Label>
-              <Input
-                id="studio-slug"
-                value={draft.slug}
-                onChange={(e) => setDraft((p) => ({ ...p, slug: e.target.value }))}
-                placeholder="mappa"
-                className="font-mono text-sm"
-                dir="ltr"
-              />
-            </div>
-          </div>
-
-          <SheetFooter>
-            <div className="flex w-full flex-col gap-2">
-              <Button
-                type="button"
-                size="lg"
-                disabled={saving || !draft.slug.trim() || !draft.name.trim()}
-                onClick={() => void onSave()}
-              >
-                ذخیره
-              </Button>
-              <Button type="button" size="lg" variant="secondary" onClick={() => setSheetOpen(false)} disabled={saving}>
-                انصراف
-              </Button>
-            </div>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+      <AdminEditSheet
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        title={draft.id ? 'ویرایش استودیو' : 'استودیو جدید'}
+        description="نام نمایشی و اسلاگ یکتا را وارد کنید."
+        footer={
+          <AdminEditSheetActions
+            saving={saving}
+            saveDisabled={!draft.slug.trim() || !draft.name.trim()}
+            onSave={() => void onSave()}
+            onCancel={() => setSheetOpen(false)}
+          />
+        }
+      >
+        <div className="space-y-2">
+          <Label htmlFor="studio-name">نام</Label>
+          <Input
+            id="studio-name"
+            value={draft.name}
+            onChange={(e) => setDraft((p) => ({ ...p, name: e.target.value }))}
+            placeholder="MAPPA"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="studio-slug">اسلاگ</Label>
+          <Input
+            id="studio-slug"
+            value={draft.slug}
+            onChange={(e) => setDraft((p) => ({ ...p, slug: e.target.value }))}
+            placeholder="mappa"
+            className="font-mono text-sm"
+            dir="ltr"
+          />
+        </div>
+      </AdminEditSheet>
     </AdminCrudPage>
   )
 }
