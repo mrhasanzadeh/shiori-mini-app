@@ -1,4 +1,5 @@
 import { hasSupabaseConfig, supabase } from '../lib/supabase'
+import { getTelegramInitData } from '../lib/telegramRequestHeaders'
 import { formatSupabaseError } from './supabaseAnime'
 
 export type UserAnimeListRow = {
@@ -18,36 +19,41 @@ export type AnimeFavoriteCountMap = Record<string, number>
 
 const entryKey = (animeId: number | string) => String(animeId)
 
+const mapListRow = (row: Record<string, unknown>): UserAnimeListRow => ({
+  anime_id: row.anime_id as number | string,
+  episodes_watched:
+    typeof row.episodes_watched === 'number'
+      ? row.episodes_watched
+      : Number(row.episodes_watched) || 0,
+  user_rating:
+    row.user_rating != null && row.user_rating !== ''
+      ? Number(row.user_rating)
+      : null,
+  updated_at: typeof row.updated_at === 'string' ? row.updated_at : undefined,
+})
+
 export const getUserAnimeList = async (
-  telegramUserId: number
+  _telegramUserId: number
 ): Promise<UserAnimeListRow[]> => {
   if (!hasSupabaseConfig) return []
 
-  const { data, error } = await supabase
-    .from('user_anime_list')
-    .select('anime_id, episodes_watched, user_rating, updated_at')
-    .eq('telegram_user_id', telegramUserId)
-    .order('updated_at', { ascending: false })
+  const initData = getTelegramInitData()
+  if (!initData) return []
+
+  const { data, error } = await supabase.rpc('get_user_anime_list_verified', {
+    p_init_data: initData,
+  })
 
   if (error) {
     if (import.meta.env.DEV) console.warn('getUserAnimeList:', error.message)
     return []
   }
 
-  return (data ?? []).map((row) => ({
-    anime_id: row.anime_id as number | string,
-    episodes_watched:
-      typeof row.episodes_watched === 'number' ? row.episodes_watched : Number(row.episodes_watched) || 0,
-    user_rating:
-      row.user_rating != null && row.user_rating !== ''
-        ? Number(row.user_rating)
-        : null,
-    updated_at: typeof row.updated_at === 'string' ? row.updated_at : undefined,
-  }))
+  return (data ?? []).map((row: Record<string, unknown>) => mapListRow(row))
 }
 
 export const upsertUserAnimeListEntry = async (
-  telegramUserId: number,
+  _telegramUserId: number,
   animeId: number | string,
   payload: {
     episodes_watched?: number
@@ -58,37 +64,37 @@ export const upsertUserAnimeListEntry = async (
     throw new Error('تنظیمات Supabase یافت نشد')
   }
 
-  const row: Record<string, unknown> = {
-    telegram_user_id: telegramUserId,
-    anime_id: animeId,
+  const initData = getTelegramInitData()
+  if (!initData) {
+    throw new Error('Telegram initData یافت نشد')
   }
 
-  if (payload.episodes_watched !== undefined) {
-    row.episodes_watched = Math.max(0, Math.floor(payload.episodes_watched))
-  }
-
-  if (payload.user_rating !== undefined) {
-    row.user_rating = payload.user_rating
-  }
-
-  const { error } = await supabase
-    .from('user_anime_list')
-    .upsert(row, { onConflict: 'telegram_user_id,anime_id' })
+  const { error } = await supabase.rpc('upsert_user_anime_list_verified', {
+    p_init_data: initData,
+    p_anime_id: animeId,
+    p_episodes_watched:
+      payload.episodes_watched !== undefined
+        ? Math.max(0, Math.floor(payload.episodes_watched))
+        : null,
+    p_user_rating: payload.user_rating ?? null,
+  })
 
   if (error) throw new Error(formatSupabaseError(error))
 }
 
 export const removeUserAnimeListEntry = async (
-  telegramUserId: number,
+  _telegramUserId: number,
   animeId: number | string
 ): Promise<void> => {
   if (!hasSupabaseConfig) return
 
-  const { error } = await supabase
-    .from('user_anime_list')
-    .delete()
-    .eq('telegram_user_id', telegramUserId)
-    .eq('anime_id', animeId)
+  const initData = getTelegramInitData()
+  if (!initData) return
+
+  const { error } = await supabase.rpc('remove_user_anime_list_verified', {
+    p_init_data: initData,
+    p_anime_id: animeId,
+  })
 
   if (error) throw new Error(formatSupabaseError(error))
 }

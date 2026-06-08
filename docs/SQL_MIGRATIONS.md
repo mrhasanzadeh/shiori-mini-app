@@ -43,6 +43,7 @@
 | 18 | `supabase-rls-security-phase1.sql` | **امنیت:** portal token RLS + قفل `password_hash` |
 | 19 | Vault: `telegram_bot_token` | Dashboard → Vault (BotFather token) — قبل از فاز ۲ |
 | 20 | `supabase-rls-security-phase2.sql` | **امنیت:** initData برای `user_anime_list` |
+| 21 | `supabase-rls-security-phase2-list-rpc.sql` | patch: RPC لیست + دیباگ initData |
 
 ## ۵. اختیاری
 

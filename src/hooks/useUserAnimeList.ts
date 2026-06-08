@@ -50,12 +50,16 @@ export const useUserAnimeList = () => {
     const localProgressSnapshot = { ...favoriteProgress }
     const remoteIdSet = new Set(remoteRows.map((r) => String(r.anime_id)))
 
-    hydrateFavoritesFromRemote(
-      remoteRows.map((row) => ({
-        animeId: row.anime_id,
-        progress: toProgress(row),
-      }))
-    )
+    // اگر سرور خالی برگرداند ولی local داده دارد، local را wipe نکن (مثلاً initData fail)
+    const shouldHydrateFromRemote = remoteRows.length > 0 || localIds.length === 0
+    if (shouldHydrateFromRemote) {
+      hydrateFavoritesFromRemote(
+        remoteRows.map((row) => ({
+          animeId: row.anime_id,
+          progress: toProgress(row),
+        }))
+      )
+    }
 
     const localOnly = localIds.filter((id) => !remoteIdSet.has(id))
     if (localOnly.length === 0) return

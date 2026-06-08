@@ -1,5 +1,6 @@
 import { hasSupabaseConfig, supabase } from '../lib/supabase'
 import { readStoredPortalSession } from '../lib/adminPortalSessionStorage'
+import { getTelegramInitData } from '../lib/telegramRequestHeaders'
 import { formatSupabaseError } from './supabaseAnime'
 import { normalizeAppUserRole, type AppUserRole } from '../constants/userRoles'
 
@@ -77,6 +78,7 @@ export const registerTelegramUserVisit = async (user: TelegramUserPayload): Prom
     p_language_code: user.language_code ?? null,
     p_photo_url: user.photo_url ?? null,
     p_is_premium: user.is_premium ?? false,
+    p_init_data: getTelegramInitData() || null,
   })
 
   if (error) {
