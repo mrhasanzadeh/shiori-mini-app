@@ -1,16 +1,16 @@
-import { ReactNode, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { ReactNode } from 'react'
+import { Link, Navigate, useLocation } from 'react-router-dom'
 import WebApp from '@twa-dev/sdk'
 import { useTelegramApp } from '../hooks/useTelegramApp'
 import { useAdminAccess } from '../hooks/useAdminAccess'
 import {
+  ADMIN_LOGIN_PATH,
   canAccessAdminRoute,
   isWebAdminOnlyMode,
   isWebAdminPasswordEnabled,
 } from '@/lib/adminAccess'
 import { isTelegramMiniApp } from '@/lib/telegramEnv'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 type Props = {
@@ -19,17 +19,21 @@ type Props = {
   requireFullAdmin?: boolean
 }
 
+const buildLoginRedirect = (pathname: string, search: string): string => {
+  const next = encodeURIComponent(`${pathname}${search}`)
+  return `${ADMIN_LOGIN_PATH}?next=${next}`
+}
+
 const AdminGate = ({ children, requireFullAdmin = false }: Props) => {
   const { user } = useTelegramApp()
   const access = useAdminAccess()
-  const [pw, setPw] = useState('')
-  const [pwError, setPwError] = useState<string | null>(null)
+  const location = useLocation()
 
-  const webPassword = String(import.meta.env.VITE_ADMIN_WEB_PASSWORD ?? '').trim()
   const webPasswordEnabled = isWebAdminPasswordEnabled()
   const webOnlyMode = isWebAdminOnlyMode()
   const inTelegramMiniApp = isTelegramMiniApp()
   const userId = user?.id
+  const canUseWebLogin = (webOnlyMode || webPasswordEnabled) && !inTelegramMiniApp
 
   if (!access.isReady || access.roleLoading) {
     return (
@@ -43,7 +47,7 @@ const AdminGate = ({ children, requireFullAdmin = false }: Props) => {
 
   if (!isAllowed) {
     if (webOnlyMode && inTelegramMiniApp) {
-      const adminUrl = `${window.location.origin}/admin`
+      const adminUrl = `${window.location.origin}${ADMIN_LOGIN_PATH}`
 
       return (
         <div className="px-4 pt-6 pb-28">
@@ -56,11 +60,7 @@ const AdminGate = ({ children, requireFullAdmin = false }: Props) => {
                 مدیریت محتوا از داخل مینی‌اپ در دسترس نیست. پنل ادمین را در مرورگر وب باز کن.
               </p>
               <div className="mt-4 flex flex-col gap-2">
-                <Button
-                  type="button"
-                  className="w-full"
-                  onClick={() => WebApp.openLink(adminUrl)}
-                >
+                <Button type="button" className="w-full" onClick={() => WebApp.openLink(adminUrl)}>
                   باز کردن در مرورگر
                 </Button>
                 <Button asChild type="button" variant="secondary">
@@ -73,60 +73,12 @@ const AdminGate = ({ children, requireFullAdmin = false }: Props) => {
       )
     }
 
-    if (webPasswordEnabled && !inTelegramMiniApp) {
+    if (canUseWebLogin) {
       return (
-        <div className="px-4 pt-6 pb-28">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">
-                {webOnlyMode ? 'ورود پنل ادمین' : 'ورود ادمین (تست وب)'}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground text-sm leading-6">
-                {webOnlyMode
-                  ? 'برای مدیریت محتوا، پسورد ادمین را وارد کن.'
-                  : 'برای تست داخل مرورگر، پسورد ادمین را وارد کن.'}
-              </p>
-              <div className="mt-4">
-                <Input
-                  value={pw}
-                  onChange={(e) => {
-                    setPw(e.target.value)
-                    setPwError(null)
-                  }}
-                  type="password"
-                  placeholder="پسورد"
-                  autoComplete="current-password"
-                />
-                {pwError && <div className="text-red-400 text-xs mt-2">{pwError}</div>}
-                <Button
-                  type="button"
-                  className="w-full mt-3"
-                  onClick={() => {
-                    if (pw.trim() !== webPassword) {
-                      setPwError('پسورد اشتباه است')
-                      return
-                    }
-                    try {
-                      localStorage.setItem('admin_web_authed', '1')
-                      window.location.reload()
-                    } catch {
-                      setPwError('مرورگر اجازه ذخیره‌سازی نمی‌دهد')
-                    }
-                  }}
-                >
-                  ورود
-                </Button>
-              </div>
-              <div className="mt-4">
-                <Button asChild type="button" variant="secondary">
-                  <Link to="/">بازگشت به خانه</Link>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        <Navigate
+          to={buildLoginRedirect(location.pathname, location.search)}
+          replace
+        />
       )
     }
 
@@ -152,12 +104,16 @@ const AdminGate = ({ children, requireFullAdmin = false }: Props) => {
                 Telegram ID: {String(userId ?? 'نامشخص')}
               </p>
             ) : null}
-            <div className="mt-4">
-              <Button asChild type="button" variant="secondary">
-                <Link to={access.isStaff ? '/admin' : '/'}>
-                  {access.isStaff ? 'بازگشت به داشبورد' : 'بازگشت به خانه'}
-                </Link>
-              </Button>
+            <div className="mt-4 flex gap-2">
+              {access.isStaff ? (
+                <Button asChild type="button" variant="secondary">
+                  <Link to="/admin">بازگشت به داشبورد</Link>
+                </Button>
+              ) : (
+                <Button asChild type="button" variant="secondary">
+                  <Link to="/">بازگشت به خانه</Link>
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>

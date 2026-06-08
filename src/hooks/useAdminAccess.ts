@@ -8,14 +8,21 @@ import {
   resolveAdminAccess,
   type AdminAccessState,
 } from '@/lib/adminAccess'
-import { isTelegramMiniApp } from '@/lib/telegramEnv'
+import {
+  readStoredPortalSession,
+  verifyAdminPortalSession,
+  type AdminPortalSession,
+} from '@/services/adminPortalAuth'
 import { getTelegramUserRole } from '@/services/supabaseUsers'
+import { isTelegramMiniApp } from '@/lib/telegramEnv'
 import { useTelegramApp } from './useTelegramApp'
 
 export const useAdminAccess = (): AdminAccessState => {
   const { user, isReady } = useTelegramApp()
   const [roleLoading, setRoleLoading] = useState(true)
+  const [portalLoading, setPortalLoading] = useState(true)
   const [dbRole, setDbRole] = useState<AppUserRole | null>(null)
+  const [portalSession, setPortalSession] = useState<AdminPortalSession | null>(null)
 
   const allowedIds = useMemo(
     () => parseAdminTelegramIds(import.meta.env.VITE_ADMIN_TELEGRAM_IDS),
@@ -27,6 +34,38 @@ export const useAdminAccess = (): AdminAccessState => {
   const webAuthed = useMemo(() => readWebAdminAuthed(), [])
 
   const userId = user?.id
+
+  useEffect(() => {
+    if (!isReady) return
+
+    if (!webOnlyMode || inTelegramMiniApp) {
+      setPortalSession(null)
+      setPortalLoading(false)
+      return
+    }
+
+    let cancelled = false
+    setPortalLoading(true)
+
+    const stored = readStoredPortalSession()
+    if (!stored?.token) {
+      setPortalSession(null)
+      setPortalLoading(false)
+      return
+    }
+
+    void verifyAdminPortalSession(stored.token)
+      .then((session) => {
+        if (!cancelled) setPortalSession(session)
+      })
+      .finally(() => {
+        if (!cancelled) setPortalLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [isReady, webOnlyMode, inTelegramMiniApp])
 
   useEffect(() => {
     if (!isReady) return
@@ -59,6 +98,11 @@ export const useAdminAccess = (): AdminAccessState => {
     }
   }, [isReady, userId, webOnlyMode, inTelegramMiniApp])
 
+  const portalRole =
+    portalSession?.role === 'admin' || portalSession?.role === 'moderator'
+      ? portalSession.role
+      : null
+
   const resolved = resolveAdminAccess({
     userId,
     dbRole,
@@ -67,11 +111,17 @@ export const useAdminAccess = (): AdminAccessState => {
     webAuthed,
     webOnlyMode,
     inTelegramMiniApp,
+    portalRole,
+    portalDisplayName: portalSession?.displayName ?? null,
   })
+
+  const accessLoading =
+    (webOnlyMode && !inTelegramMiniApp && portalLoading) ||
+    (typeof userId === 'number' && roleLoading)
 
   return {
     isReady,
-    roleLoading: typeof userId === 'number' ? roleLoading : false,
+    roleLoading: accessLoading,
     ...resolved,
   }
 }

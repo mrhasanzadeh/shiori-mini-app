@@ -16,6 +16,7 @@ import {
   Film,
   Languages,
   LayoutDashboard,
+  LogOut,
   Package,
   PanelLeftOpen,
   PanelRightOpen,
@@ -24,6 +25,8 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAdminAccess } from '@/hooks/useAdminAccess'
+import { isAdminLoginPath, isAdminRoutePath } from '@/lib/adminAccess'
+import { logoutAdminPortal } from '@/services/adminPortalAuth'
 import logo from '../assets/images/shiori-logo.svg'
 
 interface LayoutProps {
@@ -74,9 +77,13 @@ const Layout = ({ children }: LayoutProps) => {
   const isProfileHeroPage =
     location.pathname === '/profile' || location.pathname.startsWith('/translators/')
   const isTransparentHeaderPage = isAnimeDetailPage || isProfileHeroPage
-  const isAdminPage = location.pathname === '/admin' || location.pathname.startsWith('/admin/')
+  const isAdminPage = isAdminRoutePath(location.pathname)
+  const isAdminLoginPage = isAdminLoginPath(location.pathname)
 
-  const { isFullAdmin } = useAdminAccess()
+  const { isFullAdmin, isStaff, isReady, roleLoading, portalDisplayName } = useAdminAccess()
+
+  const showAdminShell =
+    isAdminPage && !isAdminLoginPage && isStaff && isReady && !roleLoading
 
   const adminNav = [
     {
@@ -133,7 +140,19 @@ const Layout = ({ children }: LayoutProps) => {
   const currentAdminNavItem = adminNav.find((item) => item.isActive())
   const currentAdminPageLabel = currentAdminNavItem?.label ?? 'مدیریت'
 
-  if (isAdminPage) {
+  if (isAdminLoginPage) {
+    return (
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-4">
+        {children}
+      </div>
+    )
+  }
+
+  if (isAdminPage && !showAdminShell) {
+    return <div className="min-h-screen bg-background text-foreground">{children}</div>
+  }
+
+  if (showAdminShell) {
     return (
       <div className="min-h-screen bg-background text-foreground flex flex-col">
         {/* <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur">
@@ -245,6 +264,26 @@ const Layout = ({ children }: LayoutProps) => {
                   )
                 })}
               </div>
+              {!adminSidebarCollapsed ? (
+                <div className="mt-6 px-3 pb-4 border-t border-muted pt-4">
+                  <p className="text-xs text-muted-foreground truncate mb-2">
+                    {portalDisplayName ?? 'ادمین'}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="w-full justify-start gap-2"
+                    onClick={() => {
+                      void logoutAdminPortal().finally(() => {
+                        window.location.href = '/admin/login'
+                      })
+                    }}
+                  >
+                    <LogOut className="h-4 w-4" />
+                    خروج
+                  </Button>
+                </div>
+              ) : null}
             </div>
           </aside>
 

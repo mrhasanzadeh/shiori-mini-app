@@ -12,7 +12,15 @@ export type AdminAccessState = {
   /** Admin panel is web-only; blocked inside Telegram Mini App */
   isWebAdminOnly: boolean
   inTelegramMiniApp: boolean
+  portalDisplayName: string | null
 }
+
+export const ADMIN_LOGIN_PATH = '/admin/login'
+
+export const isAdminRoutePath = (pathname: string): boolean =>
+  pathname === '/admin' || pathname.startsWith('/admin/')
+
+export const isAdminLoginPath = (pathname: string): boolean => pathname === ADMIN_LOGIN_PATH
 
 export const parseAdminTelegramIds = (value: unknown): Set<number> => {
   const raw = typeof value === 'string' ? value : ''
@@ -56,9 +64,17 @@ export const resolveAdminAccess = (params: {
   webAuthed: boolean
   webOnlyMode: boolean
   inTelegramMiniApp: boolean
+  portalRole: AppUserRole | null
+  portalDisplayName: string | null
 }): Pick<
   AdminAccessState,
-  'dbRole' | 'isStaff' | 'isFullAdmin' | 'isModerator' | 'isWebAdminOnly' | 'inTelegramMiniApp'
+  | 'dbRole'
+  | 'isStaff'
+  | 'isFullAdmin'
+  | 'isModerator'
+  | 'isWebAdminOnly'
+  | 'inTelegramMiniApp'
+  | 'portalDisplayName'
 > => {
   const {
     userId,
@@ -68,9 +84,11 @@ export const resolveAdminAccess = (params: {
     webAuthed,
     webOnlyMode,
     inTelegramMiniApp,
+    portalRole,
+    portalDisplayName,
   } = params
 
-  const meta = { isWebAdminOnly: webOnlyMode, inTelegramMiniApp }
+  const meta = { isWebAdminOnly: webOnlyMode, inTelegramMiniApp, portalDisplayName }
 
   if (webOnlyMode && inTelegramMiniApp) {
     return {
@@ -83,11 +101,35 @@ export const resolveAdminAccess = (params: {
   }
 
   if (webOnlyMode && !inTelegramMiniApp) {
-    const isWebAdmin = webPasswordEnabled && webAuthed
+    if (portalRole === 'admin') {
+      return {
+        dbRole: 'admin',
+        isStaff: true,
+        isFullAdmin: true,
+        isModerator: false,
+        portalDisplayName,
+        isWebAdminOnly: webOnlyMode,
+        inTelegramMiniApp,
+      }
+    }
+
+    if (portalRole === 'moderator') {
+      return {
+        dbRole: 'moderator',
+        isStaff: true,
+        isFullAdmin: false,
+        isModerator: true,
+        portalDisplayName,
+        isWebAdminOnly: webOnlyMode,
+        inTelegramMiniApp,
+      }
+    }
+
+    const isLegacyWebAdmin = webPasswordEnabled && webAuthed
     return {
       dbRole: null,
-      isStaff: isWebAdmin,
-      isFullAdmin: isWebAdmin,
+      isStaff: isLegacyWebAdmin,
+      isFullAdmin: isLegacyWebAdmin,
       isModerator: false,
       ...meta,
     }

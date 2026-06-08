@@ -38,6 +38,7 @@
 | 13 | Secrets: `CRON_SECRET`, `OMDB_API_KEY` | Dashboard |
 | 14 | `supabase-cron-sync-external-scores.sql` | راهنمای Cron (Dashboard → Integrations → Cron) |
 | 15 | `supabase-cron-job-sync-external-scores.sql` | SQL آماده pg_cron (جایگزین YOUR_ANON_KEY و YOUR_CRON_SECRET) |
+| 16 | `supabase-admin-portal-auth.sql` | حساب‌های وب ادمین + login RPC |
 
 ## ۵. اختیاری
 

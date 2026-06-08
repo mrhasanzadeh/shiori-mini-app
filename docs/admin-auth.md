@@ -1,49 +1,62 @@
 # Admin authentication
 
-Admin routes (`/admin/*`) are wrapped in **`AdminGate`** (`src/components/AdminGate.tsx`). This is a **UI gate only** — it does not authenticate requests to Supabase.
+Admin routes (`/admin/*`) use **`AdminGate`** + **`/admin/login`**.
 
-## Modes
+## Flow (web-only)
 
-### Web-only admin (recommended for your setup)
+1. User opens `/admin` (or any admin sub-route)
+2. If not logged in → redirect to **`/admin/login?next=...`**
+3. Login with **email + password** (stored in Supabase, verified server-side)
+4. Redirect to `next` with role-based access:
+   - **`admin`** → full panel including `/admin/users`
+   - **`moderator`** → content sections only (no user management)
 
-Set in Vercel / `.env`:
+Sidebar and admin chrome appear **only after** successful login.
 
-```env
-VITE_ADMIN_WEB_ONLY=true
-VITE_ADMIN_WEB_PASSWORD=your-strong-password
+## Setup
+
+### 1. SQL (Supabase SQL Editor)
+
+Run **`supabase-admin-portal-auth.sql`**, then create the first account:
+
+```sql
+INSERT INTO admin_portal_accounts (email, password_hash, display_name, app_role)
+VALUES (
+  'admin@shiori.app',
+  crypt('YOUR_STRONG_PASSWORD', gen_salt('bf')),
+  'مدیر اصلی',
+  'admin'
+);
 ```
 
-- `/admin` opens in **browser** with password login (works in production after redeploy).
-- Inside **Telegram Mini App**, admin is blocked with a link to open the browser.
-- `VITE_ADMIN_TELEGRAM_IDS` is ignored in this mode.
+Add moderators with `app_role = 'moderator'`.
 
-### Telegram + optional dev web (default)
-
-| Method | When | Config |
-|--------|------|--------|
-| Telegram allowlist | Mini App inside Telegram | `VITE_ADMIN_TELEGRAM_IDS` |
-| DB role | `telegram_users.app_role` = `admin` / `moderator` | SQL |
-| Web password | Browser, **dev only** by default | `VITE_ADMIN_WEB_PASSWORD` |
-| Web password in prod | Browser | `VITE_ADMIN_WEB_AUTH=true` + password |
-
-## Production (Vercel)
+### 2. Vercel env
 
 ```env
 VITE_SUPABASE_URL=...
 VITE_SUPABASE_ANON_KEY=...
 VITE_ADMIN_WEB_ONLY=true
-VITE_ADMIN_WEB_PASSWORD=...
 ```
 
-Redeploy after changing `VITE_*` variables.
+Redeploy after changes.
 
-Logout from web admin: clear `localStorage.admin_web_authed` or use private/incognito.
+`VITE_ADMIN_WEB_PASSWORD` is optional legacy fallback (single shared password in bundle). Prefer portal accounts.
+
+## Telegram Mini App
+
+With `VITE_ADMIN_WEB_ONLY=true`, admin is **blocked** inside Telegram. Users see a link to open `/admin/login` in the browser.
+
+## Logout
+
+Sidebar → **خروج** (clears session in DB + localStorage).
 
 ## Security
 
-1. Web password is embedded in the client bundle — use a **strong unique password**; this is convenience, not bank-grade auth.
-2. **RLS** must protect data — see [rls.md](./rls.md). Uncomment catalog write policies if admin panel saves with anon key.
-3. Never put `SUPABASE_SERVICE_ROLE_KEY` in frontend env.
+- Passwords hashed with `pgcrypt` / bcrypt in Postgres
+- Session tokens in `admin_portal_sessions` (7-day expiry)
+- UI gate only — protect writes with **RLS** ([rls.md](./rls.md))
+- Never expose `SUPABASE_SERVICE_ROLE_KEY` in frontend
 
 ## Related
 

@@ -19,6 +19,7 @@ const Notifications = lazy(() => import('./pages/Notifications'))
 const TranslatorProfile = lazy(() => import('./pages/TranslatorProfile'))
 const StudioDetail = lazy(() => import('./pages/StudioDetail'))
 
+const AdminLogin = lazy(() => import('./pages/AdminLogin'))
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'))
 const AdminAnimeList = lazy(() => import('./pages/AdminAnimeList'))
 const AdminAnimeEdit = lazy(() => import('./pages/AdminAnimeEdit'))
@@ -69,6 +70,8 @@ function App() {
           <Route path="/my-list" element={<MyList />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/notifications" element={<Notifications />} />
+
+          <Route path="/admin/login" element={<AdminLogin />} />
 
           <Route
             path="/admin"
