@@ -72,5 +72,6 @@ SQLها را **به ترتیب** در [`docs/SQL_MIGRATIONS.md`](./SQL_MIGRATION
 ## Related
 
 - [admin-auth.md](./admin-auth.md)
+- [security-phase1.md](./security-phase1.md)
 - [rls.md](./rls.md)
 - [schema.md](./schema.md)

@@ -1,23 +1,39 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from '@supabase/supabase-js'
+import { getPortalRequestHeaders } from '@/lib/adminPortalSessionStorage'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
 
 export const hasSupabaseConfig = Boolean(
-  supabaseUrl && supabaseAnonKey && supabaseUrl !== "your_supabase_project_url"
-);
+  supabaseUrl && supabaseAnonKey && supabaseUrl !== 'your_supabase_project_url'
+)
 
 if (!hasSupabaseConfig) {
   // eslint-disable-next-line no-console
-  console.error("Supabase: VITE_SUPABASE_URL و VITE_SUPABASE_ANON_KEY را در فایل .env تنظیم کنید.");
+  console.error('Supabase: VITE_SUPABASE_URL و VITE_SUPABASE_ANON_KEY را در فایل .env تنظیم کنید.')
 }
 
-export const supabase = createClient(supabaseUrl || "", supabaseAnonKey || "", {
+export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
   },
-});
+  global: {
+    fetch: (input, init) => {
+      const portalHeaders = getPortalRequestHeaders()
+      if (Object.keys(portalHeaders).length === 0) {
+        return fetch(input, init)
+      }
 
-export type SupabaseClientType = typeof supabase;
+      const headers = new Headers(init?.headers)
+      for (const [key, value] of Object.entries(portalHeaders)) {
+        headers.set(key, value)
+      }
+
+      return fetch(input, { ...init, headers })
+    },
+  },
+})
+
+export type SupabaseClientType = typeof supabase

@@ -1,4 +1,5 @@
 import { hasSupabaseConfig, supabase } from '../lib/supabase'
+import { readStoredPortalSession } from '../lib/adminPortalSessionStorage'
 import { formatSupabaseError } from './supabaseAnime'
 import { normalizeAppUserRole, type AppUserRole } from '../constants/userRoles'
 
@@ -86,19 +87,17 @@ export const registerTelegramUserVisit = async (user: TelegramUserPayload): Prom
 export const getTelegramUserRole = async (telegramUserId: number): Promise<AppUserRole | null> => {
   if (!hasSupabaseConfig) return null
 
-  const { data, error } = await supabase
-    .from('telegram_users')
-    .select('app_role')
-    .eq('telegram_user_id', telegramUserId)
-    .maybeSingle()
+  const { data, error } = await supabase.rpc('get_telegram_user_role', {
+    p_telegram_user_id: telegramUserId,
+  })
 
   if (error) {
     if (import.meta.env.DEV) console.warn('getTelegramUserRole:', error.message)
     return null
   }
 
-  if (!data) return null
-  return normalizeAppUserRole(data.app_role)
+  if (data == null || data === '') return null
+  return normalizeAppUserRole(data)
 }
 
 export const updateTelegramUserAdmin = async (
@@ -108,7 +107,13 @@ export const updateTelegramUserAdmin = async (
     throw new Error('تنظیمات Supabase یافت نشد')
   }
 
+  const portalToken = readStoredPortalSession()?.token
+  if (!portalToken) {
+    throw new Error('نشست ورود ادمین یافت نشد')
+  }
+
   const { error } = await supabase.rpc('update_telegram_user_admin', {
+    p_portal_token: portalToken,
     p_telegram_user_id: payload.telegram_user_id,
     p_app_role: payload.app_role,
     p_admin_notes: payload.admin_notes ?? null,

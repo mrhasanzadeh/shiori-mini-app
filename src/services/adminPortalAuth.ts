@@ -1,14 +1,13 @@
-import { normalizeAppUserRole, type AppUserRole } from '@/constants/userRoles'
+import { normalizeAppUserRole } from '@/constants/userRoles'
 import { hasSupabaseConfig, supabase } from '@/lib/supabase'
+import {
+  clearStoredPortalSession,
+  readStoredPortalSession,
+  writeStoredPortalSession,
+  type AdminPortalSession,
+} from '@/lib/adminPortalSessionStorage'
 
-const PORTAL_SESSION_KEY = 'admin_portal_session'
-
-export type AdminPortalSession = {
-  token: string
-  role: AppUserRole
-  displayName: string
-  expiresAt: string
-}
+export type { AdminPortalSession }
 
 type PortalRpcPayload = {
   ok?: boolean
@@ -37,36 +36,12 @@ const parsePortalSession = (payload: PortalRpcPayload): AdminPortalSession | nul
   }
 }
 
-export const readStoredPortalSession = (): AdminPortalSession | null => {
-  try {
-    const raw = localStorage.getItem(PORTAL_SESSION_KEY)
-    if (!raw) return null
-    const parsed = JSON.parse(raw) as AdminPortalSession
-    if (!parsed?.token || !parsed?.expiresAt) return null
-
-    const expiresMs = Date.parse(parsed.expiresAt)
-    if (Number.isFinite(expiresMs) && expiresMs <= Date.now()) {
-      localStorage.removeItem(PORTAL_SESSION_KEY)
-      return null
-    }
-    return parsed
-  } catch {
-    return null
-  }
-}
-
-export const writeStoredPortalSession = (session: AdminPortalSession): void => {
-  localStorage.setItem(PORTAL_SESSION_KEY, JSON.stringify(session))
-}
-
-export const clearStoredPortalSession = (): void => {
-  try {
-    localStorage.removeItem(PORTAL_SESSION_KEY)
-    localStorage.removeItem('admin_web_authed')
-  } catch {
-    // ignore
-  }
-}
+export {
+  clearStoredPortalSession,
+  getPortalRequestHeaders,
+  readStoredPortalSession,
+  writeStoredPortalSession,
+} from '@/lib/adminPortalSessionStorage'
 
 export const loginAdminPortal = async (
   email: string,

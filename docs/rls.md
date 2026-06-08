@@ -4,7 +4,12 @@ The mini app uses **`VITE_SUPABASE_ANON_KEY`** in the browser. Row Level Securit
 
 Apply policies in the Supabase SQL Editor or via migrations in your Supabase project (not stored in this repo).
 
-**Ready-made file:** [`supabase-rls-production.sql`](../supabase-rls-production.sql) — public SELECT + user tables. Catalog write policies are commented (enable only if admin uses anon key).
+**Ready-made files:**
+
+- [`supabase-rls-production.sql`](../supabase-rls-production.sql) — public SELECT + user tables
+- [`supabase-rls-security-phase1.sql`](../supabase-rls-security-phase1.sql) — portal token writes + lock `password_hash` (**recommended after launch**)
+
+Catalog write policies in production file are commented; phase 1 security replaces open anon writes with portal-session checks. See [security-phase1.md](./security-phase1.md).
 
 **Migration order:** [`docs/SQL_MIGRATIONS.md`](./SQL_MIGRATIONS.md)
 
