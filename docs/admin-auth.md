@@ -2,40 +2,50 @@
 
 Admin routes (`/admin/*`) are wrapped in **`AdminGate`** (`src/components/AdminGate.tsx`). This is a **UI gate only** — it does not authenticate requests to Supabase.
 
-## How access is granted
+## Modes
+
+### Web-only admin (recommended for your setup)
+
+Set in Vercel / `.env`:
+
+```env
+VITE_ADMIN_WEB_ONLY=true
+VITE_ADMIN_WEB_PASSWORD=your-strong-password
+```
+
+- `/admin` opens in **browser** with password login (works in production after redeploy).
+- Inside **Telegram Mini App**, admin is blocked with a link to open the browser.
+- `VITE_ADMIN_TELEGRAM_IDS` is ignored in this mode.
+
+### Telegram + optional dev web (default)
 
 | Method | When | Config |
 |--------|------|--------|
-| Telegram allowlist | User opens Mini App inside Telegram | `VITE_ADMIN_TELEGRAM_IDS` — comma-separated numeric IDs |
-| Web password | Browser dev/test, no Telegram user | `VITE_ADMIN_WEB_PASSWORD` + `localStorage.admin_web_authed` |
+| Telegram allowlist | Mini App inside Telegram | `VITE_ADMIN_TELEGRAM_IDS` |
+| DB role | `telegram_users.app_role` = `admin` / `moderator` | SQL |
+| Web password | Browser, **dev only** by default | `VITE_ADMIN_WEB_PASSWORD` |
+| Web password in prod | Browser | `VITE_ADMIN_WEB_AUTH=true` + password |
 
-If neither matches, admin pages show «دسترسی غیرمجاز».
-
-## Production recommendations
-
-1. **Use Telegram allowlist** for real admins. Get IDs from the gate screen («Telegram ID: …») or `@userinfobot`.
-2. **Do not rely on web password in production.** The password is embedded in the client bundle (`import.meta.env`) and can be extracted. `localStorage` auth is trivial to forge.
-3. **Protect data with RLS** — see [rls.md](./rls.md). Without write policies, anon key + knowledge of table names = full DB access.
-4. **Prefer service role or Edge Functions** for admin mutations instead of wide-open anon write policies.
-
-## Environment variables
+## Production (Vercel)
 
 ```env
-VITE_ADMIN_TELEGRAM_IDS=123456789,987654321
-VITE_ADMIN_WEB_PASSWORD=dev-only-secret   # optional, browser testing
+VITE_SUPABASE_URL=...
+VITE_SUPABASE_ANON_KEY=...
+VITE_ADMIN_WEB_ONLY=true
+VITE_ADMIN_WEB_PASSWORD=...
 ```
 
-Typed in `src/vite-env.d.ts`.
+Redeploy after changing `VITE_*` variables.
 
-## Security checklist before launch
+Logout from web admin: clear `localStorage.admin_web_authed` or use private/incognito.
 
-- [ ] `VITE_ADMIN_WEB_PASSWORD` unset or empty in production build
-- [ ] `VITE_ADMIN_TELEGRAM_IDS` lists only trusted IDs
-- [ ] RLS enabled; anon key cannot INSERT/UPDATE/DELETE catalog tables
-- [ ] Service role key **never** in frontend env or git
-- [ ] Supabase dashboard: review API keys and disable unused providers
+## Security
+
+1. Web password is embedded in the client bundle — use a **strong unique password**; this is convenience, not bank-grade auth.
+2. **RLS** must protect data — see [rls.md](./rls.md). Uncomment catalog write policies if admin panel saves with anon key.
+3. Never put `SUPABASE_SERVICE_ROLE_KEY` in frontend env.
 
 ## Related
 
 - [rls.md](./rls.md)
-- [schema.md](./schema.md)
+- [DEPLOY.md](./DEPLOY.md)

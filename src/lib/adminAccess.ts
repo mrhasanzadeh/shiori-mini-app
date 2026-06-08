@@ -6,9 +6,12 @@ export type AdminAccessState = {
   dbRole: AppUserRole | null
   /** Can open /admin (admin or moderator) */
   isStaff: boolean
-  /** Full admin: users, roles, env allowlist, dev web login */
+  /** Full admin: users, roles, env allowlist, web login */
   isFullAdmin: boolean
   isModerator: boolean
+  /** Admin panel is web-only; blocked inside Telegram Mini App */
+  isWebAdminOnly: boolean
+  inTelegramMiniApp: boolean
 }
 
 export const parseAdminTelegramIds = (value: unknown): Set<number> => {
@@ -26,9 +29,15 @@ export const parseAdminTelegramIds = (value: unknown): Set<number> => {
   return ids
 }
 
+export const isWebAdminOnlyMode = (): boolean =>
+  String(import.meta.env.VITE_ADMIN_WEB_ONLY ?? '').trim().toLowerCase() === 'true'
+
 export const isWebAdminPasswordEnabled = (): boolean => {
   const webPassword = String(import.meta.env.VITE_ADMIN_WEB_PASSWORD ?? '').trim()
-  return import.meta.env.DEV && webPassword.length > 0
+  if (!webPassword) return false
+  if (import.meta.env.DEV) return true
+  if (isWebAdminOnlyMode()) return true
+  return String(import.meta.env.VITE_ADMIN_WEB_AUTH ?? '').trim().toLowerCase() === 'true'
 }
 
 export const readWebAdminAuthed = (): boolean => {
@@ -45,8 +54,44 @@ export const resolveAdminAccess = (params: {
   allowedIds: Set<number>
   webPasswordEnabled: boolean
   webAuthed: boolean
-}): Pick<AdminAccessState, 'dbRole' | 'isStaff' | 'isFullAdmin' | 'isModerator'> => {
-  const { userId, dbRole, allowedIds, webPasswordEnabled, webAuthed } = params
+  webOnlyMode: boolean
+  inTelegramMiniApp: boolean
+}): Pick<
+  AdminAccessState,
+  'dbRole' | 'isStaff' | 'isFullAdmin' | 'isModerator' | 'isWebAdminOnly' | 'inTelegramMiniApp'
+> => {
+  const {
+    userId,
+    dbRole,
+    allowedIds,
+    webPasswordEnabled,
+    webAuthed,
+    webOnlyMode,
+    inTelegramMiniApp,
+  } = params
+
+  const meta = { isWebAdminOnly: webOnlyMode, inTelegramMiniApp }
+
+  if (webOnlyMode && inTelegramMiniApp) {
+    return {
+      dbRole,
+      isStaff: false,
+      isFullAdmin: false,
+      isModerator: false,
+      ...meta,
+    }
+  }
+
+  if (webOnlyMode && !inTelegramMiniApp) {
+    const isWebAdmin = webPasswordEnabled && webAuthed
+    return {
+      dbRole: null,
+      isStaff: isWebAdmin,
+      isFullAdmin: isWebAdmin,
+      isModerator: false,
+      ...meta,
+    }
+  }
 
   const isEnvAdmin = typeof userId === 'number' && allowedIds.has(userId)
   const isWebAdmin = !userId && webPasswordEnabled && webAuthed
@@ -61,6 +106,7 @@ export const resolveAdminAccess = (params: {
     isStaff,
     isFullAdmin,
     isModerator: isDbModerator && !isFullAdmin,
+    ...meta,
   }
 }
 

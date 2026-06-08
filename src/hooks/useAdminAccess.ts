@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { normalizeAppUserRole, type AppUserRole } from '@/constants/userRoles'
 import {
+  isWebAdminOnlyMode,
   isWebAdminPasswordEnabled,
   parseAdminTelegramIds,
   readWebAdminAuthed,
   resolveAdminAccess,
   type AdminAccessState,
 } from '@/lib/adminAccess'
+import { isTelegramMiniApp } from '@/lib/telegramEnv'
 import { getTelegramUserRole } from '@/services/supabaseUsers'
 import { useTelegramApp } from './useTelegramApp'
 
@@ -20,12 +22,20 @@ export const useAdminAccess = (): AdminAccessState => {
     []
   )
   const webPasswordEnabled = isWebAdminPasswordEnabled()
+  const webOnlyMode = isWebAdminOnlyMode()
+  const inTelegramMiniApp = isTelegramMiniApp()
   const webAuthed = useMemo(() => readWebAdminAuthed(), [])
 
   const userId = user?.id
 
   useEffect(() => {
     if (!isReady) return
+
+    if (webOnlyMode && inTelegramMiniApp) {
+      setDbRole(null)
+      setRoleLoading(false)
+      return
+    }
 
     if (typeof userId !== 'number') {
       setDbRole(null)
@@ -47,7 +57,7 @@ export const useAdminAccess = (): AdminAccessState => {
     return () => {
       cancelled = true
     }
-  }, [isReady, userId])
+  }, [isReady, userId, webOnlyMode, inTelegramMiniApp])
 
   const resolved = resolveAdminAccess({
     userId,
@@ -55,6 +65,8 @@ export const useAdminAccess = (): AdminAccessState => {
     allowedIds,
     webPasswordEnabled,
     webAuthed,
+    webOnlyMode,
+    inTelegramMiniApp,
   })
 
   return {
