@@ -100,31 +100,31 @@ export const resolveAdminAccess = (params: {
     }
   }
 
+  if (!inTelegramMiniApp && portalRole === 'admin') {
+    return {
+      dbRole: 'admin',
+      isStaff: true,
+      isFullAdmin: true,
+      isModerator: false,
+      portalDisplayName,
+      isWebAdminOnly: webOnlyMode,
+      inTelegramMiniApp,
+    }
+  }
+
+  if (!inTelegramMiniApp && portalRole === 'moderator') {
+    return {
+      dbRole: 'moderator',
+      isStaff: true,
+      isFullAdmin: false,
+      isModerator: true,
+      portalDisplayName,
+      isWebAdminOnly: webOnlyMode,
+      inTelegramMiniApp,
+    }
+  }
+
   if (webOnlyMode && !inTelegramMiniApp) {
-    if (portalRole === 'admin') {
-      return {
-        dbRole: 'admin',
-        isStaff: true,
-        isFullAdmin: true,
-        isModerator: false,
-        portalDisplayName,
-        isWebAdminOnly: webOnlyMode,
-        inTelegramMiniApp,
-      }
-    }
-
-    if (portalRole === 'moderator') {
-      return {
-        dbRole: 'moderator',
-        isStaff: true,
-        isFullAdmin: false,
-        isModerator: true,
-        portalDisplayName,
-        isWebAdminOnly: webOnlyMode,
-        inTelegramMiniApp,
-      }
-    }
-
     const isLegacyWebAdmin = webPasswordEnabled && webAuthed
     return {
       dbRole: null,

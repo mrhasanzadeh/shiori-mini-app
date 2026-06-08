@@ -1,39 +1,9 @@
--- یکپارچه‌سازی: ورود وب روی telegram_users (بدون admin_portal_accounts)
--- اگر قبلاً admin_portal_* ساخته‌اید → بعد از این فایل، supabase-unify-portal-users.sql را اجرا کنید.
+-- Fix: function crypt(text, text) does not exist
+-- علت: pgcrypto در schema «extensions» است؛ RPC باید search_path درست داشته باشد.
+-- این فایل را یک‌بار در Supabase SQL Editor اجرا کنید.
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
 
--- ─── ستون‌های ورود وب روی همان جدول کاربران ───
-ALTER TABLE telegram_users
-  ADD COLUMN IF NOT EXISTS email text,
-  ADD COLUMN IF NOT EXISTS password_hash text,
-  ADD COLUMN IF NOT EXISTS portal_login_enabled boolean NOT NULL DEFAULT true;
-
-COMMENT ON COLUMN telegram_users.email IS 'Web admin login email (optional)';
-COMMENT ON COLUMN telegram_users.password_hash IS 'bcrypt hash for web admin login';
-COMMENT ON COLUMN telegram_users.portal_login_enabled IS 'false = block web login even if password set';
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_telegram_users_email_lower
-  ON telegram_users (lower(trim(email)))
-  WHERE email IS NOT NULL AND trim(email) <> '';
-
--- ─── session ورود وب (فقط token؛ نقش از telegram_users خوانده می‌شود) ───
-CREATE TABLE IF NOT EXISTS user_portal_sessions (
-  token uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  telegram_user_id bigint NOT NULL REFERENCES telegram_users(telegram_user_id) ON DELETE CASCADE,
-  expires_at timestamptz NOT NULL,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS idx_user_portal_sessions_user
-  ON user_portal_sessions (telegram_user_id);
-
-CREATE INDEX IF NOT EXISTS idx_user_portal_sessions_expires
-  ON user_portal_sessions (expires_at);
-
-ALTER TABLE user_portal_sessions ENABLE ROW LEVEL SECURITY;
-
--- ─── RPC ورود (نام قبلی حفظ شده برای فرانت) ───
 CREATE OR REPLACE FUNCTION admin_portal_login(p_email text, p_password text)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -141,21 +111,7 @@ GRANT EXECUTE ON FUNCTION admin_portal_login(text, text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION admin_portal_verify_session(uuid) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION admin_portal_logout(uuid) TO anon, authenticated;
 
--- ─── مثال‌ها ───
---
--- A) کاربر Telegram موجود → نقش + ایمیل/رمز وب:
+-- اگر رمز را با crypt ست نکرده‌اید، دوباره بزنید (در SQL Editor):
 -- UPDATE telegram_users
--- SET app_role = 'admin',
---     email = 'admin@shiori.app',
---     password_hash = extensions.crypt('YOUR_PASSWORD', extensions.gen_salt('bf'))
--- WHERE telegram_user_id = 90344148;
---
--- B) ادمین فقط وب (بدون Telegram) — telegram_user_id منفی:
--- INSERT INTO telegram_users (telegram_user_id, first_name, email, password_hash, app_role)
--- VALUES (
---   -1000001,
---   'مدیر وب',
---   'admin@shiori.app',
---   crypt('YOUR_PASSWORD', gen_salt('bf')),
---   'admin'
--- );
+-- SET password_hash = crypt('YOUR_PASSWORD', gen_salt('bf'))
+-- WHERE lower(trim(email)) = lower(trim('admin@shiori.app'));

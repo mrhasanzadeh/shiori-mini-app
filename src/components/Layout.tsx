@@ -24,13 +24,32 @@ import {
   Users,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { useAdminAccess } from '@/hooks/useAdminAccess'
 import { isAdminLoginPath, isAdminRoutePath } from '@/lib/adminAccess'
+import { cn } from '@/lib/utils'
 import { logoutAdminPortal } from '@/services/adminPortalAuth'
 import logo from '../assets/images/shiori-logo.svg'
 
 interface LayoutProps {
   children: ReactNode
+}
+
+const getAdminInitials = (name: string): string => {
+  const trimmed = name.trim()
+  if (!trimmed) return 'ا'
+  const parts = trimmed.split(/\s+/).filter(Boolean)
+  if (parts.length >= 2) {
+    return `${parts[0].charAt(0)}${parts[1].charAt(0)}`
+  }
+  return trimmed.charAt(0)
 }
 
 const Layout = ({ children }: LayoutProps) => {
@@ -39,6 +58,8 @@ const Layout = ({ children }: LayoutProps) => {
   const [isScrolled, setIsScrolled] = useState(false)
 
   const [adminSidebarCollapsed, setAdminSidebarCollapsed] = useState(false)
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false)
+  const [logoutLoading, setLogoutLoading] = useState(false)
 
   useEffect(() => {
     try {
@@ -80,7 +101,19 @@ const Layout = ({ children }: LayoutProps) => {
   const isAdminPage = isAdminRoutePath(location.pathname)
   const isAdminLoginPage = isAdminLoginPath(location.pathname)
 
-  const { isFullAdmin, isStaff, isReady, roleLoading, portalDisplayName } = useAdminAccess()
+  const { isFullAdmin, isModerator, isStaff, isReady, roleLoading, portalDisplayName } =
+    useAdminAccess()
+
+  const adminDisplayName = portalDisplayName?.trim() || 'ادمین'
+  const adminInitials = getAdminInitials(adminDisplayName)
+  const adminRoleLabel = isFullAdmin ? 'ادمین' : isModerator ? 'مدیر محتوا' : 'ادمین'
+
+  const handleConfirmLogout = () => {
+    setLogoutLoading(true)
+    void logoutAdminPortal().finally(() => {
+      window.location.href = '/admin/login'
+    })
+  }
 
   const showAdminShell =
     isAdminPage && !isAdminLoginPage && isStaff && isReady && !roleLoading
@@ -154,163 +187,192 @@ const Layout = ({ children }: LayoutProps) => {
 
   if (showAdminShell) {
     return (
-      <div className="min-h-screen bg-background text-foreground flex flex-col">
-        {/* <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur">
-          <div className="px-8 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Link to="/" className="flex items-center justify-center gap-1 text-foreground">
-                <img src={logo} alt="logo" className="w-6 h-6" />
-                <span className="text-foreground text-xl font-bold">شیوری</span>
-              </Link>
-              <div className="text-gray-500">/</div>
-              <Link to="/admin" className="text-foreground font-semibold">
-                پنل ادمین
-              </Link>
-            </div>
-            <div
-              className={`flex items-center ${adminSidebarCollapsed ? 'justify-center' : 'justify-end'}`}
-            >
-              <Button type="button" variant={'outline'} size="icon" onClick={toggleAdminSidebar}>
-                {adminSidebarCollapsed ? (
-                  <ChevronRight className="h-4 w-4" />
-                ) : (
-                  <ChevronLeft className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
-            <div className="flex items-center gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button type="button" variant="secondary" className="gap-2">
-                    <UserCircle className="h-4 w-4" />
-                    <span className="text-sm">
-                      {user?.username
-                        ? `@${user.username}`
-                        : user?.first_name
-                          ? user.first_name
-                          : 'ادمین'}
-                    </span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start">
-                  <DropdownMenuItem asChild>
-                    <Link to="/">بازگشت به سایت</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    className="text-destructive"
-                    onSelect={() => {
-                      try {
-                        localStorage.removeItem('admin_web_authed')
-                      } catch {
-                        // ignore
-                      }
-                      window.location.reload()
-                    }}
-                  >
-                    <LogOut className="h-4 w-4 ml-2" />
-                    خروج
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              <button
-                onClick={() => navigate(-1)}
-                className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border bg-muted hover:bg-muted/80 text-foreground transition-colors duration-200"
-                aria-label="بازگشت"
-              >
-                <ArrowRight01Icon className="w-4 h-4" />
-                بازگشت
-              </button>
-            </div>
-          </div>
-        </header> */}
-
+      <div dir="rtl" className="min-h-screen bg-background text-foreground flex flex-col">
         <div className="flex flex-1">
           <aside
-            className={`bg-muted/30 shrink-0 border-l border-muted sticky top-0 h-screen overflow-y-auto transition-[width] duration-200 ${
-              adminSidebarCollapsed ? 'w-14' : 'w-72'
-            }`}
+            className={cn(
+              'sticky top-0 flex h-screen shrink-0 flex-col border-l border-border/80 bg-card/40 backdrop-blur-sm transition-[width] duration-200',
+              adminSidebarCollapsed ? 'w-[4.5rem]' : 'w-64'
+            )}
           >
-            <Link to="/" className="flex p-4 gap-1 text-foreground">
-              <img src={logo} alt="logo" className="w-6 h-6" />
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_oklch(0.488_0.243_264.376_/_0.12),transparent_55%)]"
+              aria-hidden
+            />
+
+            <div className="relative flex items-center justify-between gap-2 border-b border-border/60 p-3">
+              <Link
+                to="/admin"
+                className={cn(
+                  'flex min-w-0 items-center gap-2.5 text-foreground',
+                  adminSidebarCollapsed && 'mx-auto'
+                )}
+                title="داشبورد"
+              >
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-primary-500/20 bg-primary-600/15">
+                  <img src={logo} alt="" className="h-5 w-5" />
+                </span>
+                {!adminSidebarCollapsed ? (
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-bold">شیوری</span>
+                    <span className="text-muted-foreground block truncate text-[11px]">پنل مدیریت</span>
+                  </span>
+                ) : null}
+              </Link>
+
               {!adminSidebarCollapsed ? (
-                <span className="text-foreground text-xl font-bold">شیوری</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0 text-muted-foreground"
+                  onClick={toggleAdminSidebar}
+                  aria-label="جمع کردن منو"
+                >
+                  <PanelLeftOpen className="h-4 w-4" />
+                </Button>
               ) : null}
-            </Link>
-            <div className="p-1">
-              <div className="mt-3 flex flex-col gap-1 items-center">
+            </div>
+
+            {adminSidebarCollapsed ? (
+              <div className="relative flex justify-center border-b border-border/60 py-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground"
+                  onClick={toggleAdminSidebar}
+                  aria-label="باز کردن منو"
+                >
+                  <PanelRightOpen className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : null}
+
+            <nav className="relative flex-1 overflow-y-auto p-2">
+              {!adminSidebarCollapsed ? (
+                <p className="text-muted-foreground px-2 pb-2 pt-1 text-[11px] font-medium">منو</p>
+              ) : null}
+              <ul className="flex flex-col gap-1">
                 {adminNav.map((item) => {
                   const active = item.isActive()
                   const ItemIcon = item.Icon
                   return (
-                    <Link
-                      key={item.to}
-                      to={item.to}
-                      title={adminSidebarCollapsed ? item.label : undefined}
-                      className={`flex items-center rounded-lg transition-colors h-10 ${
-                        adminSidebarCollapsed ? 'w-10  justify-center' : 'px-4  gap-2 w-full'
-                      } ${
-                        active
-                          ? 'bg-muted border-border text-foreground'
-                          : 'bg-transparent border-border text-muted-foreground hover:bg-muted/50'
-                      }`}
-                    >
-                      <ItemIcon className="h-4 w-4" />
-                      {!adminSidebarCollapsed ? (
-                        <span className="text-sm">{item.label}</span>
-                      ) : null}
-                    </Link>
+                    <li key={item.to}>
+                      <Link
+                        to={item.to}
+                        title={adminSidebarCollapsed ? item.label : undefined}
+                        className={cn(
+                          'flex items-center rounded-xl border border-transparent transition-colors',
+                          adminSidebarCollapsed
+                            ? 'mx-auto h-10 w-10 justify-center'
+                            : 'gap-3 px-3 py-2.5',
+                          active
+                            ? 'border-primary-500/20 bg-primary-600/15 text-foreground shadow-sm'
+                            : 'text-muted-foreground hover:border-border/60 hover:bg-muted/40 hover:text-foreground'
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
+                            active
+                              ? 'bg-primary-600/20 text-primary-300'
+                              : 'bg-muted/50 text-muted-foreground'
+                          )}
+                        >
+                          <ItemIcon className="h-4 w-4" aria-hidden />
+                        </span>
+                        {!adminSidebarCollapsed ? (
+                          <span className="truncate text-sm font-medium">{item.label}</span>
+                        ) : null}
+                      </Link>
+                    </li>
                   )
                 })}
-              </div>
-              {!adminSidebarCollapsed ? (
-                <div className="mt-6 px-3 pb-4 border-t border-muted pt-4">
-                  <p className="text-xs text-muted-foreground truncate mb-2">
-                    {portalDisplayName ?? 'ادمین'}
-                  </p>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="w-full justify-start gap-2"
-                    onClick={() => {
-                      void logoutAdminPortal().finally(() => {
-                        window.location.href = '/admin/login'
-                      })
-                    }}
-                  >
-                    <LogOut className="h-4 w-4" />
-                    خروج
-                  </Button>
+              </ul>
+            </nav>
+
+            <div className="relative border-t border-border/60 p-2">
+              <div
+                className={cn(
+                  'mb-2 flex items-center gap-3',
+                  adminSidebarCollapsed
+                    ? 'justify-center'
+                    : 'rounded-xl border border-border/60 bg-background/50 px-3 py-2.5'
+                )}
+              >
+                <div
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-primary-500/25 bg-primary-600/15 text-sm font-semibold text-primary-300"
+                  title={adminDisplayName}
+                >
+                  {adminInitials}
                 </div>
-              ) : null}
+                {!adminSidebarCollapsed ? (
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{adminDisplayName}</p>
+                    <p className="text-muted-foreground truncate text-xs">{adminRoleLabel}</p>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className={cn('flex flex-col gap-1', adminSidebarCollapsed && 'items-center')}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className={cn(
+                    'text-muted-foreground hover:text-foreground',
+                    adminSidebarCollapsed ? 'h-10 w-10 px-0' : 'w-full justify-start gap-2'
+                  )}
+                  onClick={() => setLogoutDialogOpen(true)}
+                  title="خروج"
+                >
+                  <LogOut className="h-4 w-4 shrink-0" />
+                  {!adminSidebarCollapsed ? <span>خروج</span> : null}
+                </Button>
+              </div>
             </div>
           </aside>
 
-          <main className="flex-1 px-8 py-4">
-            <header className="flex items-center gap-2">
-              <div className="flex items-center gap-2">
-                <Button type="button" variant={'ghost'} size="icon" onClick={toggleAdminSidebar}>
-                  {adminSidebarCollapsed ? (
-                    <PanelRightOpen className="w-4 h-4" />
-                  ) : (
-                    <PanelLeftOpen className="w-4 h-4" />
-                  )}
+          <Dialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen}>
+            <DialogContent className="max-w-sm">
+              <DialogHeader>
+                <DialogTitle>خروج از پنل</DialogTitle>
+                <DialogDescription>
+                  مطمئنی می‌خواهی از حساب <span className="text-foreground">{adminDisplayName}</span>{' '}
+                  خارج شوی؟
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setLogoutDialogOpen(false)}
+                  disabled={logoutLoading}
+                >
+                  انصراف
                 </Button>
-                <div className="h-4 border-l border-muted ml-2"></div>
-                <div className="flex items-center gap-2">
-                  <Link
-                    to="/admin"
-                    className="text-muted-foreground text-sm hover:text-foreground transition-colors"
-                  >
-                    شیوری ادمین
-                  </Link>
-                  <ChevronLeft className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">{currentAdminPageLabel}</span>
-                </div>
+                <Button type="button" variant="destructive" onClick={handleConfirmLogout} disabled={logoutLoading}>
+                  {logoutLoading ? 'در حال خروج…' : 'بله، خروج'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <main className="min-w-0 flex-1">
+            <header className="sticky top-0 z-10 border-b border-border/60 bg-background/80 px-6 py-4 backdrop-blur-sm">
+              <div className="flex items-center gap-2 text-sm">
+                <Link
+                  to="/admin"
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  داشبورد
+                </Link>
+                <ChevronLeft className="h-4 w-4 text-muted-foreground/70" aria-hidden />
+                <span className="font-medium">{currentAdminPageLabel}</span>
               </div>
             </header>
-            <div className="px-4 mx-auto container mt-10">{children}</div>
+
+            <div className="container mx-auto px-6 py-8">{children}</div>
           </main>
         </div>
       </div>

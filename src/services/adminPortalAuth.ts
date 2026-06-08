@@ -20,16 +20,20 @@ type PortalRpcPayload = {
 }
 
 const parsePortalSession = (payload: PortalRpcPayload): AdminPortalSession | null => {
-  if (!payload.ok || !payload.token || !payload.expires_at) return null
+  if (!payload.ok) return null
+
+  const token = String(payload.token ?? '').trim()
+  const expiresAt = String(payload.expires_at ?? '').trim()
+  if (!token || !expiresAt) return null
 
   const role = normalizeAppUserRole(payload.role)
   if (role !== 'admin' && role !== 'moderator') return null
 
   return {
-    token: payload.token,
+    token,
     role,
     displayName: String(payload.display_name ?? '').trim() || 'ادمین',
-    expiresAt: payload.expires_at,
+    expiresAt,
   }
 }
 
@@ -39,7 +43,9 @@ export const readStoredPortalSession = (): AdminPortalSession | null => {
     if (!raw) return null
     const parsed = JSON.parse(raw) as AdminPortalSession
     if (!parsed?.token || !parsed?.expiresAt) return null
-    if (new Date(parsed.expiresAt).getTime() <= Date.now()) {
+
+    const expiresMs = Date.parse(parsed.expiresAt)
+    if (Number.isFinite(expiresMs) && expiresMs <= Date.now()) {
       localStorage.removeItem(PORTAL_SESSION_KEY)
       return null
     }

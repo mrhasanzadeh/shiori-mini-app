@@ -33,7 +33,7 @@ const AdminGate = ({ children, requireFullAdmin = false }: Props) => {
   const webOnlyMode = isWebAdminOnlyMode()
   const inTelegramMiniApp = isTelegramMiniApp()
   const userId = user?.id
-  const canUseWebLogin = (webOnlyMode || webPasswordEnabled) && !inTelegramMiniApp
+  const canUseWebLogin = !inTelegramMiniApp
 
   if (!access.isReady || access.roleLoading) {
     return (

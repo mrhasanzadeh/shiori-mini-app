@@ -38,7 +38,7 @@ export const useAdminAccess = (): AdminAccessState => {
   useEffect(() => {
     if (!isReady) return
 
-    if (!webOnlyMode || inTelegramMiniApp) {
+    if (inTelegramMiniApp) {
       setPortalSession(null)
       setPortalLoading(false)
       return
@@ -65,7 +65,7 @@ export const useAdminAccess = (): AdminAccessState => {
     return () => {
       cancelled = true
     }
-  }, [isReady, webOnlyMode, inTelegramMiniApp])
+  }, [isReady, inTelegramMiniApp])
 
   useEffect(() => {
     if (!isReady) return
@@ -116,8 +116,7 @@ export const useAdminAccess = (): AdminAccessState => {
   })
 
   const accessLoading =
-    (webOnlyMode && !inTelegramMiniApp && portalLoading) ||
-    (typeof userId === 'number' && roleLoading)
+    (!inTelegramMiniApp && portalLoading) || (typeof userId === 'number' && roleLoading)
 
   return {
     isReady,
