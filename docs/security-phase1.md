@@ -42,9 +42,9 @@ DevTools → Network → any `telegram_users` request should fail (403 / RLS).
 - `/admin/users` list + edit role
 - Logout → saves should fail again
 
-## Known remaining gaps (phase 2)
+## Known remaining gaps (phase 2 — see security-phase2.md)
 
-- `user_anime_list` still trusts client `telegram_user_id` (needs Telegram `initData` verification)
+- ~~`user_anime_list` still trusts client `telegram_user_id`~~ → fixed in phase 2 SQL
 - Staff with session can read `email` on `telegram_users` (not password hash)
 
 ## Related

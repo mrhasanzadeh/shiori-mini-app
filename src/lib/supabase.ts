@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { getPortalRequestHeaders } from '@/lib/adminPortalSessionStorage'
+import { getTelegramRequestHeaders } from '@/lib/telegramRequestHeaders'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
@@ -13,6 +14,18 @@ if (!hasSupabaseConfig) {
   console.error('Supabase: VITE_SUPABASE_URL و VITE_SUPABASE_ANON_KEY را در فایل .env تنظیم کنید.')
 }
 
+const mergeRequestHeaders = (init?: RequestInit): RequestInit | undefined => {
+  const extra = { ...getTelegramRequestHeaders(), ...getPortalRequestHeaders() }
+  if (Object.keys(extra).length === 0) return init
+
+  const headers = new Headers(init?.headers)
+  for (const [key, value] of Object.entries(extra)) {
+    headers.set(key, value)
+  }
+
+  return { ...init, headers }
+}
+
 export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
   auth: {
     autoRefreshToken: true,
@@ -20,19 +33,7 @@ export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
     detectSessionInUrl: true,
   },
   global: {
-    fetch: (input, init) => {
-      const portalHeaders = getPortalRequestHeaders()
-      if (Object.keys(portalHeaders).length === 0) {
-        return fetch(input, init)
-      }
-
-      const headers = new Headers(init?.headers)
-      for (const [key, value] of Object.entries(portalHeaders)) {
-        headers.set(key, value)
-      }
-
-      return fetch(input, { ...init, headers })
-    },
+    fetch: (input, init) => fetch(input, mergeRequestHeaders(init)),
   },
 })
 

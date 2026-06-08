@@ -41,6 +41,8 @@
 | 16 | `supabase-admin-portal-auth.sql` | ورود وب روی `telegram_users` + `user_portal_sessions` |
 | 17 | `supabase-unify-portal-users.sql` | مهاجرت از `admin_portal_*` (فقط اگر قبلاً ساخته بودید) |
 | 18 | `supabase-rls-security-phase1.sql` | **امنیت:** portal token RLS + قفل `password_hash` |
+| 19 | Vault: `telegram_bot_token` | Dashboard → Vault (BotFather token) — قبل از فاز ۲ |
+| 20 | `supabase-rls-security-phase2.sql` | **امنیت:** initData برای `user_anime_list` |
 
 ## ۵. اختیاری
 

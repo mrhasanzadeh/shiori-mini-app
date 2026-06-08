@@ -115,17 +115,16 @@ export const getAnimeFavoriteCounts = async (): Promise<AnimeFavoriteCountMap> =
 export const getAnimeFavoriteCount = async (animeId: number | string): Promise<number> => {
   if (!hasSupabaseConfig) return 0
 
-  const { count, error } = await supabase
-    .from('user_anime_list')
-    .select('*', { count: 'exact', head: true })
-    .eq('anime_id', animeId)
+  const { data, error } = await supabase.rpc('get_anime_favorite_count', {
+    p_anime_id: animeId,
+  })
 
   if (error) {
     if (import.meta.env.DEV) console.warn('getAnimeFavoriteCount:', error.message)
     return 0
   }
 
-  return count ?? 0
+  return Number(data) || 0
 }
 
 export const computeUserListStats = (rows: UserAnimeListRow[]): UserAnimeListStats => {
