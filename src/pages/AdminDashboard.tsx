@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { useAdminAccess } from '@/hooks/useAdminAccess'
 import { cn } from '@/lib/utils'
 
 type AdminNavItem = {
@@ -21,6 +22,7 @@ type AdminNavItem = {
   to?: string
   disabled?: boolean
   badge?: string
+  fullAdminOnly?: boolean
 }
 
 const navItems: AdminNavItem[] = [
@@ -65,6 +67,7 @@ const navItems: AdminNavItem[] = [
     title: 'کاربران',
     description: 'کاربرانی که مینی‌اپ را باز کرده‌اند',
     Icon: Users,
+    fullAdminOnly: true,
   },
 ]
 
@@ -113,6 +116,9 @@ const NavCard = ({ item }: { item: AdminNavItem }) => {
 }
 
 const AdminDashboard = () => {
+  const { isFullAdmin } = useAdminAccess()
+  const visibleItems = navItems.filter((item) => isFullAdmin || !item.fullAdminOnly)
+
   return (
     <div dir="rtl" className="mx-auto w-full max-w-6xl space-y-6 text-start">
       <header className="space-y-1">
@@ -126,7 +132,7 @@ const AdminDashboard = () => {
       </header>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {navItems.map((item) => (
+        {visibleItems.map((item) => (
           <NavCard key={item.title} item={item} />
         ))}
       </div>

@@ -7,6 +7,7 @@ import {
   Pencil,
   Search,
   Shield,
+  Download,
   UserCircle2,
   Users,
   UserCheck,
@@ -44,6 +45,7 @@ const formatNumber = (n: number) => n.toLocaleString('fa-IR')
 
 type SortKey = NonNullable<usersService.GetTelegramUsersParams['sortBy']>
 type RoleFilter = AppUserRole | 'all'
+type UsernameFilter = 'all' | 'with' | 'without'
 
 const sortOptions: { key: SortKey; label: string }[] = [
   { key: 'last_seen_at', label: 'آخرین بازدید' },
@@ -66,10 +68,12 @@ const AdminUsers = () => {
   const [error, setError] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [exporting, setExporting] = useState(false)
 
   const [query, setQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all')
+  const [usernameFilter, setUsernameFilter] = useState<UsernameFilter>('all')
   const [sortBy, setSortBy] = useState<SortKey>('last_seen_at')
   const [sortDir, setSortDir] =
     useState<usersService.GetTelegramUsersParams['sortDir']>('desc')
@@ -96,7 +100,7 @@ const AdminUsers = () => {
 
   useEffect(() => {
     setPage(1)
-  }, [debouncedQuery, sortBy, sortDir, roleFilter])
+  }, [debouncedQuery, sortBy, sortDir, roleFilter, usernameFilter])
 
   useEffect(() => {
     if (page > totalPages) setPage(1)
@@ -125,6 +129,7 @@ const AdminUsers = () => {
         pageSize,
         query: debouncedQuery,
         roleFilter,
+        usernameFilter,
         sortBy,
         sortDir,
       })
@@ -138,7 +143,7 @@ const AdminUsers = () => {
     } finally {
       setLoading(false)
     }
-  }, [page, pageSize, debouncedQuery, roleFilter, sortBy, sortDir])
+  }, [page, pageSize, debouncedQuery, roleFilter, usernameFilter, sortBy, sortDir])
 
   useEffect(() => {
     void loadOverview()
@@ -163,8 +168,21 @@ const AdminUsers = () => {
     setEditorOpen(true)
   }
 
-  const handleSaveUser = async (payload: { app_role: AppUserRole; admin_notes: string | null }) => {
+  const handleSaveUser = async (payload: {
+    app_role: AppUserRole
+    admin_notes: string | null
+    username: string
+  }) => {
     if (!editingUser) return
+
+    if (
+      editingUser.app_role === 'admin' &&
+      payload.app_role !== 'admin' &&
+      (overview?.adminUsers ?? 0) <= 1
+    ) {
+      setSaveError('نمی‌توان آخرین ادمین را از نقش خارج کرد.')
+      return
+    }
 
     try {
       setSaving(true)
@@ -173,14 +191,45 @@ const AdminUsers = () => {
         telegram_user_id: editingUser.telegram_user_id,
         app_role: payload.app_role,
         admin_notes: payload.admin_notes,
+        username: payload.username,
       })
       setEditorOpen(false)
       setEditingUser(null)
       await Promise.all([loadList(), loadOverview()])
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : 'خطا در ذخیره کاربر')
+      const raw = e instanceof Error ? e.message : 'خطا در ذخیره کاربر'
+      setSaveError(
+        raw.includes('cannot demote last admin')
+          ? 'نمی‌توان آخرین ادمین را از نقش خارج کرد.'
+          : raw
+      )
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleExportCsv = async () => {
+    try {
+      setExporting(true)
+      setSaveError(null)
+      const csv = await usersService.exportTelegramUsersCsv({
+        query: debouncedQuery,
+        roleFilter,
+        usernameFilter,
+        sortBy,
+        sortDir,
+      })
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = `shiori-users-${new Date().toISOString().slice(0, 10)}.csv`
+      anchor.click()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : 'خطا در export')
+    } finally {
+      setExporting(false)
     }
   }
 
@@ -201,6 +250,17 @@ const AdminUsers = () => {
         <p className="text-muted-foreground text-sm">
           مدیریت کاربران، یوزرنیم و نقش‌های دسترسی
         </p>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          className="mt-2 gap-1.5"
+          disabled={exporting || loading}
+          onClick={() => void handleExportCsv()}
+        >
+          <Download className="h-3.5 w-3.5" />
+          {exporting ? 'در حال export...' : 'Export CSV'}
+        </Button>
       </header>
 
       {error ? (
@@ -280,10 +340,20 @@ const AdminUsers = () => {
               ))}
             </SelectContent>
           </Select>
+          <Select value={usernameFilter} onValueChange={(v) => setUsernameFilter(v as UsernameFilter)}>
+            <SelectTrigger className="w-full lg:w-44">
+              <SelectValue placeholder="یوزرنیم" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">همه یوزرنیم‌ها</SelectItem>
+              <SelectItem value="with">دارای یوزرنیم</SelectItem>
+              <SelectItem value="without">بدون یوزرنیم</SelectItem>
+            </SelectContent>
+          </Select>
           <p className="text-muted-foreground text-xs lg:ms-auto">
             {loading
               ? '…'
-              : debouncedQuery || roleFilter !== 'all'
+              : debouncedQuery || roleFilter !== 'all' || usernameFilter !== 'all'
                 ? `${formatNumber(total)} نتیجه`
                 : `${formatNumber(total)} کاربر`}
           </p>
@@ -379,6 +449,9 @@ const AdminUsers = () => {
         }}
         user={editingUser}
         saving={saving}
+        isLastAdmin={
+          editingUser?.app_role === 'admin' && (overview?.adminUsers ?? 0) <= 1
+        }
         onSave={handleSaveUser}
       />
     </div>

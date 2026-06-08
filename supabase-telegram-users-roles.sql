@@ -84,6 +84,9 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  current_role TEXT;
+  admin_count INT;
 BEGIN
   IF p_telegram_user_id IS NULL OR p_telegram_user_id <= 0 THEN
     RAISE EXCEPTION 'invalid telegram_user_id';
@@ -93,15 +96,29 @@ BEGIN
     RAISE EXCEPTION 'invalid app_role';
   END IF;
 
-  UPDATE telegram_users
-  SET
-    app_role = p_app_role,
-    admin_notes = NULLIF(trim(p_admin_notes), '')
+  SELECT app_role INTO current_role
+  FROM telegram_users
   WHERE telegram_user_id = p_telegram_user_id;
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'user not found';
   END IF;
+
+  IF current_role = 'admin' AND p_app_role <> 'admin' THEN
+    SELECT COUNT(*)::int INTO admin_count
+    FROM telegram_users
+    WHERE app_role = 'admin';
+
+    IF admin_count <= 1 THEN
+      RAISE EXCEPTION 'cannot demote last admin';
+    END IF;
+  END IF;
+
+  UPDATE telegram_users
+  SET
+    app_role = p_app_role,
+    admin_notes = NULLIF(trim(p_admin_notes), '')
+  WHERE telegram_user_id = p_telegram_user_id;
 END;
 $$;
 

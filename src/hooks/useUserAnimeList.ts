@@ -7,6 +7,7 @@ import {
   getUserAnimeList,
   removeUserAnimeListEntry,
   upsertUserAnimeListEntry,
+  type AnimeFavoriteCountMap,
 } from '../services/supabaseUserList'
 import { queryKeys } from './queries/keys'
 
@@ -109,6 +110,41 @@ export const useUserAnimeList = () => {
     [favoriteProgress]
   )
 
+  type FavoriteCountSnapshot = {
+    perAnime: number | undefined
+    allCounts: AnimeFavoriteCountMap | undefined
+  }
+
+  const patchFavoriteCountCache = useCallback(
+    (animeId: number | string, delta: 1 | -1) => {
+      const key = String(animeId)
+      queryClient.setQueryData<number>(queryKeys.animeFavoriteCount(animeId), (old) =>
+        Math.max(0, (old ?? 0) + delta)
+      )
+      queryClient.setQueryData<AnimeFavoriteCountMap>(queryKeys.animeFavoriteCounts, (old) => ({
+        ...(old ?? {}),
+        [key]: Math.max(0, (old?.[key] ?? 0) + delta),
+      }))
+    },
+    [queryClient]
+  )
+
+  const snapshotFavoriteCounts = useCallback(
+    (animeId: number | string): FavoriteCountSnapshot => ({
+      perAnime: queryClient.getQueryData<number>(queryKeys.animeFavoriteCount(animeId)),
+      allCounts: queryClient.getQueryData<AnimeFavoriteCountMap>(queryKeys.animeFavoriteCounts),
+    }),
+    [queryClient]
+  )
+
+  const restoreFavoriteCounts = useCallback(
+    (animeId: number | string, snapshot: FavoriteCountSnapshot) => {
+      queryClient.setQueryData(queryKeys.animeFavoriteCount(animeId), snapshot.perAnime)
+      queryClient.setQueryData(queryKeys.animeFavoriteCounts, snapshot.allCounts)
+    },
+    [queryClient]
+  )
+
   const saveMutation = useMutation({
     mutationFn: async ({
       animeId,
@@ -147,6 +183,14 @@ export const useUserAnimeList = () => {
         })
       }
     },
+    onMutate: (animeId) => {
+      const snapshot = snapshotFavoriteCounts(animeId)
+      patchFavoriteCountCache(animeId, 1)
+      return snapshot
+    },
+    onError: (_error, animeId, snapshot) => {
+      if (snapshot) restoreFavoriteCounts(animeId, snapshot)
+    },
     onSuccess: (_data, animeId) => {
       if (typeof telegramUserId === 'number') {
         void queryClient.invalidateQueries({
@@ -164,6 +208,14 @@ export const useUserAnimeList = () => {
       if (typeof telegramUserId === 'number') {
         await removeUserAnimeListEntry(telegramUserId, animeId)
       }
+    },
+    onMutate: (animeId) => {
+      const snapshot = snapshotFavoriteCounts(animeId)
+      patchFavoriteCountCache(animeId, -1)
+      return snapshot
+    },
+    onError: (_error, animeId, snapshot) => {
+      if (snapshot) restoreFavoriteCounts(animeId, snapshot)
     },
     onSuccess: (_data, animeId) => {
       if (typeof telegramUserId === 'number') {

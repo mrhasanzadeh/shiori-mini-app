@@ -4,6 +4,10 @@ The mini app uses **`VITE_SUPABASE_ANON_KEY`** in the browser. Row Level Securit
 
 Apply policies in the Supabase SQL Editor or via migrations in your Supabase project (not stored in this repo).
 
+**Ready-made file:** [`supabase-rls-production.sql`](../supabase-rls-production.sql) — public SELECT + user tables. Catalog write policies are commented (enable only if admin uses anon key).
+
+**Migration order:** [`docs/SQL_MIGRATIONS.md`](./SQL_MIGRATIONS.md)
+
 ## Threat model (summary)
 
 | Actor | Can reach | Should access |

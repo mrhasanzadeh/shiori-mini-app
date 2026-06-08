@@ -82,6 +82,10 @@ src/
 
 Schema used by the app is documented in **`docs/schema.md`**.
 
+**SQL migration order:** [`docs/SQL_MIGRATIONS.md`](docs/SQL_MIGRATIONS.md)
+
+**Deploy:** [`docs/DEPLOY.md`](docs/DEPLOY.md)
+
 Security (before production):
 
 - **`docs/rls.md`** — Supabase RLS policies and test checklist

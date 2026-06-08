@@ -141,7 +141,7 @@ function App() {
           <Route
             path="/admin/users"
             element={
-              <AdminGate>
+              <AdminGate requireFullAdmin>
                 <AdminUsers />
               </AdminGate>
             }

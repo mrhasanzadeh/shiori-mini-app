@@ -129,7 +129,9 @@ const Home = () => {
 
   const sectionData = useMemo((): Record<SectionId, Anime[]> => {
     const popularBase = filterAnimeCardsBySection(allCards, 'popular')
-    const popularSorted = [...popularBase].sort((a, b) => {
+    const popularSorted = [...popularBase]
+      .filter((a) => (favoriteCounts[String(a.id)] ?? 0) > 0)
+      .sort((a, b) => {
       const countA = favoriteCounts[String(a.id)] ?? 0
       const countB = favoriteCounts[String(b.id)] ?? 0
       if (countB !== countA) return countB - countA

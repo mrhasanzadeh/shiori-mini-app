@@ -19,6 +19,8 @@ erDiagram
   anime ||--o{ translator_anime : links
   file_packs ||--o{ file_pack_items : contains
   files ||--o{ file_pack_items : referenced_by
+  telegram_users ||--o{ user_anime_list : owns
+  anime ||--o{ user_anime_list : favorited_in
 ```
 
 External: **AniList** IDs on `anime.anilist_id` for schedule → local catalog mapping.
@@ -148,6 +150,47 @@ Deep link: `https://t.me/{bot}?start=pack_{slug}`
 
 ---
 
+## Users & personal lists
+
+### `telegram_users`
+
+Telegram Mini App users (registered on each app open via RPC `register_telegram_user_visit`).
+
+| Column | Notes |
+|--------|--------|
+| `telegram_user_id` | Primary key (Telegram user id) |
+| `first_name`, `last_name` | Profile from WebApp |
+| `username` | Without `@`; preserved on revisit if Telegram omits it |
+| `language_code`, `photo_url`, `is_premium` | From WebApp |
+| `app_role` | `user` \| `moderator` \| `admin` — admin grants panel access via DB |
+| `admin_notes` | Internal admin notes |
+| `first_seen_at`, `last_seen_at`, `visit_count` | Activity |
+
+View: `telegram_users_admin` (includes `favorites_count` from join).
+
+SQL: `supabase-telegram-users.sql`, `supabase-telegram-users-roles.sql`, `supabase-telegram-users-fix-username.sql`
+
+### `user_anime_list`
+
+Per-user favorites, watch progress, and rating.
+
+| Column | Notes |
+|--------|--------|
+| `telegram_user_id`, `anime_id` | Unique pair (`anime_id` is UUID) |
+| `episodes_watched` | Progress |
+| `user_rating` | 1–10 or NULL |
+| `updated_at` | Sort / sync |
+
+Updates `anime.shiori_score` via trigger on rating changes.
+
+SQL: `supabase-user-anime-list.sql`
+
+RPC: `get_anime_favorite_counts()` — favorite counts per anime for Home popular sort.
+
+SQL: `supabase-anime-favorite-counts.sql`
+
+---
+
 ## Code map
 
 | Service file | Tables |
@@ -155,6 +198,8 @@ Deep link: `https://t.me/{bot}?start=pack_{slug}`
 | `src/services/supabaseAnime.ts` | anime, genres, studios, episodes, subtitles, translators, joins |
 | `src/services/supabaseFiles.ts` | files |
 | `src/services/supabasePacks.ts` | file_packs, file_pack_items |
+| `src/services/supabaseUserList.ts` | user_anime_list, favorite counts |
+| `src/services/supabaseUsers.ts` | telegram_users, admin user edit |
 
 ## RLS & admin
 

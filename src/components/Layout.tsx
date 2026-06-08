@@ -23,6 +23,7 @@ import {
   Users,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useAdminAccess } from '@/hooks/useAdminAccess'
 import logo from '../assets/images/shiori-logo.svg'
 
 interface LayoutProps {
@@ -75,6 +76,8 @@ const Layout = ({ children }: LayoutProps) => {
   const isTransparentHeaderPage = isAnimeDetailPage || isProfileHeroPage
   const isAdminPage = location.pathname === '/admin' || location.pathname.startsWith('/admin/')
 
+  const { isFullAdmin } = useAdminAccess()
+
   const adminNav = [
     {
       to: '/admin',
@@ -123,8 +126,9 @@ const Layout = ({ children }: LayoutProps) => {
       isActive: () => location.pathname.startsWith('/admin/users'),
       label: 'کاربران',
       Icon: Users,
+      fullAdminOnly: true,
     },
-  ]
+  ].filter((item) => isFullAdmin || !('fullAdminOnly' in item && item.fullAdminOnly))
 
   const currentAdminNavItem = adminNav.find((item) => item.isActive())
   const currentAdminPageLabel = currentAdminNavItem?.label ?? 'مدیریت'

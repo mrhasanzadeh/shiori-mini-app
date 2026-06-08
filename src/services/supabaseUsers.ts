@@ -31,6 +31,7 @@ export type GetTelegramUsersParams = {
   pageSize: number
   query?: string
   roleFilter?: AppUserRole | 'all'
+  usernameFilter?: 'all' | 'with' | 'without'
   sortBy?: 'last_seen_at' | 'first_seen_at' | 'visit_count' | 'favorites_count' | 'first_name' | 'username' | 'app_role'
   sortDir?: 'asc' | 'desc'
 }
@@ -39,6 +40,7 @@ export type UpdateTelegramUserAdminPayload = {
   telegram_user_id: number
   app_role: AppUserRole
   admin_notes?: string | null
+  username?: string
 }
 
 type TelegramUserPayload = {
@@ -110,6 +112,7 @@ export const updateTelegramUserAdmin = async (
     p_telegram_user_id: payload.telegram_user_id,
     p_app_role: payload.app_role,
     p_admin_notes: payload.admin_notes ?? null,
+    p_username: payload.username ?? null,
   })
 
   if (error) throw new Error(formatSupabaseError(error))
@@ -196,6 +199,12 @@ export const getTelegramUsers = async (
     q = q.eq('app_role', params.roleFilter)
   }
 
+  if (params.usernameFilter === 'with') {
+    q = q.not('username', 'is', null)
+  } else if (params.usernameFilter === 'without') {
+    q = q.is('username', null)
+  }
+
   const tokens = splitSearchTokens(params.query ?? '')
   for (const token of tokens) {
     const safe = escapeIlikePattern(token)
@@ -224,4 +233,56 @@ export const getTelegramUsers = async (
     items: (data ?? []).map((row) => mapTelegramUserRow(row as Record<string, unknown>)),
     total: count ?? 0,
   }
+}
+
+const escapeCsvCell = (value: string | number | boolean | null | undefined): string => {
+  const raw = value == null ? '' : String(value)
+  if (/[",\n\r]/.test(raw)) return `"${raw.replace(/"/g, '""')}"`
+  return raw
+}
+
+export const exportTelegramUsersCsv = async (
+  params: Omit<GetTelegramUsersParams, 'page' | 'pageSize'>
+): Promise<string> => {
+  const res = await getTelegramUsers({
+    ...params,
+    page: 1,
+    pageSize: 5000,
+  })
+
+  const header = [
+    'telegram_user_id',
+    'first_name',
+    'last_name',
+    'username',
+    'app_role',
+    'is_premium',
+    'visit_count',
+    'favorites_count',
+    'first_seen_at',
+    'last_seen_at',
+    'language_code',
+    'admin_notes',
+  ]
+
+  const rows = res.items.map((u) =>
+    [
+      u.telegram_user_id,
+      u.first_name,
+      u.last_name,
+      u.username,
+      u.app_role,
+      u.is_premium,
+      u.visit_count,
+      u.favorites_count,
+      u.first_seen_at,
+      u.last_seen_at,
+      u.language_code,
+      u.admin_notes,
+    ]
+      .map(escapeCsvCell)
+      .join(',')
+  )
+
+  return `\uFEFF${header.join(',')}\n${rows.join('\n')}`
 }

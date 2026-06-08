@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Crown, UserCircle2 } from 'lucide-react'
 import { AdminEditSheet, AdminEditSheetActions } from '@/components/admin/AdminEditSheet'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -37,7 +38,12 @@ type Props = {
   onOpenChange: (open: boolean) => void
   user: TelegramUserRow | null
   saving?: boolean
-  onSave: (payload: { app_role: AppUserRole; admin_notes: string | null }) => void | Promise<void>
+  isLastAdmin?: boolean
+  onSave: (payload: {
+    app_role: AppUserRole
+    admin_notes: string | null
+    username: string
+  }) => void | Promise<void>
 }
 
 export const TelegramUserEditor = ({
@@ -45,16 +51,19 @@ export const TelegramUserEditor = ({
   onOpenChange,
   user,
   saving = false,
+  isLastAdmin = false,
   onSave,
 }: Props) => {
   const [avatarFailed, setAvatarFailed] = useState(false)
   const [role, setRole] = useState<AppUserRole>('user')
   const [notes, setNotes] = useState('')
+  const [username, setUsername] = useState('')
 
   useEffect(() => {
     if (!user) return
     setRole(user.app_role)
     setNotes(user.admin_notes ?? '')
+    setUsername(user.username ?? '')
     setAvatarFailed(false)
   }, [user])
 
@@ -72,7 +81,13 @@ export const TelegramUserEditor = ({
         <AdminEditSheetActions
           saving={saving}
           saveLabel="ذخیره تغییرات"
-          onSave={() => void onSave({ app_role: role, admin_notes: notes.trim() || null })}
+          onSave={() =>
+            void onSave({
+              app_role: role,
+              admin_notes: notes.trim() || null,
+              username: username.trim().replace(/^@+/, ''),
+            })
+          }
           onCancel={() => onOpenChange(false)}
         />
       }
@@ -128,8 +143,26 @@ export const TelegramUserEditor = ({
       </div>
 
       <div className="space-y-2">
+        <label className="text-foreground text-sm font-medium">یوزرنیم تلگرام</label>
+        <Input
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          placeholder="username (بدون @)"
+          dir="ltr"
+          className="font-mono text-sm"
+        />
+        <p className="text-muted-foreground text-xs">
+          اگر تلگرام username نفرستاد، می‌توانید دستی وارد کنید. خالی = بدون یوزرنیم.
+        </p>
+      </div>
+
+      <div className="space-y-2">
         <label className="text-foreground text-sm font-medium">نقش در اپ</label>
-        <Select value={role} onValueChange={(v) => setRole(v as AppUserRole)}>
+        <Select
+          value={role}
+          onValueChange={(v) => setRole(v as AppUserRole)}
+          disabled={isLastAdmin && user.app_role === 'admin'}
+        >
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
@@ -141,10 +174,16 @@ export const TelegramUserEditor = ({
             ))}
           </SelectContent>
         </Select>
-        <p className="text-muted-foreground text-xs leading-relaxed">
-          نقش «ادمین» دسترسی پنل را از طریق دیتابیس می‌دهد (علاوه بر لیست env). «مدیر محتوا» برای
-          آینده رزرو شده است.
-        </p>
+        {isLastAdmin && user.app_role === 'admin' ? (
+          <p className="text-amber-300/90 text-xs leading-relaxed">
+            این تنها ادمین سیستم است؛ تا وقتی ادمین دیگری اضافه نشود، نقشش قابل تغییر نیست.
+          </p>
+        ) : (
+          <p className="text-muted-foreground text-xs leading-relaxed">
+            نقش «ادمین» دسترسی پنل را از طریق دیتابیس می‌دهد (علاوه بر لیست env). «مدیر محتوا» برای
+            آینده رزرو شده است.
+          </p>
+        )}
       </div>
 
       <div className="space-y-2">
