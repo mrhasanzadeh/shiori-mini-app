@@ -61,11 +61,10 @@ const navItems: AdminNavItem[] = [
     Icon: Package,
   },
   {
+    to: '/admin/users',
     title: 'کاربران',
-    description: 'مدیریت کاربران و دسترسی‌ها',
+    description: 'کاربرانی که مینی‌اپ را باز کرده‌اند',
     Icon: Users,
-    disabled: true,
-    badge: 'به‌زودی',
   },
 ]
 

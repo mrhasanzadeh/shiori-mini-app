@@ -6,6 +6,7 @@ import AdminGate from './components/AdminGate'
 import { useTheme } from './utils/theme'
 import { useTelegramApp } from './hooks/useTelegramApp'
 import { useTelegramStartNavigation } from './hooks/useTelegramStartNavigation'
+import { useTelegramUserSync } from './hooks/useTelegramUserSync'
 
 // Lazy load pages for better performance
 const Home = lazy(() => import('./pages/Home'))
@@ -26,11 +27,13 @@ const AdminStudios = lazy(() => import('./pages/AdminStudios'))
 const AdminTranslators = lazy(() => import('./pages/AdminTranslators'))
 const AdminFilesDownloads = lazy(() => import('./pages/AdminFilesDownloads'))
 const AdminFilePacks = lazy(() => import('./pages/AdminFilePacks'))
+const AdminUsers = lazy(() => import('./pages/AdminUsers'))
 
 function App() {
   const { isReady } = useTelegramApp()
   const { applyTheme } = useTheme()
   useTelegramStartNavigation(isReady)
+  useTelegramUserSync(isReady)
 
   useEffect(() => {
     if (isReady) {
@@ -131,6 +134,15 @@ function App() {
             element={
               <AdminGate>
                 <AdminFilePacks />
+              </AdminGate>
+            }
+          />
+
+          <Route
+            path="/admin/users"
+            element={
+              <AdminGate>
+                <AdminUsers />
               </AdminGate>
             }
           />

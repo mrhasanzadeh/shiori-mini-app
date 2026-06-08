@@ -1,0 +1,227 @@
+import { hasSupabaseConfig, supabase } from '../lib/supabase'
+import { formatSupabaseError } from './supabaseAnime'
+import { normalizeAppUserRole, type AppUserRole } from '../constants/userRoles'
+
+export type TelegramUserRow = {
+  telegram_user_id: number
+  first_name: string
+  last_name: string | null
+  username: string | null
+  language_code: string | null
+  photo_url: string | null
+  is_premium: boolean
+  app_role: AppUserRole
+  admin_notes: string | null
+  first_seen_at: string
+  last_seen_at: string
+  visit_count: number
+  favorites_count: number
+}
+
+export type TelegramUsersOverview = {
+  totalUsers: number
+  activeLast24h: number
+  activeLast7d: number
+  premiumUsers: number
+  adminUsers: number
+}
+
+export type GetTelegramUsersParams = {
+  page: number
+  pageSize: number
+  query?: string
+  roleFilter?: AppUserRole | 'all'
+  sortBy?: 'last_seen_at' | 'first_seen_at' | 'visit_count' | 'favorites_count' | 'first_name' | 'username' | 'app_role'
+  sortDir?: 'asc' | 'desc'
+}
+
+export type UpdateTelegramUserAdminPayload = {
+  telegram_user_id: number
+  app_role: AppUserRole
+  admin_notes?: string | null
+}
+
+type TelegramUserPayload = {
+  id: number
+  first_name: string
+  last_name?: string
+  username?: string
+  language_code?: string
+  photo_url?: string
+  is_premium?: boolean
+}
+
+export type { TelegramUserPayload }
+
+const escapeIlikePattern = (token: string): string =>
+  token.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_')
+
+const splitSearchTokens = (query: string): string[] =>
+  String(query ?? '')
+    .trim()
+    .split(/\s+/)
+    .map((t) => t.trim())
+    .filter((t) => t.length > 0)
+
+export const registerTelegramUserVisit = async (user: TelegramUserPayload): Promise<void> => {
+  if (!hasSupabaseConfig || !user?.id) return
+
+  const { error } = await supabase.rpc('register_telegram_user_visit', {
+    p_telegram_user_id: user.id,
+    p_first_name: user.first_name ?? '',
+    p_last_name: user.last_name ?? null,
+    p_username: user.username?.trim() || null,
+    p_language_code: user.language_code ?? null,
+    p_photo_url: user.photo_url ?? null,
+    p_is_premium: user.is_premium ?? false,
+  })
+
+  if (error) {
+    if (import.meta.env.DEV) console.warn('registerTelegramUserVisit:', error.message)
+  }
+}
+
+export const getTelegramUserRole = async (telegramUserId: number): Promise<AppUserRole | null> => {
+  if (!hasSupabaseConfig) return null
+
+  const { data, error } = await supabase
+    .from('telegram_users')
+    .select('app_role')
+    .eq('telegram_user_id', telegramUserId)
+    .maybeSingle()
+
+  if (error) {
+    if (import.meta.env.DEV) console.warn('getTelegramUserRole:', error.message)
+    return null
+  }
+
+  if (!data) return null
+  return normalizeAppUserRole(data.app_role)
+}
+
+export const updateTelegramUserAdmin = async (
+  payload: UpdateTelegramUserAdminPayload
+): Promise<void> => {
+  if (!hasSupabaseConfig) {
+    throw new Error('تنظیمات Supabase یافت نشد')
+  }
+
+  const { error } = await supabase.rpc('update_telegram_user_admin', {
+    p_telegram_user_id: payload.telegram_user_id,
+    p_app_role: payload.app_role,
+    p_admin_notes: payload.admin_notes ?? null,
+  })
+
+  if (error) throw new Error(formatSupabaseError(error))
+}
+
+export const getTelegramUsersOverview = async (): Promise<TelegramUsersOverview> => {
+  if (!hasSupabaseConfig) {
+    return { totalUsers: 0, activeLast24h: 0, activeLast7d: 0, premiumUsers: 0, adminUsers: 0 }
+  }
+
+  const now = Date.now()
+  const dayAgo = new Date(now - 24 * 60 * 60 * 1000).toISOString()
+  const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString()
+
+  const [totalRes, dayRes, weekRes, premiumRes, adminRes] = await Promise.all([
+    supabase.from('telegram_users').select('*', { count: 'exact', head: true }),
+    supabase
+      .from('telegram_users')
+      .select('*', { count: 'exact', head: true })
+      .gte('last_seen_at', dayAgo),
+    supabase
+      .from('telegram_users')
+      .select('*', { count: 'exact', head: true })
+      .gte('last_seen_at', weekAgo),
+    supabase
+      .from('telegram_users')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_premium', true),
+    supabase
+      .from('telegram_users')
+      .select('*', { count: 'exact', head: true })
+      .eq('app_role', 'admin'),
+  ])
+
+  const firstError =
+    totalRes.error ?? dayRes.error ?? weekRes.error ?? premiumRes.error ?? adminRes.error
+  if (firstError) throw new Error(formatSupabaseError(firstError))
+
+  return {
+    totalUsers: totalRes.count ?? 0,
+    activeLast24h: dayRes.count ?? 0,
+    activeLast7d: weekRes.count ?? 0,
+    premiumUsers: premiumRes.count ?? 0,
+    adminUsers: adminRes.count ?? 0,
+  }
+}
+
+const mapTelegramUserRow = (row: Record<string, unknown>): TelegramUserRow => ({
+  telegram_user_id: Number(row.telegram_user_id),
+  first_name: String(row.first_name ?? ''),
+  last_name: row.last_name != null ? String(row.last_name) : null,
+  username: row.username != null ? String(row.username) : null,
+  language_code: row.language_code != null ? String(row.language_code) : null,
+  photo_url: row.photo_url != null ? String(row.photo_url) : null,
+  is_premium: Boolean(row.is_premium),
+  app_role: normalizeAppUserRole(row.app_role),
+  admin_notes: row.admin_notes != null ? String(row.admin_notes) : null,
+  first_seen_at: String(row.first_seen_at ?? ''),
+  last_seen_at: String(row.last_seen_at ?? ''),
+  visit_count: typeof row.visit_count === 'number' ? row.visit_count : Number(row.visit_count) || 0,
+  favorites_count:
+    typeof row.favorites_count === 'number'
+      ? row.favorites_count
+      : Number(row.favorites_count) || 0,
+})
+
+export const getTelegramUsers = async (
+  params: GetTelegramUsersParams
+): Promise<{ items: TelegramUserRow[]; total: number }> => {
+  if (!hasSupabaseConfig) return { items: [], total: 0 }
+
+  const page = Number.isFinite(params.page) && params.page > 0 ? params.page : 1
+  const pageSize = Number.isFinite(params.pageSize) && params.pageSize > 0 ? params.pageSize : 20
+  const from = (page - 1) * pageSize
+  const to = from + pageSize - 1
+
+  const sortBy = params.sortBy ?? 'last_seen_at'
+  const sortDir = params.sortDir ?? 'desc'
+  const ascending = sortDir === 'asc'
+
+  let q = supabase.from('telegram_users_admin').select('*', { count: 'exact' })
+
+  if (params.roleFilter && params.roleFilter !== 'all') {
+    q = q.eq('app_role', params.roleFilter)
+  }
+
+  const tokens = splitSearchTokens(params.query ?? '')
+  for (const token of tokens) {
+    const safe = escapeIlikePattern(token)
+    const numeric = /^\d+$/.test(token)
+    const usernameToken = token.startsWith('@') ? token.slice(1) : token
+    const usernameSafe = escapeIlikePattern(usernameToken)
+
+    if (numeric) {
+      q = q.or(
+        `first_name.ilike.%${safe}%,last_name.ilike.%${safe}%,username.ilike.%${safe}%,telegram_user_id.eq.${token}`
+      )
+    } else {
+      q = q.or(
+        `first_name.ilike.%${safe}%,last_name.ilike.%${safe}%,username.ilike.%${usernameSafe}%`
+      )
+    }
+  }
+
+  const { data, error, count } = await q
+    .order(sortBy, { ascending, nullsFirst: false })
+    .range(from, to)
+
+  if (error) throw new Error(formatSupabaseError(error))
+
+  return {
+    items: (data ?? []).map((row) => mapTelegramUserRow(row as Record<string, unknown>)),
+    total: count ?? 0,
+  }
+}

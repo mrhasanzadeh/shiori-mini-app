@@ -20,6 +20,7 @@ import {
   PanelLeftOpen,
   PanelRightOpen,
   Tags,
+  Users,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import logo from '../assets/images/shiori-logo.svg'
@@ -116,6 +117,12 @@ const Layout = ({ children }: LayoutProps) => {
       isActive: () => location.pathname.startsWith('/admin/file-packs'),
       label: 'پک فایل‌ها',
       Icon: Package,
+    },
+    {
+      to: '/admin/users',
+      isActive: () => location.pathname.startsWith('/admin/users'),
+      label: 'کاربران',
+      Icon: Users,
     },
   ]
 

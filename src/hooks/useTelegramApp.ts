@@ -1,15 +1,7 @@
 import { useEffect, useState } from "react";
 import WebApp from "@twa-dev/sdk";
-
-interface TelegramUser {
-  id: number;
-  first_name: string;
-  last_name?: string;
-  username?: string;
-  language_code?: string;
-  photo_url?: string;
-  is_premium?: boolean;
-}
+import { buildTelegramUserPayload } from "@/utils/telegramUser";
+import type { TelegramUserPayload } from "@/services/supabaseUsers";
 
 interface PopupButton {
   type: "default" | "destructive";
@@ -18,7 +10,7 @@ interface PopupButton {
 }
 
 export const useTelegramApp = () => {
-  const [user, setUser] = useState<TelegramUser | null>(null);
+  const [user, setUser] = useState<TelegramUserPayload | null>(null);
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
@@ -26,7 +18,7 @@ export const useTelegramApp = () => {
       try {
         await WebApp.ready();
         setIsReady(true);
-        setUser(WebApp.initDataUnsafe.user || null);
+        setUser(buildTelegramUserPayload(WebApp.initDataUnsafe.user, WebApp.initData));
       } catch (error) {
         console.error("Failed to initialize Telegram Web App:", error);
       }

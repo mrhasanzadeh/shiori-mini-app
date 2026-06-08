@@ -1,6 +1,7 @@
-import { ReactNode, useMemo, useState } from 'react'
+import { ReactNode, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTelegramApp } from '../hooks/useTelegramApp'
+import { getTelegramUserRole } from '../services/supabaseUsers'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -28,6 +29,8 @@ const AdminGate = ({ children }: Props) => {
   const { user, isReady } = useTelegramApp()
   const [pw, setPw] = useState('')
   const [pwError, setPwError] = useState<string | null>(null)
+  const [dbRoleLoading, setDbRoleLoading] = useState(true)
+  const [dbIsAdmin, setDbIsAdmin] = useState(false)
 
   const allowedIds = useMemo(() => parseAllowedIds(import.meta.env.VITE_ADMIN_TELEGRAM_IDS), [])
 
@@ -40,7 +43,34 @@ const AdminGate = ({ children }: Props) => {
     }
   }, [])
 
-  if (!isReady) {
+  const userId = user?.id
+
+  useEffect(() => {
+    if (!isReady) return
+
+    if (typeof userId !== 'number') {
+      setDbIsAdmin(false)
+      setDbRoleLoading(false)
+      return
+    }
+
+    let cancelled = false
+    setDbRoleLoading(true)
+
+    void getTelegramUserRole(userId)
+      .then((role) => {
+        if (!cancelled) setDbIsAdmin(role === 'admin')
+      })
+      .finally(() => {
+        if (!cancelled) setDbRoleLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [isReady, userId])
+
+  if (!isReady || (typeof userId === 'number' && dbRoleLoading)) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-500" />
@@ -48,11 +78,11 @@ const AdminGate = ({ children }: Props) => {
     )
   }
 
-  const userId = user?.id
   const isAllowedTelegram = typeof userId === 'number' && allowedIds.has(userId)
   const isAllowedWeb = !userId && webPassword.length > 0 && webAuthed
+  const isAllowedDbAdmin = typeof userId === 'number' && dbIsAdmin
 
-  const isAllowed = isAllowedTelegram || isAllowedWeb
+  const isAllowed = isAllowedTelegram || isAllowedWeb || isAllowedDbAdmin
 
   if (!isAllowed) {
     if (!userId && webPassword.length > 0) {
