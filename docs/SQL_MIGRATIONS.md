@@ -44,6 +44,7 @@
 | 19 | Vault: `telegram_bot_token` | Dashboard → Vault (BotFather token) — قبل از فاز ۲ |
 | 20 | `supabase-rls-security-phase2.sql` | **امنیت:** initData برای `user_anime_list` |
 | 21 | `supabase-rls-security-phase2-list-rpc.sql` | patch: RPC لیست + دیباگ initData |
+| 22 | `supabase-rls-security-phase2-verify-fix.sql` | **fix HMAC** bot token (`convert_to` نه `::bytea`) |
 
 ## ۵. اختیاری
 

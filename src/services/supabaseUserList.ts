@@ -45,7 +45,7 @@ export const getUserAnimeList = async (
   })
 
   if (error) {
-    if (import.meta.env.DEV) console.warn('getUserAnimeList:', error.message)
+    console.warn('getUserAnimeList:', error.message)
     return []
   }
 
