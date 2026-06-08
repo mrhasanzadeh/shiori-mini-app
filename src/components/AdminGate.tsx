@@ -7,7 +7,6 @@ import {
   ADMIN_LOGIN_PATH,
   canAccessAdminRoute,
   isWebAdminOnlyMode,
-  isWebAdminPasswordEnabled,
 } from '@/lib/adminAccess'
 import { isTelegramMiniApp } from '@/lib/telegramEnv'
 import { Button } from '@/components/ui/button'
@@ -29,7 +28,6 @@ const AdminGate = ({ children, requireFullAdmin = false }: Props) => {
   const access = useAdminAccess()
   const location = useLocation()
 
-  const webPasswordEnabled = isWebAdminPasswordEnabled()
   const webOnlyMode = isWebAdminOnlyMode()
   const inTelegramMiniApp = isTelegramMiniApp()
   const userId = user?.id
