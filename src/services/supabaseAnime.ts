@@ -660,6 +660,7 @@ export type TranslatorItem = {
   cover_url?: string | null
   bio?: string | null
   experience?: string | null
+  is_active?: boolean
 }
 
 export type TranslatorAnimeLink = {
@@ -676,7 +677,7 @@ export const getTranslatorBySlug = async (slug: string): Promise<TranslatorItem 
   const safeSlug = String(slug || '').trim()
   if (!safeSlug) return null
 
-  const selectFields = 'id, name, slug, avatar_url, cover_url, bio, experience'
+  const selectFields = 'id, name, slug, avatar_url, cover_url, bio, experience, is_active'
   let data: any = null
   let error: any = null
 
@@ -712,6 +713,8 @@ export const getTranslatorBySlug = async (slug: string): Promise<TranslatorItem 
     cover_url: typeof data.cover_url === 'string' ? data.cover_url : (data.cover_url ?? null),
     bio: typeof data.bio === 'string' ? data.bio : (data.bio ?? null),
     experience: typeof data.experience === 'string' ? data.experience : (data.experience ?? null),
+    is_active:
+      typeof data.is_active === 'boolean' ? data.is_active : data.is_active == null ? true : Boolean(data.is_active),
   }
 }
 
@@ -841,6 +844,7 @@ export type TranslatorAdminItem = {
   cover_url?: string | null
   bio?: string | null
   experience?: string | null
+  is_active?: boolean
 }
 
 export const getAllTranslatorsAdmin = async (): Promise<TranslatorAdminItem[]> => {
@@ -850,7 +854,7 @@ export const getAllTranslatorsAdmin = async (): Promise<TranslatorAdminItem[]> =
 
   ;({ data, error } = await supabase
     .from('translators')
-    .select('id, name, slug, avatar_url, cover_url, bio, experience')
+    .select('id, name, slug, avatar_url, cover_url, bio, experience, is_active')
     .order('name', { ascending: true }))
 
   if (error) {
@@ -858,7 +862,7 @@ export const getAllTranslatorsAdmin = async (): Promise<TranslatorAdminItem[]> =
     if (String(error?.code ?? '') === '42703' || msg.toLowerCase().includes('column')) {
       ({ data, error } = await supabase
         .from('translators')
-        .select('id, name, slug, avatar_url, bio, experience')
+        .select('id, name, slug, avatar_url, cover_url, bio, experience')
         .order('name', { ascending: true }))
     }
   }
@@ -876,6 +880,8 @@ export const getAllTranslatorsAdmin = async (): Promise<TranslatorAdminItem[]> =
     cover_url: typeof row.cover_url === 'string' ? row.cover_url : (row.cover_url ?? null),
     bio: typeof row.bio === 'string' ? row.bio : (row.bio ?? null),
     experience: typeof row.experience === 'string' ? row.experience : (row.experience ?? null),
+    is_active:
+      typeof row.is_active === 'boolean' ? row.is_active : row.is_active == null ? true : Boolean(row.is_active),
   }))
 }
 
@@ -887,6 +893,7 @@ export const upsertTranslatorAdmin = async (payload: {
   cover_url?: string | null
   bio: string | null
   experience?: string | null
+  is_active?: boolean
 }): Promise<TranslatorAdminItem> => {
   if (!hasSupabaseConfig) throw new Error('Supabase config missing')
 
@@ -898,6 +905,7 @@ export const upsertTranslatorAdmin = async (payload: {
   }
   if (payload.cover_url !== undefined) row.cover_url = payload.cover_url
   if (payload.experience !== undefined) row.experience = payload.experience
+  if (payload.is_active !== undefined) row.is_active = Boolean(payload.is_active)
   if (payload.id !== undefined && payload.id !== null && String(payload.id).length > 0) {
     row.id = payload.id
   }
@@ -908,16 +916,18 @@ export const upsertTranslatorAdmin = async (payload: {
   ;({ data, error } = await supabase
     .from('translators')
     .upsert(row, { onConflict: row.id ? 'id' : 'slug' })
-    .select('id, name, slug, avatar_url, cover_url, bio, experience')
+    .select('id, name, slug, avatar_url, cover_url, bio, experience, is_active')
     .single())
 
   if (error) {
     const msg = String(error?.message ?? '')
     if (String(error?.code ?? '') === '42703' || msg.toLowerCase().includes('column')) {
-      ({ data, error } = await supabase
+      const fallbackRow = { ...row }
+      delete fallbackRow.is_active
+      ;({ data, error } = await supabase
         .from('translators')
-        .upsert(row, { onConflict: row.id ? 'id' : 'slug' })
-        .select('id, name, slug, avatar_url, bio, experience')
+        .upsert(fallbackRow, { onConflict: row.id ? 'id' : 'slug' })
+        .select('id, name, slug, avatar_url, cover_url, bio, experience')
         .single())
     }
   }
@@ -932,6 +942,12 @@ export const upsertTranslatorAdmin = async (payload: {
     cover_url: typeof data?.cover_url === 'string' ? data.cover_url : (data?.cover_url ?? null),
     bio: typeof data?.bio === 'string' ? data.bio : (data?.bio ?? null),
     experience: typeof data?.experience === 'string' ? data.experience : (data?.experience ?? null),
+    is_active:
+      typeof data?.is_active === 'boolean'
+        ? data.is_active
+        : payload.is_active !== undefined
+          ? Boolean(payload.is_active)
+          : true,
   }
 }
 
@@ -949,56 +965,111 @@ export type TranslatorAnimeAdminLink = {
   translator: TranslatorAdminItem
 }
 
+const mapTranslatorAnimeAdminLinkRow = (row: any): TranslatorAnimeAdminLink | null => {
+  const t = row?.translators
+  if (!t) return null
+  const translator: TranslatorAdminItem = {
+    id: typeof t.id === 'string' || typeof t.id === 'number' ? t.id : undefined,
+    name: String(t.name ?? '').trim(),
+    slug: String(t.slug ?? '').trim(),
+    avatar_url: typeof t.avatar_url === 'string' ? t.avatar_url : (t.avatar_url ?? null),
+    bio: typeof t.bio === 'string' ? t.bio : (t.bio ?? null),
+    is_active:
+      typeof t.is_active === 'boolean' ? t.is_active : t.is_active == null ? true : Boolean(t.is_active),
+  }
+
+  return {
+    id: row.id,
+    anime_id: row.anime_id,
+    translator_id: row.translator_id,
+    role: typeof row.role === 'string' ? row.role : (row.role ?? null),
+    translator,
+  }
+}
+
 export const getTranslatorAnimeLinksAdminByAnimeId = async (
   animeId: string | number
 ): Promise<TranslatorAnimeAdminLink[]> => {
   if (!hasSupabaseConfig) return []
 
-  const { data, error } = await supabase
+  let data: any = null
+  let error: any = null
+
+  ;({ data, error } = await supabase
     .from('translator_anime')
-    .select('id, anime_id, translator_id, role, translators(id,name,slug,avatar_url,bio)')
+    .select('id, anime_id, translator_id, role, translators(id,name,slug,avatar_url,bio,is_active)')
     .eq('anime_id', animeId)
-    .order('id', { ascending: true })
+    .order('id', { ascending: true }))
+
+  if (error) {
+    const msg = String(error?.message ?? '')
+    if (String(error?.code ?? '') === '42703' || msg.toLowerCase().includes('column')) {
+      ;({ data, error } = await supabase
+        .from('translator_anime')
+        .select('id, anime_id, translator_id, role, translators(id,name,slug,avatar_url,bio)')
+        .eq('anime_id', animeId)
+        .order('id', { ascending: true }))
+    }
+  }
 
   if (error) {
     console.warn('getTranslatorAnimeLinksAdminByAnimeId:', error.message)
     return []
   }
 
-  const mapped = (data || []).map((row: any): TranslatorAnimeAdminLink | null => {
-    const t = row?.translators
-    if (!t) return null
-    const translator: TranslatorAdminItem = {
-      id: typeof t.id === 'string' || typeof t.id === 'number' ? t.id : undefined,
-      name: String(t.name ?? '').trim(),
-      slug: String(t.slug ?? '').trim(),
-      avatar_url: typeof t.avatar_url === 'string' ? t.avatar_url : (t.avatar_url ?? null),
-      bio: typeof t.bio === 'string' ? t.bio : (t.bio ?? null),
-    }
+  const mapped = (data || []).map(mapTranslatorAnimeAdminLinkRow)
+  return mapped.filter((x: TranslatorAnimeAdminLink | null): x is TranslatorAnimeAdminLink =>
+    Boolean(x && x.translator)
+  )
+}
 
-    return {
-      id: row.id,
-      anime_id: row.anime_id,
-      translator_id: row.translator_id,
-      role: typeof row.role === 'string' ? row.role : (row.role ?? null),
-      translator,
-    }
-  })
-
-  return mapped.filter((x): x is TranslatorAnimeAdminLink => Boolean(x && x.translator))
+export type TranslatorAnimeLinkInsertRow = {
+  id: string | number
+  anime_id: string | number
+  translator_id: string | number
+  role: string | null
 }
 
 export const insertTranslatorAnimeLinkAdmin = async (payload: {
   anime_id: string | number
   translator_id: string | number
   role: string | null
+}): Promise<TranslatorAnimeLinkInsertRow> => {
+  if (!hasSupabaseConfig) throw new Error('Supabase config missing')
+  const { data, error } = await supabase
+    .from('translator_anime')
+    .insert({
+      anime_id: payload.anime_id,
+      translator_id: payload.translator_id,
+      role: payload.role,
+    })
+    .select('id, anime_id, translator_id, role')
+    .single()
+
+  if (error) throw error
+  if (!data) throw new Error('ردیف جدید ذخیره نشد')
+
+  return {
+    id: data.id,
+    anime_id: data.anime_id,
+    translator_id: data.translator_id,
+    role: typeof data.role === 'string' ? data.role : (data.role ?? null),
+  }
+}
+
+export const updateTranslatorAnimeLinkAdmin = async (payload: {
+  id: string | number
+  translator_id: string | number
+  role: string | null
 }): Promise<void> => {
   if (!hasSupabaseConfig) throw new Error('Supabase config missing')
-  const { error } = await supabase.from('translator_anime').insert({
-    anime_id: payload.anime_id,
-    translator_id: payload.translator_id,
-    role: payload.role,
-  })
+  const { error } = await supabase
+    .from('translator_anime')
+    .update({
+      translator_id: payload.translator_id,
+      role: payload.role,
+    })
+    .eq('id', payload.id)
   if (error) throw error
 }
 

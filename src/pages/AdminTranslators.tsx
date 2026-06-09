@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Languages, Pencil, Trash2, User } from 'lucide-react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { ExternalLink, Languages, Pencil, Trash2, User } from 'lucide-react'
 import * as supa from '../services/supabaseAnime'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Switch } from '@/components/ui/switch'
+import { cn } from '@/lib/utils'
 import { AdminEditSheet, AdminEditSheetActions } from '@/components/admin/AdminEditSheet'
 import {
   AdminCrudCount,
@@ -25,6 +28,7 @@ type DraftTranslator = {
   cover_url: string
   bio: string
   experience: string
+  is_active: boolean
 }
 
 const ImageUrlPreview = ({
@@ -71,6 +75,7 @@ const ImageUrlPreview = ({
 }
 
 const AdminTranslators = () => {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -85,6 +90,7 @@ const AdminTranslators = () => {
     cover_url: '',
     bio: '',
     experience: '',
+    is_active: true,
   })
   const [sheetOpen, setSheetOpen] = useState(false)
 
@@ -125,6 +131,7 @@ const AdminTranslators = () => {
       cover_url: String(t.cover_url ?? ''),
       bio: String(t.bio ?? ''),
       experience: String(t.experience ?? ''),
+      is_active: t.is_active !== false,
     })
   }
 
@@ -133,8 +140,21 @@ const AdminTranslators = () => {
     setSheetOpen(true)
   }
 
+  useEffect(() => {
+    if (loading) return
+    const editSlug = searchParams.get('edit')?.trim()
+    if (!editSlug) return
+
+    const match = items.find((t) => t.slug === editSlug)
+    if (match) {
+      onSelect(match)
+      setSheetOpen(true)
+    }
+    setSearchParams({}, { replace: true })
+  }, [loading, items, searchParams, setSearchParams])
+
   const onClear = () => {
-    setDraft({ name: '', slug: '', avatar_url: '', cover_url: '', bio: '', experience: '' })
+    setDraft({ name: '', slug: '', avatar_url: '', cover_url: '', bio: '', experience: '', is_active: true })
   }
 
   const onCreate = () => {
@@ -165,6 +185,7 @@ const AdminTranslators = () => {
         cover_url: cover.length > 0 ? cover : null,
         bio: bio.length > 0 ? bio : null,
         experience: experience.length > 0 ? experience : null,
+        is_active: draft.is_active,
       })
 
       await reload()
@@ -237,29 +258,38 @@ const AdminTranslators = () => {
               <AdminCrudRow
                 key={String(t.id ?? t.slug)}
                 actions={
-                  <>
+                  <div className="flex flex-wrap items-center justify-end gap-1.5">
+                    {t.slug ? (
+                      <Button type="button" size="sm" variant="secondary" className="gap-1.5" asChild>
+                        <Link to={`/translators/${encodeURIComponent(t.slug)}`} target="_blank" rel="noreferrer">
+                          <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                          پروفایل
+                        </Link>
+                      </Button>
+                    ) : null}
                     <Button
                       type="button"
-                      size="icon"
-                      variant="ghost"
+                      size="sm"
+                      variant="secondary"
+                      className="gap-1.5"
                       disabled={saving}
                       onClick={() => onEdit(t)}
-                      title="ویرایش"
                     >
-                      <Pencil className="h-4 w-4" />
+                      <Pencil className="h-3.5 w-3.5 shrink-0" />
+                      ویرایش
                     </Button>
                     <Button
                       type="button"
-                      size="icon"
-                      variant="ghost"
-                      className="text-destructive hover:text-destructive"
+                      size="sm"
+                      variant="secondary"
+                      className="gap-1.5 text-destructive hover:text-destructive"
                       disabled={saving}
                       onClick={() => void onDelete(t)}
-                      title="حذف"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-3.5 w-3.5 shrink-0" />
+                      حذف
                     </Button>
-                  </>
+                  </div>
                 }
               >
                 <div className="flex items-center gap-3">
@@ -275,11 +305,19 @@ const AdminTranslators = () => {
                   <div className="min-w-0 space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-foreground text-sm font-semibold">{t.name}</span>
-                      <Badge variant="outline" className="font-mono text-[10px]">
-                        {t.slug}
+                      <Badge
+                        variant={t.is_active !== false ? 'success' : 'secondary'}
+                        className={cn(
+                          'shrink-0',
+                          t.is_active === false && 'bg-red-500/15 text-red-400 border-red-500/25'
+                        )}
+                      >
+                        {t.is_active !== false ? 'فعال' : 'غیرفعال'}
                       </Badge>
                       {t.avatar_url ? (
-                        <Badge variant="success">دارای آواتار</Badge>
+                        <Badge variant="premium" className="shrink-0">
+                          دارای آواتار
+                        </Badge>
                       ) : (
                         <Badge variant="secondary">بدون آواتار</Badge>
                       )}
@@ -352,6 +390,18 @@ const AdminTranslators = () => {
             className="font-mono text-xs"
           />
           <ImageUrlPreview url={draft.cover_url} label="پیش‌نمایش کاور" variant="cover" />
+        </div>
+        <div className="flex items-center justify-between gap-3 rounded-lg border px-4 py-3">
+          <div>
+            <Label htmlFor="translator-active" className="text-sm font-medium">
+              وضعیت مترجم
+            </Label>
+          </div>
+          <Switch
+            id="translator-active"
+            checked={draft.is_active}
+            onCheckedChange={(v) => setDraft((p) => ({ ...p, is_active: Boolean(v) }))}
+          />
         </div>
         <div className="space-y-2">
           <Label htmlFor="translator-bio">بیو (اختیاری)</Label>

@@ -8,7 +8,7 @@ import {
   StarIcon,
   UserIcon,
 } from 'hugeicons-react'
-import { ExternalLink } from 'lucide-react'
+import { ExternalLink, Pencil, Search } from 'lucide-react'
 import * as supa from '../services/supabaseAnime'
 import { syncAnimeExternalScores } from '../services/syncAnimeExternalScores'
 import { Button } from '@/components/ui/button'
@@ -175,6 +175,154 @@ const Field = ({
   </div>
 )
 
+const TRANSLATOR_LINK_ROLES = ['مترجم', 'ویراستار'] as const
+const DEFAULT_TRANSLATOR_LINK_ROLE = 'مترجم'
+
+const normalizeTranslatorLinkRole = (role: string | null | undefined): string => {
+  const v = String(role ?? '').trim()
+  if ((TRANSLATOR_LINK_ROLES as readonly string[]).includes(v)) return v
+  return DEFAULT_TRANSLATOR_LINK_ROLE
+}
+
+const TranslatorPickerFace = ({
+  translator,
+  nameClassName,
+}: {
+  translator: supa.TranslatorAdminItem
+  nameClassName?: string
+}) => {
+  const isActive = translator.is_active !== false
+  return (
+    <span className="flex min-w-0 items-center gap-2">
+      <span className="relative h-6 w-6 shrink-0 overflow-hidden rounded-full bg-muted">
+        {translator.avatar_url ? (
+          <img
+            src={translator.avatar_url}
+            alt=""
+            className="h-full w-full object-cover"
+            loading="lazy"
+          />
+        ) : (
+          <span className="flex h-full w-full items-center justify-center text-[10px] text-muted-foreground">
+            {String(translator.name ?? '?').charAt(0)}
+          </span>
+        )}
+      </span>
+      <span className={cn('truncate font-medium', nameClassName)}>{translator.name}</span>
+      <Badge variant={isActive ? 'success' : 'secondary'} className="shrink-0 text-[10px] px-1.5 py-0">
+        {isActive ? 'فعال' : 'غیرفعال'}
+      </Badge>
+    </span>
+  )
+}
+
+const TranslatorSearchSelect = ({
+  translators,
+  value,
+  onChange,
+  disabled,
+}: {
+  translators: supa.TranslatorAdminItem[]
+  value: string
+  onChange: (translatorId: string) => void
+  disabled?: boolean
+}) => {
+  const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState('')
+
+  const selected = useMemo(
+    () => translators.find((t) => String(t.id ?? '') === value) ?? null,
+    [translators, value]
+  )
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return translators
+    return translators.filter(
+      (t) =>
+        String(t.name ?? '')
+          .toLowerCase()
+          .includes(q) ||
+        String(t.slug ?? '')
+          .toLowerCase()
+          .includes(q)
+    )
+  }, [translators, search])
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next)
+        if (!next) setSearch('')
+      }}
+    >
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          disabled={disabled}
+          className={cn(
+            'h-10 w-full justify-between gap-2 font-normal',
+            !selected && 'text-muted-foreground'
+          )}
+        >
+          {selected ? (
+            <TranslatorPickerFace translator={selected} />
+          ) : (
+            <span className="truncate">انتخاب مترجم...</span>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+        <div className="border-b p-2">
+          <div className="relative">
+            <Search className="text-muted-foreground pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="جستجو نام..."
+              className="pe-9"
+            />
+          </div>
+        </div>
+        <div className="max-h-56 overflow-y-auto p-1">
+          {filtered.length === 0 ? (
+            <p className="text-muted-foreground px-3 py-6 text-center text-sm">نتیجه‌ای پیدا نشد</p>
+          ) : (
+            filtered.map((t) => {
+              const id = String(t.id ?? '')
+              const isSelected = id === value
+              return (
+                <button
+                  key={String(t.id ?? t.slug)}
+                  type="button"
+                  className={cn(
+                    'hover:bg-muted/60 w-full rounded-md px-2 py-2 text-start text-sm transition-colors',
+                    isSelected && 'bg-primary-600/15'
+                  )}
+                  onClick={() => {
+                    onChange(id)
+                    setOpen(false)
+                    setSearch('')
+                  }}
+                >
+                  <TranslatorPickerFace
+                    translator={t}
+                    nameClassName={isSelected ? 'text-primary-200' : undefined}
+                  />
+                </button>
+              )
+            })
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
 const formatAdminDateTime = (iso: string | null | undefined) => {
   if (!iso) return null
   const d = new Date(iso)
@@ -320,7 +468,14 @@ const AdminAnimeEdit = () => {
   const [translatorLinks, setTranslatorLinks] = useState<supa.TranslatorAnimeAdminLink[]>([])
   const [translatorLinkDraft, setTranslatorLinkDraft] = useState<TranslatorLinkDraft>({
     translator_id: '',
-    role: '',
+    role: DEFAULT_TRANSLATOR_LINK_ROLE,
+  })
+  const [editingTranslatorLinkId, setEditingTranslatorLinkId] = useState<string | number | null>(
+    null
+  )
+  const [editingTranslatorLinkDraft, setEditingTranslatorLinkDraft] = useState<TranslatorLinkDraft>({
+    translator_id: '',
+    role: DEFAULT_TRANSLATOR_LINK_ROLE,
   })
 
   const [editingEpisodeId, setEditingEpisodeId] = useState<string | number | null>(null)
@@ -413,17 +568,79 @@ const AdminAnimeEdit = () => {
       setSaving(true)
       setToast(null)
 
-      await supa.insertTranslatorAnimeLinkAdmin({
+      const inserted = await supa.insertTranslatorAnimeLinkAdmin({
         anime_id: animeId,
         translator_id: translatorId,
-        role: translatorLinkDraft.role.trim() || null,
+        role: normalizeTranslatorLinkRole(translatorLinkDraft.role),
       })
 
-      setTranslatorLinkDraft((p) => ({ ...p, role: '' }))
-      const links = await supa.getTranslatorAnimeLinksAdminByAnimeId(animeId)
+      setTranslatorLinkDraft({ translator_id: '', role: DEFAULT_TRANSLATOR_LINK_ROLE })
+      let links = await supa.getTranslatorAnimeLinksAdminByAnimeId(animeId)
+      if (!links.some((l) => String(l.id) === String(inserted.id))) {
+        const translator = allTranslators.find((t) => String(t.id ?? '') === translatorId)
+        if (translator) {
+          links = [
+            ...links,
+            {
+              id: inserted.id,
+              anime_id: inserted.anime_id,
+              translator_id: inserted.translator_id,
+              role: inserted.role,
+              translator,
+            },
+          ]
+        }
+      }
       setTranslatorLinks(links)
+      showSuccess('مترجم اضافه شد')
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'خطا در افزودن مترجم'
+      showError(msg)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const onEditTranslatorLink = (row: supa.TranslatorAnimeAdminLink) => {
+    setEditingTranslatorLinkId(row.id)
+    setEditingTranslatorLinkDraft({
+      translator_id: String(row.translator_id ?? row.translator.id ?? ''),
+      role: normalizeTranslatorLinkRole(row.role),
+    })
+  }
+
+  const onCancelEditTranslatorLink = () => {
+    setEditingTranslatorLinkId(null)
+  }
+
+  const onSaveTranslatorLinkEdit = async () => {
+    if (!editingTranslatorLinkId) return
+    if (!draft.id && !anime?.id && isNew) {
+      showError('اول انیمه را ذخیره کن')
+      return
+    }
+
+    const animeId = (anime?.id ?? draft.id) as string | number
+    const translatorId = String(editingTranslatorLinkDraft.translator_id || '').trim()
+    if (!translatorId) {
+      showError('مترجم را انتخاب کن')
+      return
+    }
+
+    try {
+      setSaving(true)
+      setToast(null)
+      await supa.updateTranslatorAnimeLinkAdmin({
+        id: editingTranslatorLinkId,
+        translator_id: translatorId,
+        role: normalizeTranslatorLinkRole(editingTranslatorLinkDraft.role),
+      })
+      setEditingTranslatorLinkId(null)
+      const links = await supa.getTranslatorAnimeLinksAdminByAnimeId(animeId)
+      setTranslatorLinks(links)
+      showSuccess('ارتباط مترجم ذخیره شد')
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'خطا در ذخیره'
       showError(msg)
     } finally {
       setSaving(false)
@@ -441,6 +658,7 @@ const AdminAnimeEdit = () => {
       setSaving(true)
       setToast(null)
       await supa.deleteTranslatorAnimeLinkAdmin(row.id)
+      if (editingTranslatorLinkId === row.id) setEditingTranslatorLinkId(null)
       const links = await supa.getTranslatorAnimeLinksAdminByAnimeId(animeId)
       setTranslatorLinks(links)
     } catch (e) {
@@ -1823,36 +2041,34 @@ const AdminAnimeEdit = () => {
               <AdminSection title="مترجم‌های این اثر" description="اتصال مترجم به انیمه">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Field label="مترجم">
-                    <Select
-                      value={translatorLinkDraft.translator_id || EMPTY_SELECT_VALUE}
-                      onValueChange={(v) =>
-                        setTranslatorLinkDraft((p) => ({
-                          ...p,
-                          translator_id: v === EMPTY_SELECT_VALUE ? '' : v,
-                        }))
+                    <TranslatorSearchSelect
+                      translators={allTranslators}
+                      value={translatorLinkDraft.translator_id}
+                      onChange={(translator_id) =>
+                        setTranslatorLinkDraft((p) => ({ ...p, translator_id }))
                       }
+                      disabled={saving}
+                    />
+                  </Field>
+                  <Field label="نقش">
+                    <Select
+                      value={normalizeTranslatorLinkRole(translatorLinkDraft.role)}
+                      onValueChange={(role) =>
+                        setTranslatorLinkDraft((p) => ({ ...p, role }))
+                      }
+                      disabled={saving}
                     >
-                      <SelectTrigger>
-                        <SelectValue placeholder="انتخاب..." />
+                      <SelectTrigger className="h-10">
+                        <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value={EMPTY_SELECT_VALUE}>انتخاب...</SelectItem>
-                        {allTranslators.map((t) => (
-                          <SelectItem key={String(t.id ?? t.slug)} value={String(t.id ?? '')}>
-                            {t.name} ({t.slug})
+                        {TRANSLATOR_LINK_ROLES.map((role) => (
+                          <SelectItem key={role} value={role}>
+                            {role}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                  </Field>
-                  <Field label="نقش (اختیاری)">
-                    <Input
-                      value={translatorLinkDraft.role}
-                      onChange={(e) =>
-                        setTranslatorLinkDraft((p) => ({ ...p, role: e.target.value }))
-                      }
-                      placeholder="مترجم / بازبین"
-                    />
                   </Field>
                 </div>
                 <Button
@@ -1866,29 +2082,126 @@ const AdminAnimeEdit = () => {
                   افزودن مترجم
                 </Button>
                 <div className="space-y-2 pt-2 border-t border-border/60">
-                  {translatorLinks.map((l) => (
-                    <div
-                      key={String(l.id)}
-                      className="rounded-xl border border-border bg-card/40 p-3 flex items-center justify-between gap-3"
-                    >
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold line-clamp-1">{l.translator.name}</p>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">
-                          {l.role || '—'}
-                        </p>
-                      </div>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="destructive"
-                        disabled={saving}
-                        className="bg-red-500/15 text-red-400 hover:bg-red-500/25 shrink-0"
-                        onClick={() => onDeleteTranslatorLink(l)}
+                  {translatorLinks.map((l) => {
+                    const isEditing = editingTranslatorLinkId === l.id
+                    return (
+                      <div
+                        key={String(l.id)}
+                        className="rounded-xl border border-border bg-card/40 p-3 space-y-3"
                       >
-                        حذف
-                      </Button>
-                    </div>
-                  ))}
+                        {isEditing ? (
+                          <>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <Field label="مترجم">
+                                <TranslatorSearchSelect
+                                  translators={allTranslators}
+                                  value={editingTranslatorLinkDraft.translator_id}
+                                  onChange={(translator_id) =>
+                                    setEditingTranslatorLinkDraft((p) => ({
+                                      ...p,
+                                      translator_id,
+                                    }))
+                                  }
+                                  disabled={saving}
+                                />
+                              </Field>
+                              <Field label="نقش">
+                                <Select
+                                  value={normalizeTranslatorLinkRole(
+                                    editingTranslatorLinkDraft.role
+                                  )}
+                                  onValueChange={(role) =>
+                                    setEditingTranslatorLinkDraft((p) => ({ ...p, role }))
+                                  }
+                                  disabled={saving}
+                                >
+                                  <SelectTrigger className="h-10">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {TRANSLATOR_LINK_ROLES.map((role) => (
+                                      <SelectItem key={role} value={role}>
+                                        {role}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </Field>
+                            </div>
+                            <div className="flex flex-wrap items-center justify-end gap-1.5">
+                              <Button
+                                type="button"
+                                size="sm"
+                                disabled={saving}
+                                onClick={onSaveTranslatorLinkEdit}
+                              >
+                                ذخیره
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                disabled={saving}
+                                onClick={onCancelEditTranslatorLink}
+                              >
+                                انصراف
+                              </Button>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0 space-y-1">
+                              <TranslatorPickerFace translator={l.translator} />
+                              <p className="text-[11px] text-muted-foreground ps-8">
+                                نقش: {normalizeTranslatorLinkRole(l.role)}
+                              </p>
+                            </div>
+                            <div className="flex flex-wrap items-center justify-end gap-1.5 shrink-0">
+                              {l.translator.slug ? (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="secondary"
+                                  className="gap-1.5"
+                                  asChild
+                                >
+                                  <Link
+                                    to={`/translators/${encodeURIComponent(l.translator.slug)}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                  >
+                                    <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                                    پروفایل
+                                  </Link>
+                                </Button>
+                              ) : null}
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                className="gap-1.5"
+                                disabled={saving}
+                                onClick={() => onEditTranslatorLink(l)}
+                              >
+                                <Pencil className="h-3.5 w-3.5 shrink-0" />
+                                ویرایش
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="destructive"
+                                disabled={saving}
+                                className="bg-red-500/15 text-red-400 hover:bg-red-500/25"
+                                onClick={() => onDeleteTranslatorLink(l)}
+                              >
+                                حذف
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
                   {translatorLinks.length === 0 && (
                     <p className="text-sm text-muted-foreground py-4 text-center">
                       مترجمی ثبت نشده

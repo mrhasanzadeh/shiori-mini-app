@@ -5,6 +5,7 @@ import { UserIcon } from 'hugeicons-react'
 import * as supa from '../services/supabaseAnime'
 import type { GenreItem } from '../services/supabaseAnime'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 
 const toPersianNumber = (num: number | string): string => {
   const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹']
@@ -175,9 +176,14 @@ const TranslatorProfile = () => {
             )}
           </div>
 
-          <h1 className="text-lg font-bold text-foreground mt-3 text-center line-clamp-2 px-2">
-            {translator.name}
-          </h1>
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-2 px-2">
+            <h1 className="text-lg font-bold text-foreground text-center line-clamp-2">
+              {translator.name}
+            </h1>
+            <Badge variant={translator.is_active !== false ? 'success' : 'secondary'}>
+              {translator.is_active !== false ? 'فعال' : 'غیرفعال'}
+            </Badge>
+          </div>
           {translator.bio ? (
           <p className="text-sm text-muted-foreground leading-7 text-center whitespace-pre-wrap">
             {translator.bio}
