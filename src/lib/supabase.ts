@@ -14,7 +14,22 @@ if (!hasSupabaseConfig) {
   console.error('Supabase: VITE_SUPABASE_URL و VITE_SUPABASE_ANON_KEY را در فایل .env تنظیم کنید.')
 }
 
-const mergeRequestHeaders = (init?: RequestInit): RequestInit | undefined => {
+const mergeRequestHeaders = (
+  input: RequestInfo | URL,
+  init?: RequestInit
+): RequestInit | undefined => {
+  const url =
+    typeof input === 'string'
+      ? input
+      : input instanceof URL
+        ? input.href
+        : input.url
+
+  // Edge Functions receive initData in JSON body — skip custom headers to avoid CORS preflight blocks
+  if (url.includes('/functions/v1/')) {
+    return init
+  }
+
   const extra = { ...getTelegramRequestHeaders(), ...getPortalRequestHeaders() }
   if (Object.keys(extra).length === 0) return init
 
@@ -33,7 +48,7 @@ export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
     detectSessionInUrl: true,
   },
   global: {
-    fetch: (input, init) => fetch(input, mergeRequestHeaders(init)),
+    fetch: (input, init) => fetch(input, mergeRequestHeaders(input, init)),
   },
 })
 
