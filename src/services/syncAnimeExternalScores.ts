@@ -5,15 +5,12 @@ import { formatSupabaseError } from './supabaseAnime'
 const hasExternalIds = (ids: ExternalScoreIds) =>
   Boolean(
     (typeof ids.anilist_id === 'number' && ids.anilist_id > 0) ||
-      (typeof ids.mal_id === 'number' && ids.mal_id > 0) ||
-      (typeof ids.imdb_id === 'string' && ids.imdb_id.trim())
+    (typeof ids.mal_id === 'number' && ids.mal_id > 0) ||
+    (typeof ids.imdb_id === 'string' && ids.imdb_id.trim())
   )
 
 /** fetch زنده + ذخیره در DB (ادمین — RPC update_anime_external_scores) */
-export const syncAnimeExternalScores = async (
-  animeId: string | number,
-  ids: ExternalScoreIds
-) => {
+export const syncAnimeExternalScores = async (animeId: string | number, ids: ExternalScoreIds) => {
   if (!hasSupabaseConfig) {
     throw new Error('تنظیمات Supabase یافت نشد')
   }

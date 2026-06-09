@@ -6,8 +6,7 @@ export const queryKeys = {
   animeSearch: (filters: Record<string, unknown>) => ['anime', 'search', filters] as const,
   similarAnime: (id: string | number, slugs: string[]) =>
     ['anime', 'similar', String(id), slugs.join(',')] as const,
-  translatorLinks: (animeId: string | number) =>
-    ['anime', 'translators', String(animeId)] as const,
+  translatorLinks: (animeId: string | number) => ['anime', 'translators', String(animeId)] as const,
   adminAnimeList: ['admin', 'anime', 'list'] as const,
   externalScores: (ids: {
     anilist_id?: number | null
@@ -21,8 +20,7 @@ export const queryKeys = {
       ids.mal_id ?? '',
       ids.imdb_id ?? '',
     ] as const,
-  userAnimeList: (telegramUserId: number) =>
-    ['user', 'anime-list', telegramUserId] as const,
+  userAnimeList: (telegramUserId: number) => ['user', 'anime-list', telegramUserId] as const,
   animeFavoriteCounts: ['anime', 'favorite-counts'] as const,
   animeFavoriteCount: (animeId: string | number) =>
     ['anime', 'favorite-count', String(animeId)] as const,

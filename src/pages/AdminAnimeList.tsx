@@ -94,6 +94,11 @@ const AnimeListRow = ({
           ) : null}
         </div>
         <div className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+          {anime.title_romaji ? (
+            <span className="line-clamp-1 font-mono text-[11px]" dir="ltr">
+              {anime.title_romaji}
+            </span>
+          ) : null}
           <span className="font-mono">{formatLabel(anime.format)}</span>
           {anime.year ? <span>{anime.year}</span> : null}
           {anime.studio ? <span className="line-clamp-1">{anime.studio}</span> : null}
@@ -220,11 +225,7 @@ const AdminAnimeList = () => {
     const term = q.trim().toLowerCase()
 
     if (term) {
-      items = items.filter((a) =>
-        String(a.title ?? '')
-          .toLowerCase()
-          .includes(term)
-      )
+      items = items.filter((a) => supa.animeMatchesSearchQuery(a, term))
     }
 
     if (filter === 'has-episodes') {
@@ -301,7 +302,7 @@ const AdminAnimeList = () => {
             <Input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="جستجو در عنوان..."
+              placeholder="جستجو در عنوان یا Romaji..."
               className="pe-9"
             />
           </div>

@@ -233,6 +233,7 @@ export const fetchAnimeById = async (id: number | string) => {
   return {
     id: anime.id,
     title: anime.title,
+    title_romaji: anime.title_romaji ?? null,
     image: anime.image,
     featured_image: anime.featuredImage,
     format: anime.format ?? undefined,

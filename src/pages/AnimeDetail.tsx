@@ -65,6 +65,7 @@ interface EpisodePack {
 interface Anime {
   id: number | string
   title: string
+  title_romaji?: string | null
   image: string
   featured_image: string
   format?: string
@@ -770,6 +771,14 @@ const AnimeDetail = () => {
             <h1 className="text-lg font-bold text-foreground text-center line-clamp-3 leading-7">
               {anime.title}
             </h1>
+            {anime.title_romaji ? (
+              <p
+                className="text-muted-foreground mt-1 text-center text-xs leading-5 line-clamp-2"
+                dir="ltr"
+              >
+                {anime.title_romaji}
+              </p>
+            ) : null}
             <button
               type="button"
               onClick={handleShare}

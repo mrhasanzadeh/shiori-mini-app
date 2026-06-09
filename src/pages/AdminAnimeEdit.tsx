@@ -34,6 +34,7 @@ import { cn } from '@/lib/utils'
 type DraftAnime = {
   id?: number | string
   title: string
+  title_romaji: string
   synopsis: string
   format: string
   airing_status: string
@@ -440,6 +441,7 @@ const AdminAnimeEdit = () => {
   const [anime, setAnime] = useState<supa.AnimeAdminRow | null>(null)
   const [draft, setDraft] = useState<DraftAnime>({
     title: '',
+    title_romaji: '',
     synopsis: '',
     format: 'TV',
     airing_status: '',
@@ -1068,6 +1070,7 @@ const AdminAnimeEdit = () => {
     setDraft({
       id: a.id,
       title: a.title ?? '',
+      title_romaji: a.title_romaji ?? '',
       synopsis: a.synopsis ?? '',
       format: a.format ?? 'TV',
       airing_status: a.airing_status ?? '',
@@ -1165,6 +1168,7 @@ const AdminAnimeEdit = () => {
       const upserted = await supa.upsertAnimeAdmin({
         id: isNew ? undefined : draft.id,
         title: draft.title.trim(),
+        title_romaji: draft.title_romaji.trim() || null,
         synopsis: draft.synopsis.trim() || null,
         format: draft.format.trim() || null,
         season: draft.season.trim() || null,
@@ -1428,6 +1432,15 @@ const AdminAnimeEdit = () => {
             {activeTab === 'info' && (
               <>
                 <AdminSection title="اطلاعات اصلی" description="عنوان، خلاصه و متادیتای پخش">
+                  <Field label="عنوان Romaji">
+                    <Input
+                      value={draft.title_romaji}
+                      onChange={(e) => setDraft((p) => ({ ...p, title_romaji: e.target.value }))}
+                      placeholder="مثلاً Shingeki no Kyojin"
+                      dir="ltr"
+                      className="text-left"
+                    />
+                  </Field>
                   <Field label="عنوان">
                     <Input
                       value={draft.title}

@@ -247,14 +247,21 @@ export const getFilesDownloadOverview = async (): Promise<FilesDownloadOverview>
 
 export const searchFilesForPicker = async (payload: {
   query: string
+  matchAnyTerms?: string[]
   limit: number
   activeOnly?: boolean
 }): Promise<FilePickerItem[]> => {
   if (!hasSupabaseConfig) return []
 
   const limit = Number.isFinite(payload.limit) && payload.limit > 0 ? payload.limit : 20
-  const term = String(payload.query ?? '').trim()
-  if (!term) return []
+  const terms = [
+    ...new Set(
+      [payload.query, ...(payload.matchAnyTerms ?? [])]
+        .map((t) => String(t ?? '').trim())
+        .filter(Boolean)
+    ),
+  ]
+  if (terms.length === 0) return []
 
   let q = supabase.from('files').select('key, file_name, caption, is_active').limit(limit)
 
@@ -262,9 +269,11 @@ export const searchFilesForPicker = async (payload: {
     q = q.eq('is_active', true)
   }
 
-  q = applyFileSearchFilters(q, term, { fileNameOnly: true }).order('created_at', {
-    ascending: false,
+  const orParts = terms.flatMap((term) => {
+    const safe = escapeIlikePattern(term)
+    return [`file_name.ilike.%${safe}%`, `caption.ilike.%${safe}%`]
   })
+  q = q.or(orParts.join(',')).order('created_at', { ascending: false })
 
   const { data, error } = await q
   if (error) {

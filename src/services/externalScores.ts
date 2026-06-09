@@ -72,9 +72,7 @@ const fetchOmdbScore = async (imdbId: string, apiKey: string): Promise<number | 
 }
 
 const fetchImdbApiDevScore = async (imdbId: string): Promise<number | null> => {
-  const res = await fetch(
-    `https://api.imdbapi.dev/titles/${encodeURIComponent(imdbId.trim())}`
-  )
+  const res = await fetch(`https://api.imdbapi.dev/titles/${encodeURIComponent(imdbId.trim())}`)
   if (!res.ok) return null
 
   const json = (await res.json()) as { rating?: { aggregateRating?: number | null } }
@@ -97,11 +95,9 @@ const fetchImdbScore = async (imdbId: string): Promise<number | null> => {
 
 /** امتیاز زنده AniList / MAL / IMDb */
 export const fetchExternalScores = async (ids: ExternalScoreIds): Promise<ExternalScores> => {
-  const anilistId =
-    typeof ids.anilist_id === 'number' && ids.anilist_id > 0 ? ids.anilist_id : null
+  const anilistId = typeof ids.anilist_id === 'number' && ids.anilist_id > 0 ? ids.anilist_id : null
   const malId = typeof ids.mal_id === 'number' && ids.mal_id > 0 ? ids.mal_id : null
-  const imdbId =
-    typeof ids.imdb_id === 'string' && ids.imdb_id.trim() ? ids.imdb_id.trim() : null
+  const imdbId = typeof ids.imdb_id === 'string' && ids.imdb_id.trim() ? ids.imdb_id.trim() : null
 
   const [anilistResult, malResult, imdbResult] = await Promise.allSettled([
     anilistId ? fetchAnilistScorePercent(anilistId) : Promise.resolve(null),

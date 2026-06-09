@@ -25,6 +25,7 @@ export type GenreItem = {
 export type AnimeCard = {
   id: number | string
   title: string
+  title_romaji?: string | null
   image: string
   featuredImage: string
   description: string
@@ -55,6 +56,7 @@ const IMAGE_COLUMN = (import.meta.env.VITE_ANIME_IMAGE_COLUMN as string) || 'cov
 const ANIME_CARD_SELECT_WITH_GENRES = `
       id,
       title,
+      title_romaji,
       ${IMAGE_COLUMN},
       featured_image,
       synopsis,
@@ -90,6 +92,10 @@ const getImageUrl = (row: any): string =>
 const toAnimeCard = (row: any): AnimeCard => ({
   id: row.id,
   title: row.title || 'بدون عنوان',
+  title_romaji:
+    typeof row.title_romaji === 'string' && row.title_romaji.trim()
+      ? row.title_romaji.trim()
+      : (row.title_romaji ?? null),
   image: getImageUrl(row),
   featuredImage: row.featured_image ?? undefined,
   description: row.synopsis ?? row.description ?? '',
@@ -151,8 +157,7 @@ const toAnimeCard = (row: any): AnimeCard => ({
       : row.mal_id != null && row.mal_id !== ''
         ? Number(row.mal_id) || undefined
         : undefined,
-  imdb_id:
-    typeof row.imdb_id === 'string' && row.imdb_id.trim() ? row.imdb_id.trim() : undefined,
+  imdb_id: typeof row.imdb_id === 'string' && row.imdb_id.trim() ? row.imdb_id.trim() : undefined,
 })
 
 // دریافت تمام انیمه‌های موجود در دیتابیس
@@ -170,6 +175,7 @@ export const getAllAnime = async (): Promise<AnimeCard[]> => {
   const selectWithGenresWithoutAiringStatusAndSpecial = `
       id,
       title,
+      title_romaji,
       ${IMAGE_COLUMN},
       featured_image,
       synopsis,
@@ -189,6 +195,7 @@ export const getAllAnime = async (): Promise<AnimeCard[]> => {
   const selectWithoutGenresWithoutAiringStatusAndSpecial = `
       id,
       title,
+      title_romaji,
       ${IMAGE_COLUMN},
       featured_image,
       synopsis,
@@ -207,6 +214,7 @@ export const getAllAnime = async (): Promise<AnimeCard[]> => {
   const selectWithGenresWithoutAiringStatus = `
       id,
       title,
+      title_romaji,
       ${IMAGE_COLUMN},
       featured_image,
       synopsis,
@@ -226,6 +234,7 @@ export const getAllAnime = async (): Promise<AnimeCard[]> => {
   const selectWithoutGenres = `
       id,
       title,
+      title_romaji,
       ${IMAGE_COLUMN},
       featured_image,
       synopsis,
@@ -245,6 +254,7 @@ export const getAllAnime = async (): Promise<AnimeCard[]> => {
   const selectWithoutGenresWithoutAiringStatus = `
       id,
       title,
+      title_romaji,
       ${IMAGE_COLUMN},
       featured_image,
       synopsis,
@@ -357,6 +367,30 @@ const splitAnimeSearchTokens = (query: string): string[] =>
 const escapeAnimeIlikePattern = (token: string): string =>
   token.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_')
 
+const animeTitleSearchOrFilter = (token: string, includeRomaji = true): string => {
+  const safe = escapeAnimeIlikePattern(token)
+  if (includeRomaji) {
+    return `title.ilike.%${safe}%,title_romaji.ilike.%${safe}%`
+  }
+  return `title.ilike.%${safe}%`
+}
+
+export const animeMatchesSearchQuery = (
+  anime: { title?: string | null; title_romaji?: string | null },
+  query: string
+): boolean => {
+  const term = String(query ?? '').trim().toLowerCase()
+  if (!term) return true
+  return (
+    String(anime.title ?? '')
+      .toLowerCase()
+      .includes(term) ||
+    String(anime.title_romaji ?? '')
+      .toLowerCase()
+      .includes(term)
+  )
+}
+
 const buildAnimeSearchSelect = (withGenreInnerJoin: boolean): string => {
   const genreJoin = withGenreInnerJoin
     ? 'anime_genres!inner(genres!inner(slug,name_en,name_fa))'
@@ -365,6 +399,7 @@ const buildAnimeSearchSelect = (withGenreInnerJoin: boolean): string => {
   return `
       id,
       title,
+      title_romaji,
       ${IMAGE_COLUMN},
       featured_image,
       synopsis,
@@ -398,9 +433,7 @@ export const searchAnimeCards = async (params: AnimeSearchParams): Promise<Anime
 
   const genreSlug = params.genreSlug ? String(params.genreSlug).trim().toLowerCase() : ''
   const season =
-    params.season && String(params.season).trim()
-      ? String(params.season).trim().toUpperCase()
-      : ''
+    params.season && String(params.season).trim() ? String(params.season).trim().toUpperCase() : ''
   const year =
     params.year !== null && params.year !== undefined && Number.isFinite(params.year)
       ? params.year
@@ -421,7 +454,7 @@ export const searchAnimeCards = async (params: AnimeSearchParams): Promise<Anime
   }
 
   for (const token of splitAnimeSearchTokens(params.query ?? '')) {
-    q = q.ilike('title', `%${escapeAnimeIlikePattern(token)}%`)
+    q = q.or(animeTitleSearchOrFilter(token))
   }
 
   q = q.order('created_at', { ascending: false }).range(from, to)
@@ -429,18 +462,20 @@ export const searchAnimeCards = async (params: AnimeSearchParams): Promise<Anime
   const { data, error, count } = await q
 
   if (error) {
-    // Fallback when airing_status column is missing
-    let fallback = supabase
-      .from('anime')
-      .select(buildAnimeSearchSelect(Boolean(genreSlug)).replace('airing_status,', ''), {
-        count: 'exact',
-      })
+    const msg = String(error.message ?? '')
+    const missingRomaji =
+      String(error.code ?? '') === '42703' || isMissingColumnError(msg, 'title_romaji')
+
+    let select = buildAnimeSearchSelect(Boolean(genreSlug)).replace('airing_status,', '')
+    if (missingRomaji) select = select.replace('title_romaji,', '')
+
+    let fallback = supabase.from('anime').select(select, { count: 'exact' })
 
     if (genreSlug) fallback = fallback.eq('anime_genres.genres.slug', genreSlug)
     if (year !== null) fallback = fallback.eq('year', year)
     if (season) fallback = fallback.eq('season', season)
     for (const token of splitAnimeSearchTokens(params.query ?? '')) {
-      fallback = fallback.ilike('title', `%${escapeAnimeIlikePattern(token)}%`)
+      fallback = fallback.or(animeTitleSearchOrFilter(token, !missingRomaji))
     }
     fallback = fallback.order('created_at', { ascending: false }).range(from, to)
 
@@ -468,14 +503,13 @@ export const getSimilarAnimeCards = async (
 ): Promise<AnimeCard[]> => {
   if (!hasSupabaseConfig) return []
 
-  const slugs = [
-    ...new Set(genreSlugs.map((s) => String(s).trim().toLowerCase()).filter(Boolean)),
-  ]
+  const slugs = [...new Set(genreSlugs.map((s) => String(s).trim().toLowerCase()).filter(Boolean))]
   if (slugs.length === 0) return []
 
   const gRes = await supabase.from('genres').select('id, slug').in('slug', slugs)
   if (gRes.error || !gRes.data?.length) {
-    if (import.meta.env.DEV && gRes.error) console.warn('getSimilarAnimeCards genres:', gRes.error.message)
+    if (import.meta.env.DEV && gRes.error)
+      console.warn('getSimilarAnimeCards genres:', gRes.error.message)
     return []
   }
 
@@ -549,7 +583,9 @@ export type EpisodePackItem = {
   download_link?: string | null
 }
 
-const parseEpisodePackRow = (row: Record<string, unknown> | null | undefined): EpisodePackItem | null => {
+const parseEpisodePackRow = (
+  row: Record<string, unknown> | null | undefined
+): EpisodePackItem | null => {
   if (!row) return null
   const link =
     typeof row.episode_pack_link === 'string' && row.episode_pack_link.trim().length > 0
@@ -690,11 +726,13 @@ export const getTranslatorBySlug = async (slug: string): Promise<TranslatorItem 
   if (error) {
     const msg = String(error?.message ?? '')
     if (String(error?.code ?? '') === '42703' || msg.toLowerCase().includes('column')) {
-      ({ data, error } = await supabase
+      const retry = await supabase
         .from('translators')
         .select('id, name, slug, avatar_url, bio')
         .eq('slug', safeSlug)
-        .maybeSingle())
+        .maybeSingle()
+      data = retry.data
+      error = retry.error
     }
   }
 
@@ -714,7 +752,11 @@ export const getTranslatorBySlug = async (slug: string): Promise<TranslatorItem 
     bio: typeof data.bio === 'string' ? data.bio : (data.bio ?? null),
     experience: typeof data.experience === 'string' ? data.experience : (data.experience ?? null),
     is_active:
-      typeof data.is_active === 'boolean' ? data.is_active : data.is_active == null ? true : Boolean(data.is_active),
+      typeof data.is_active === 'boolean'
+        ? data.is_active
+        : data.is_active == null
+          ? true
+          : Boolean(data.is_active),
   }
 }
 
@@ -860,10 +902,12 @@ export const getAllTranslatorsAdmin = async (): Promise<TranslatorAdminItem[]> =
   if (error) {
     const msg = String(error?.message ?? '')
     if (String(error?.code ?? '') === '42703' || msg.toLowerCase().includes('column')) {
-      ({ data, error } = await supabase
+      const retry = await supabase
         .from('translators')
         .select('id, name, slug, avatar_url, cover_url, bio, experience')
-        .order('name', { ascending: true }))
+        .order('name', { ascending: true })
+      data = retry.data
+      error = retry.error
     }
   }
 
@@ -881,7 +925,11 @@ export const getAllTranslatorsAdmin = async (): Promise<TranslatorAdminItem[]> =
     bio: typeof row.bio === 'string' ? row.bio : (row.bio ?? null),
     experience: typeof row.experience === 'string' ? row.experience : (row.experience ?? null),
     is_active:
-      typeof row.is_active === 'boolean' ? row.is_active : row.is_active == null ? true : Boolean(row.is_active),
+      typeof row.is_active === 'boolean'
+        ? row.is_active
+        : row.is_active == null
+          ? true
+          : Boolean(row.is_active),
   }))
 }
 
@@ -924,11 +972,13 @@ export const upsertTranslatorAdmin = async (payload: {
     if (String(error?.code ?? '') === '42703' || msg.toLowerCase().includes('column')) {
       const fallbackRow = { ...row }
       delete fallbackRow.is_active
-      ;({ data, error } = await supabase
+      const retry = await supabase
         .from('translators')
         .upsert(fallbackRow, { onConflict: row.id ? 'id' : 'slug' })
         .select('id, name, slug, avatar_url, cover_url, bio, experience')
-        .single())
+        .single()
+      data = retry.data
+      error = retry.error
     }
   }
 
@@ -975,7 +1025,11 @@ const mapTranslatorAnimeAdminLinkRow = (row: any): TranslatorAnimeAdminLink | nu
     avatar_url: typeof t.avatar_url === 'string' ? t.avatar_url : (t.avatar_url ?? null),
     bio: typeof t.bio === 'string' ? t.bio : (t.bio ?? null),
     is_active:
-      typeof t.is_active === 'boolean' ? t.is_active : t.is_active == null ? true : Boolean(t.is_active),
+      typeof t.is_active === 'boolean'
+        ? t.is_active
+        : t.is_active == null
+          ? true
+          : Boolean(t.is_active),
   }
 
   return {
@@ -1272,6 +1326,7 @@ export type AnimeAdminEditor = {
 export type AnimeAdminRow = {
   id: number | string
   title?: string | null
+  title_romaji?: string | null
   synopsis?: string | null
   format?: string | null
   season?: string | null
@@ -1301,19 +1356,19 @@ export const getAnimeAdminById = async (animeId: string | number): Promise<Anime
   if (!hasSupabaseConfig) throw new Error('Supabase config missing')
 
   const selectWithEpisodePack =
-    `id, title, synopsis, format, season, year, anilist_id, mal_id, imdb_id, mal_score, imdb_score, featured_image, ${IMAGE_COLUMN}, is_featured, airing_status, average_score, episodes_count, studio, start_date, end_date, episode_pack_title, episode_pack_link` as any as string
+    `id, title, title_romaji, synopsis, format, season, year, anilist_id, mal_id, imdb_id, mal_score, imdb_score, featured_image, ${IMAGE_COLUMN}, is_featured, airing_status, average_score, episodes_count, studio, start_date, end_date, episode_pack_title, episode_pack_link` as any as string
 
   const selectWithAniList =
-    `id, title, synopsis, format, season, year, anilist_id, mal_id, imdb_id, mal_score, imdb_score, featured_image, ${IMAGE_COLUMN}, is_featured, airing_status, average_score, episodes_count, studio, start_date, end_date` as any as string
+    `id, title, title_romaji, synopsis, format, season, year, anilist_id, mal_id, imdb_id, mal_score, imdb_score, featured_image, ${IMAGE_COLUMN}, is_featured, airing_status, average_score, episodes_count, studio, start_date, end_date` as any as string
 
   const selectWithoutAniList =
-    `id, title, synopsis, format, season, year, featured_image, ${IMAGE_COLUMN}, is_featured, airing_status, average_score, episodes_count, studio, start_date, end_date` as any as string
+    `id, title, title_romaji, synopsis, format, season, year, featured_image, ${IMAGE_COLUMN}, is_featured, airing_status, average_score, episodes_count, studio, start_date, end_date` as any as string
 
   const selectWithExternalScores =
-    `id, title, synopsis, format, season, year, anilist_id, mal_id, imdb_id, mal_score, imdb_score, featured_image, ${IMAGE_COLUMN}, is_featured, airing_status, average_score, episodes_count, studio, start_date, end_date` as any as string
+    `id, title, title_romaji, synopsis, format, season, year, anilist_id, mal_id, imdb_id, mal_score, imdb_score, featured_image, ${IMAGE_COLUMN}, is_featured, airing_status, average_score, episodes_count, studio, start_date, end_date` as any as string
 
   const selectMinimal =
-    `id, title, synopsis, format, season, year, anilist_id, featured_image, ${IMAGE_COLUMN}, is_featured, airing_status, average_score, episodes_count, studio, start_date, end_date` as any as string
+    `id, title, title_romaji, synopsis, format, season, year, anilist_id, featured_image, ${IMAGE_COLUMN}, is_featured, airing_status, average_score, episodes_count, studio, start_date, end_date` as any as string
 
   let data: any = null
 
@@ -1323,6 +1378,7 @@ export const getAnimeAdminById = async (animeId: string | number): Promise<Anime
     selectWithAniList,
     selectMinimal,
     selectWithoutAniList,
+    `id, title, synopsis, format, season, year, anilist_id, mal_id, imdb_id, mal_score, imdb_score, featured_image, ${IMAGE_COLUMN}, is_featured, airing_status, average_score, episodes_count, studio, start_date, end_date, episode_pack_title, episode_pack_link`,
   ]
   let lastError: any = null
 
@@ -1381,6 +1437,10 @@ export const getAnimeAdminById = async (animeId: string | number): Promise<Anime
   return {
     id: row.id,
     title: row.title ?? null,
+    title_romaji:
+      typeof row.title_romaji === 'string' && row.title_romaji.trim()
+        ? row.title_romaji.trim()
+        : (row.title_romaji ?? null),
     synopsis: row.synopsis ?? null,
     format: row.format ?? null,
     season: row.season ?? null,
@@ -1402,9 +1462,13 @@ export const getAnimeAdminById = async (animeId: string | number): Promise<Anime
     start_date: row.start_date ?? null,
     end_date: row.end_date ?? null,
     episode_pack_title:
-      typeof row.episode_pack_title === 'string' ? row.episode_pack_title : (row.episode_pack_title ?? null),
+      typeof row.episode_pack_title === 'string'
+        ? row.episode_pack_title
+        : (row.episode_pack_title ?? null),
     episode_pack_link:
-      typeof row.episode_pack_link === 'string' ? row.episode_pack_link : (row.episode_pack_link ?? null),
+      typeof row.episode_pack_link === 'string'
+        ? row.episode_pack_link
+        : (row.episode_pack_link ?? null),
     updated_at: updatedAt,
     last_edited_by: lastEditedBy,
     last_editor: lastEditor,
@@ -1414,6 +1478,7 @@ export const getAnimeAdminById = async (animeId: string | number): Promise<Anime
 export const upsertAnimeAdmin = async (payload: {
   id?: number | string
   title: string
+  title_romaji?: string | null
   synopsis: string | null
   format: string | null
   season: string | null
@@ -1440,6 +1505,7 @@ export const upsertAnimeAdmin = async (payload: {
 
   const row: Record<string, unknown> = {
     title: payload.title,
+    title_romaji: payload.title_romaji?.trim() ? payload.title_romaji.trim() : null,
     synopsis: payload.synopsis,
     format: payload.format,
     season: payload.season,
@@ -1482,10 +1548,12 @@ export const upsertAnimeAdmin = async (payload: {
   } catch (firstError: unknown) {
     const msg = formatSupabaseError(firstError)
     const missingExternal = externalOnlyKeys.some((key) => isMissingColumnError(msg, key))
+    const missingRomaji = isMissingColumnError(msg, 'title_romaji')
 
-    if (missingExternal) {
+    if (missingExternal || missingRomaji) {
       const fallback: Record<string, unknown> = { ...row }
       for (const key of externalOnlyKeys) delete fallback[key]
+      if (missingRomaji) delete fallback.title_romaji
 
       try {
         animeId = await runUpsert(fallback)
@@ -1493,12 +1561,14 @@ export const upsertAnimeAdmin = async (payload: {
         throw firstError
       }
 
-      throw new Error(
-        `${msg}\n\nستون‌های MAL/IMDb هنوز در Supabase ساخته نشده‌اند. فایل supabase-add-external-ids-scores.sql را در SQL Editor اجرا کنید.`
-      )
+      if (missingExternal) {
+        throw new Error(
+          `${msg}\n\nستون‌های MAL/IMDb هنوز در Supabase ساخته نشده‌اند. فایل supabase-add-external-ids-scores.sql را در SQL Editor اجرا کنید.`
+        )
+      }
+    } else {
+      throw firstError
     }
-
-    throw firstError
   }
 
   if (genreSlugs !== undefined) {
@@ -1535,8 +1605,7 @@ const parseExternalMetaRow = (row: Record<string, unknown>): AnimeExternalMeta =
     shioriScore: num(row.shiori_score),
     anilist_id: num(row.anilist_id),
     mal_id: num(row.mal_id),
-    imdb_id:
-      typeof row.imdb_id === 'string' && row.imdb_id.trim() ? row.imdb_id.trim() : undefined,
+    imdb_id: typeof row.imdb_id === 'string' && row.imdb_id.trim() ? row.imdb_id.trim() : undefined,
   }
 }
 

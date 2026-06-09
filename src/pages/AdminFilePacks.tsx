@@ -38,6 +38,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import * as packs from '../services/supabasePacks'
 import * as filesSvc from '../services/supabaseFiles'
+import { animeMatchesSearchQuery } from '../services/supabaseAnime'
+import { useAdminAnimeListQuery } from '../hooks/queries/useAnimeQueries'
 
 type DraftPack = {
   id?: string
@@ -90,6 +92,7 @@ const StatCard = ({
 )
 
 const AdminFilePacks = () => {
+  const { data: adminAnimeData } = useAdminAnimeListQuery()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -206,6 +209,19 @@ const AdminFilePacks = () => {
           .includes(term)
     )
   }, [packItems, packFilesQuery])
+
+  const fileSearchExtraTerms = useMemo(() => {
+    const term = filesQuery.trim()
+    if (!term) return []
+    const extras = new Set<string>()
+    for (const a of adminAnimeData?.list ?? []) {
+      if (animeMatchesSearchQuery(a, term)) {
+        if (a.title?.trim()) extras.add(a.title.trim())
+        if (a.title_romaji?.trim()) extras.add(a.title_romaji.trim())
+      }
+    }
+    return [...extras]
+  }, [filesQuery, adminAnimeData?.list])
 
   const deepLinkPreview = useMemo(() => {
     const slug = draft.slug.trim()
@@ -335,6 +351,7 @@ const AdminFilePacks = () => {
         setFilesLoading(true)
         const list = await filesSvc.searchFilesForPicker({
           query: term,
+          matchAnyTerms: fileSearchExtraTerms,
           limit: 40,
           activeOnly: false,
         })
@@ -348,7 +365,7 @@ const AdminFilePacks = () => {
       cancelled = true
       window.clearTimeout(timer)
     }
-  }, [filesQuery, draft.id])
+  }, [filesQuery, fileSearchExtraTerms, draft.id])
 
   const onAddFile = async (fileKey: string) => {
     const packId = draft.id
@@ -750,7 +767,7 @@ const AdminFilePacks = () => {
                       <Input
                         value={filesQuery}
                         onChange={(e) => setFilesQuery(e.target.value)}
-                        placeholder="مثلاً fate 13"
+                        placeholder="جستجو نام فایل یا عنوان/Romaji انیمه..."
                         className="pe-9"
                         autoFocus
                       />

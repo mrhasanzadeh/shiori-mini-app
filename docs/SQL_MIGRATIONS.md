@@ -32,37 +32,38 @@
 
 ## ۴. Cron (بعد از deploy Edge Function)
 
-| #   | فایل / action                                    | توضیح                                                        |
-| --- | ------------------------------------------------ | ------------------------------------------------------------ |
-| 12  | `supabase functions deploy sync-external-scores` | Edge Function                                                |
-| 13  | Secrets: `CRON_SECRET`, `OMDB_API_KEY`           | Dashboard                                                    |
-| 14  | `supabase-cron-sync-external-scores.sql`         | راهنمای Cron (Dashboard → Integrations → Cron)               |
-| 15  | `supabase-cron-job-sync-external-scores.sql`     | SQL آماده pg_cron (جایگزین YOUR_ANON_KEY و YOUR_CRON_SECRET) |
-| 16  | `supabase-admin-portal-auth.sql`                 | ورود وب روی `telegram_users` + `user_portal_sessions`        |
-| 17  | `supabase-unify-portal-users.sql`                | مهاجرت از `admin_portal_*` (فقط اگر قبلاً ساخته بودید)       |
-| 18  | `supabase-rls-security-phase1.sql`               | **امنیت:** portal token RLS + قفل `password_hash`            |
-| 19  | Vault: `telegram_bot_token`                      | Dashboard → Vault (BotFather token) — قبل از فاز ۲           |
-| 20  | `supabase-rls-security-phase2.sql`               | **امنیت:** initData برای `user_anime_list`                   |
-| 21  | `supabase-rls-security-phase2-list-rpc.sql`      | RPC لیست + register با `p_init_data`                         |
+| #   | فایل / action                                         | توضیح                                                          |
+| --- | ----------------------------------------------------- | -------------------------------------------------------------- |
+| 12  | `supabase functions deploy sync-external-scores`      | Edge Function                                                  |
+| 13  | Secrets: `CRON_SECRET`, `OMDB_API_KEY`                | Dashboard                                                      |
+| 14  | `supabase-cron-sync-external-scores.sql`              | راهنمای Cron (Dashboard → Integrations → Cron)                 |
+| 15  | `supabase-cron-job-sync-external-scores.sql`          | SQL آماده pg_cron (جایگزین YOUR_ANON_KEY و YOUR_CRON_SECRET)   |
+| 16  | `supabase-admin-portal-auth.sql`                      | ورود وب روی `telegram_users` + `user_portal_sessions`          |
+| 17  | `supabase-unify-portal-users.sql`                     | مهاجرت از `admin_portal_*` (فقط اگر قبلاً ساخته بودید)         |
+| 18  | `supabase-rls-security-phase1.sql`                    | **امنیت:** portal token RLS + قفل `password_hash`              |
+| 19  | Vault: `telegram_bot_token`                           | Dashboard → Vault (BotFather token) — قبل از فاز ۲             |
+| 20  | `supabase-rls-security-phase2.sql`                    | **امنیت:** initData برای `user_anime_list`                     |
+| 21  | `supabase-rls-security-phase2-list-rpc.sql`           | RPC لیست + register با `p_init_data`                           |
 | 22  | **`supabase-rls-security-phase2-post-migration.sql`** | **patch نهایی:** verify decode، upsert، admin، edge SQL، debug |
-| 23  | Edge: `telegram-user-list` + `TELEGRAM_BOT_TOKEN` | [telegram-user-list-edge.md](./telegram-user-list-edge.md)   |
-| 24  | **`supabase-admin-panel-features.sql`** | ایمیل/رمز ادمین از پنل + audit آخرین ویرایش انیمه |
-| 25  | **`supabase-translators-is-active.sql`** | ستون `is_active` برای مترجم‌ها |
+| 23  | Edge: `telegram-user-list` + `TELEGRAM_BOT_TOKEN`     | [telegram-user-list-edge.md](./telegram-user-list-edge.md)     |
+| 24  | **`supabase-admin-panel-features.sql`**               | ایمیل/رمز ادمین از پنل + audit آخرین ویرایش انیمه              |
+| 25  | **`supabase-translators-is-active.sql`**              | ستون `is_active` برای مترجم‌ها                                 |
+| 26  | **`supabase-anime-title-romaji.sql`**                 | ستون `title_romaji` برای جستجو و نمایش عنوان Romaji           |
 
 > **اگر قبلاً patchهای جدا (`supabase-fix-*.sql`) را زده‌اید:** اجرای دوبارهٔ `post-migration` بی‌ضرر است (`CREATE OR REPLACE`). فایل‌های `supabase-fix-*` دیگر لازم نیستند.
 
 ### patchهای قدیمی (جایگزین شده با #22)
 
-| فایل (آرشیو) | نقش |
-| --- | --- |
-| `supabase-rls-security-phase2-verify-fix.sql` | HMAC `convert_to` — داخل post-migration |
-| `supabase-fix-telegram-list-init-data.sql` | header fallback + RPC — داخل post-migration |
-| `supabase-fix-user-anime-list-upsert.sql` | upsert UPDATE + trigger — داخل post-migration |
-| `supabase-fix-telegram-init-debug.sql` | پیام خطا — داخل post-migration |
-| `supabase-fix-telegram-init-decode.sql` | decode + `signature` — داخل post-migration |
-| `supabase-fix-vault-token-audit.sql` | دیباگ Vault — داخل post-migration |
-| `supabase-rls-security-admin-users-fix.sql` | admin overview RPC — داخل post-migration |
-| `supabase-rls-security-phase2-edge.sql` | register internal — داخل post-migration |
+| فایل (آرشیو)                                  | نقش                                           |
+| --------------------------------------------- | --------------------------------------------- |
+| `supabase-rls-security-phase2-verify-fix.sql` | HMAC `convert_to` — داخل post-migration       |
+| `supabase-fix-telegram-list-init-data.sql`    | header fallback + RPC — داخل post-migration   |
+| `supabase-fix-user-anime-list-upsert.sql`     | upsert UPDATE + trigger — داخل post-migration |
+| `supabase-fix-telegram-init-debug.sql`        | پیام خطا — داخل post-migration                |
+| `supabase-fix-telegram-init-decode.sql`       | decode + `signature` — داخل post-migration    |
+| `supabase-fix-vault-token-audit.sql`          | دیباگ Vault — داخل post-migration             |
+| `supabase-rls-security-admin-users-fix.sql`   | admin overview RPC — داخل post-migration      |
+| `supabase-rls-security-phase2-edge.sql`       | register internal — داخل post-migration       |
 
 ## ۵. اختیاری
 
