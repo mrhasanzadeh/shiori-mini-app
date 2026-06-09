@@ -21,8 +21,23 @@ type TelegramInitDebug = {
   failure_reason?: string
   verified_user_id?: number | null
   vault_token_configured?: boolean
+  vault_bot_id?: string
+  vault_token_length?: number
   body_init_data_length?: number
   header_init_data_length?: number
+  init_data_keys?: string[]
+  received_hash_prefix?: string
+  computed_hash_prefix?: string
+}
+
+type EdgeDebug = {
+  reason?: string
+  verified_user_id?: number | null
+  edge_bot_id?: number | null
+  edge_bot_username?: string | null
+  edge_token_bot_id?: string | null
+  init_data_length?: number
+  error?: string
 }
 
 const entryKey = (animeId: number | string) => String(animeId)
@@ -45,6 +60,11 @@ const requireInitData = (): string => {
   return initData
 }
 
+const isEdgeUnavailable = (message: string): boolean =>
+  message.includes('failed to send a request to the Edge Function') ||
+  message.includes('Failed to fetch') ||
+  message.includes('FunctionsFetchError')
+
 const debugInitDataStatus = async (initData: string): Promise<TelegramInitDebug | null> => {
   if (!hasSupabaseConfig) return null
 
@@ -60,17 +80,66 @@ const debugInitDataStatus = async (initData: string): Promise<TelegramInitDebug 
   return (data ?? null) as TelegramInitDebug
 }
 
+const debugViaEdge = async (initData: string): Promise<EdgeDebug | null> => {
+  const { data, error } = await supabase.functions.invoke('telegram-user-list', {
+    body: { action: 'debug', initData },
+  })
+
+  if (error) {
+    if (!isEdgeUnavailable(error.message) && import.meta.env.DEV) {
+      console.warn('edge debug:', error.message)
+    }
+    return null
+  }
+
+  return (data ?? null) as EdgeDebug
+}
+
+const buildHashMismatchHelp = (sqlDebug: TelegramInitDebug | null, edgeDebug: EdgeDebug | null): string => {
+  const lines: string[] = [
+    'امضای Telegram تأیید نشد (hash_mismatch).',
+  ]
+
+  if (sqlDebug?.vault_bot_id) {
+    lines.push(`Bot ID در Vault: ${sqlDebug.vault_bot_id}`)
+  }
+  if (edgeDebug?.edge_bot_username) {
+    lines.push(`Bot در Edge secret: @${edgeDebug.edge_bot_username} (${edgeDebug.edge_bot_id ?? '?'})`)
+  }
+  if (sqlDebug?.received_hash_prefix && sqlDebug?.computed_hash_prefix) {
+    lines.push(
+      `Hash دریافتی/محاسبه‌شده: ${sqlDebug.received_hash_prefix}… / ${sqlDebug.computed_hash_prefix}…`
+    )
+  }
+
+  lines.push(
+    'مینی‌اپ را از همان رباتی باز کن که Mini App URL در BotFather روی آن ثبت شده. اگر چند secret در Vault دارید، قدیمی‌ها را حذف کنید.'
+  )
+
+  return lines.join('\n')
+}
+
 const enrichVerifyError = async (message: string, initData: string): Promise<string> => {
-  if (!message.includes('invalid telegram init data')) return message
+  if (!message.includes('invalid telegram init data') && !message.includes('hash_mismatch')) {
+    return message
+  }
 
   const reasonMatch = message.match(/invalid telegram init data \(([^)]+)\)/)
   const inlineReason = reasonMatch?.[1]
 
-  const debug = await debugInitDataStatus(initData)
-  const reason = inlineReason ?? debug?.failure_reason
+  const [sqlDebug, edgeDebug] = await Promise.all([
+    debugInitDataStatus(initData),
+    debugViaEdge(initData),
+  ])
+
+  const reason = inlineReason ?? sqlDebug?.failure_reason ?? edgeDebug?.reason
 
   if (reason === 'hash_mismatch') {
-    return 'توکن bot در Vault با رباتی که مینی‌اپ را ازش باز کردید یکی نیست (hash_mismatch). در BotFather ببینید Mini App روی کدام bot است؛ همان token را در Vault بگذارید.'
+    return buildHashMismatchHelp(sqlDebug, edgeDebug)
+  }
+
+  if (edgeDebug?.reason === 'ok' && edgeDebug.verified_user_id) {
+    return 'SQL verify خطا داد ولی Edge OK — Edge Function را deploy کنید (docs/telegram-user-list-edge.md).'
   }
 
   if (reason === 'vault_token_missing') {
@@ -78,11 +147,11 @@ const enrichVerifyError = async (message: string, initData: string): Promise<str
   }
 
   if (reason === 'init_data_empty') {
-    return 'initData خالی است — مینی‌اپ را فقط از داخل Telegram باز کنید.'
+    return 'initData خالی است — مینی‌اپ را ببندید و فقط از داخل Telegram باز کنید.'
   }
 
   if (reason === 'auth_date_expired') {
-    return 'initData منقضی شده — مینی‌اپ را ببندید و دوباره از Telegram باز کنید.'
+    return 'initData منقضی شده — مینی‌اپ را ببندید و دوباره باز کنید.'
   }
 
   if (reason) {
@@ -90,6 +159,45 @@ const enrichVerifyError = async (message: string, initData: string): Promise<str
   }
 
   return message
+}
+
+const invokeEdge = async (
+  action: 'list' | 'upsert' | 'remove',
+  initData: string,
+  extra?: Record<string, unknown>
+): Promise<void> => {
+  const { data, error } = await supabase.functions.invoke('telegram-user-list', {
+    body: { action, initData, ...extra },
+  })
+
+  const payload = (data ?? {}) as { error?: string; reason?: string }
+  if (payload.error) {
+    const detail = payload.reason ? `${payload.error} (${payload.reason})` : payload.error
+    throw new Error(detail)
+  }
+  if (error) {
+    throw new Error(error.message)
+  }
+}
+
+const listViaEdge = async (initData: string): Promise<UserAnimeListRow[]> => {
+  const { data, error } = await supabase.functions.invoke('telegram-user-list', {
+    body: { action: 'list', initData },
+  })
+
+  const payload = (data ?? {}) as {
+    items?: Record<string, unknown>[]
+    error?: string
+    reason?: string
+  }
+
+  if (payload.error) {
+    const detail = payload.reason ? `${payload.error} (${payload.reason})` : payload.error
+    throw new Error(detail)
+  }
+  if (error) throw new Error(error.message)
+
+  return (payload.items ?? []).map((row) => mapListRow(row))
 }
 
 const listViaRpc = async (initData: string): Promise<UserAnimeListRow[]> => {
@@ -183,15 +291,21 @@ export const getUserAnimeList = async (_telegramUserId: number): Promise<UserAni
   const initData = requireInitData()
 
   try {
-    return await listViaRpc(initData)
-  } catch (rpcError) {
+    return await listViaEdge(initData)
+  } catch (edgeError) {
+    const edgeMsg = edgeError instanceof Error ? edgeError.message : String(edgeError)
+    if (!isEdgeUnavailable(edgeMsg) && import.meta.env.DEV) {
+      console.warn('getUserAnimeList edge:', edgeMsg)
+    }
+
     try {
-      return await listViaTable()
+      return await listViaRpc(initData)
     } catch {
-      if (import.meta.env.DEV) {
-        console.warn('getUserAnimeList:', rpcError instanceof Error ? rpcError.message : rpcError)
+      try {
+        return await listViaTable()
+      } catch {
+        return []
       }
-      return []
     }
   }
 }
@@ -209,6 +323,20 @@ export const upsertUserAnimeListEntry = async (
   }
 
   const initData = requireInitData()
+
+  try {
+    await invokeEdge('upsert', initData, {
+      anime_id: animeId,
+      episodes_watched: payload.episodes_watched,
+      user_rating: payload.user_rating,
+    })
+    return
+  } catch (edgeError) {
+    const edgeMsg = edgeError instanceof Error ? edgeError.message : String(edgeError)
+    if (!isEdgeUnavailable(edgeMsg)) {
+      throw new Error(await enrichVerifyError(edgeMsg, initData))
+    }
+  }
 
   try {
     await upsertViaRpc(initData, animeId, payload)
@@ -235,6 +363,16 @@ export const removeUserAnimeListEntry = async (
   const initData = requireInitData()
 
   try {
+    await invokeEdge('remove', initData, { anime_id: animeId })
+    return
+  } catch (edgeError) {
+    const edgeMsg = edgeError instanceof Error ? edgeError.message : String(edgeError)
+    if (!isEdgeUnavailable(edgeMsg)) {
+      throw new Error(await enrichVerifyError(edgeMsg, initData))
+    }
+  }
+
+  try {
     await removeViaRpc(initData, animeId)
   } catch (rpcError) {
     const rpcMsg = rpcError instanceof Error ? rpcError.message : String(rpcError)
@@ -246,10 +384,18 @@ export const removeUserAnimeListEntry = async (
   }
 }
 
-export const debugTelegramInitStatus = async (): Promise<TelegramInitDebug | null> => {
+export const debugTelegramInitStatus = async (): Promise<{
+  sql: TelegramInitDebug | null
+  edge: EdgeDebug | null
+  initDataLength: number
+}> => {
   const initData = getTelegramInitData()
-  if (!initData) return null
-  return debugInitDataStatus(initData)
+  if (!initData) {
+    return { sql: null, edge: null, initDataLength: 0 }
+  }
+
+  const [sql, edge] = await Promise.all([debugInitDataStatus(initData), debugViaEdge(initData)])
+  return { sql, edge, initDataLength: initData.length }
 }
 
 export const getAnimeFavoriteCounts = async (): Promise<AnimeFavoriteCountMap> => {

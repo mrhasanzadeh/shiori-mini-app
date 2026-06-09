@@ -42,10 +42,30 @@ Deno.serve(async (req) => {
   const verified = await verifyTelegramInitData(initData, botToken)
 
   if (action === 'debug') {
+    let botUsername: string | null = null
+    let botId: number | null = null
+    try {
+      const meRes = await fetch(`https://api.telegram.org/bot${botToken}/getMe`)
+      const mePayload = (await meRes.json()) as {
+        ok?: boolean
+        result?: { id?: number; username?: string }
+      }
+      if (mePayload.ok && mePayload.result) {
+        botId = mePayload.result.id ?? null
+        botUsername = mePayload.result.username ?? null
+      }
+    } catch {
+      // ignore
+    }
+
     return json({
       reason: verified.reason,
       verified_user_id: verified.userId,
+      verify_method: verified.method ?? null,
       init_data_length: initData.length,
+      edge_bot_id: botId,
+      edge_bot_username: botUsername,
+      edge_token_bot_id: botToken.split(':')[0] ?? null,
     })
   }
 
