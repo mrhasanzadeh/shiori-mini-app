@@ -992,32 +992,32 @@ export const getTranslatorAnimeLinksAdminByAnimeId = async (
 ): Promise<TranslatorAnimeAdminLink[]> => {
   if (!hasSupabaseConfig) return []
 
-  let data: any = null
-  let error: any = null
+  const fetchLinks = (includeIsActive: boolean) => {
+    const select = includeIsActive
+      ? 'id, anime_id, translator_id, role, translators(id,name,slug,avatar_url,bio,is_active)'
+      : 'id, anime_id, translator_id, role, translators(id,name,slug,avatar_url,bio)'
 
-  ;({ data, error } = await supabase
-    .from('translator_anime')
-    .select('id, anime_id, translator_id, role, translators(id,name,slug,avatar_url,bio,is_active)')
-    .eq('anime_id', animeId)
-    .order('id', { ascending: true }))
+    return supabase
+      .from('translator_anime')
+      .select(select)
+      .eq('anime_id', animeId)
+      .order('id', { ascending: true })
+  }
 
-  if (error) {
-    const msg = String(error?.message ?? '')
-    if (String(error?.code ?? '') === '42703' || msg.toLowerCase().includes('column')) {
-      ;({ data, error } = await supabase
-        .from('translator_anime')
-        .select('id, anime_id, translator_id, role, translators(id,name,slug,avatar_url,bio)')
-        .eq('anime_id', animeId)
-        .order('id', { ascending: true }))
+  let result = await fetchLinks(true)
+  if (result.error) {
+    const msg = String(result.error.message ?? '')
+    if (String(result.error.code ?? '') === '42703' || msg.toLowerCase().includes('column')) {
+      result = await fetchLinks(false)
     }
   }
 
-  if (error) {
-    console.warn('getTranslatorAnimeLinksAdminByAnimeId:', error.message)
+  if (result.error) {
+    console.warn('getTranslatorAnimeLinksAdminByAnimeId:', result.error.message)
     return []
   }
 
-  const mapped = (data || []).map(mapTranslatorAnimeAdminLinkRow)
+  const mapped = (result.data || []).map(mapTranslatorAnimeAdminLinkRow)
   return mapped.filter((x: TranslatorAnimeAdminLink | null): x is TranslatorAnimeAdminLink =>
     Boolean(x && x.translator)
   )
