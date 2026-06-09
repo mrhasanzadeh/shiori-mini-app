@@ -113,6 +113,7 @@ export const useAdminAccess = (): AdminAccessState => {
     inTelegramMiniApp,
     portalRole,
     portalDisplayName: portalSession?.displayName ?? null,
+    portalPhotoUrl: portalSession?.photoUrl ?? null,
   })
 
   const accessLoading =

@@ -13,6 +13,7 @@ export type AdminAccessState = {
   isWebAdminOnly: boolean
   inTelegramMiniApp: boolean
   portalDisplayName: string | null
+  portalPhotoUrl: string | null
 }
 
 export const ADMIN_LOGIN_PATH = '/admin/login'
@@ -66,6 +67,7 @@ export const resolveAdminAccess = (params: {
   inTelegramMiniApp: boolean
   portalRole: AppUserRole | null
   portalDisplayName: string | null
+  portalPhotoUrl: string | null
 }): Pick<
   AdminAccessState,
   | 'dbRole'
@@ -75,6 +77,7 @@ export const resolveAdminAccess = (params: {
   | 'isWebAdminOnly'
   | 'inTelegramMiniApp'
   | 'portalDisplayName'
+  | 'portalPhotoUrl'
 > => {
   const {
     userId,
@@ -86,9 +89,15 @@ export const resolveAdminAccess = (params: {
     inTelegramMiniApp,
     portalRole,
     portalDisplayName,
+    portalPhotoUrl,
   } = params
 
-  const meta = { isWebAdminOnly: webOnlyMode, inTelegramMiniApp, portalDisplayName }
+  const meta = {
+    isWebAdminOnly: webOnlyMode,
+    inTelegramMiniApp,
+    portalDisplayName,
+    portalPhotoUrl,
+  }
 
   if (webOnlyMode && inTelegramMiniApp) {
     return {
@@ -106,9 +115,7 @@ export const resolveAdminAccess = (params: {
       isStaff: true,
       isFullAdmin: true,
       isModerator: false,
-      portalDisplayName,
-      isWebAdminOnly: webOnlyMode,
-      inTelegramMiniApp,
+      ...meta,
     }
   }
 
@@ -118,9 +125,7 @@ export const resolveAdminAccess = (params: {
       isStaff: true,
       isFullAdmin: false,
       isModerator: true,
-      portalDisplayName,
-      isWebAdminOnly: webOnlyMode,
-      inTelegramMiniApp,
+      ...meta,
     }
   }
 

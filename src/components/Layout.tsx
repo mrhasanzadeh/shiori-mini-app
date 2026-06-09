@@ -52,6 +52,43 @@ const getAdminInitials = (name: string): string => {
   return trimmed.charAt(0)
 }
 
+const AdminSidebarAvatar = ({
+  name,
+  photoUrl,
+}: {
+  name: string
+  photoUrl: string | null
+}) => {
+  const [failed, setFailed] = useState(false)
+  const initials = getAdminInitials(name)
+  const showPhoto = Boolean(photoUrl?.trim()) && !failed
+
+  useEffect(() => {
+    setFailed(false)
+  }, [photoUrl])
+
+  return (
+    <div
+      className={cn(
+        'flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-primary-500/25 bg-primary-600/15 text-sm font-semibold text-primary-300',
+        showPhoto && 'bg-muted'
+      )}
+      title={name}
+    >
+      {showPhoto ? (
+        <img
+          src={photoUrl!.trim()}
+          alt=""
+          className="h-full w-full object-cover"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        initials
+      )}
+    </div>
+  )
+}
+
 const Layout = ({ children }: LayoutProps) => {
   const location = useLocation()
   const navigate = useNavigate()
@@ -101,11 +138,10 @@ const Layout = ({ children }: LayoutProps) => {
   const isAdminPage = isAdminRoutePath(location.pathname)
   const isAdminLoginPage = isAdminLoginPath(location.pathname)
 
-  const { isFullAdmin, isModerator, isStaff, isReady, roleLoading, portalDisplayName } =
+  const { isFullAdmin, isModerator, isStaff, isReady, roleLoading, portalDisplayName, portalPhotoUrl } =
     useAdminAccess()
 
   const adminDisplayName = portalDisplayName?.trim() || 'ادمین'
-  const adminInitials = getAdminInitials(adminDisplayName)
   const adminRoleLabel = isFullAdmin ? 'ادمین' : isModerator ? 'مدیر محتوا' : 'ادمین'
 
   const handleConfirmLogout = () => {
@@ -301,12 +337,7 @@ const Layout = ({ children }: LayoutProps) => {
                     : 'rounded-xl border border-border/60 bg-background/50 px-3 py-2.5'
                 )}
               >
-                <div
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-primary-500/25 bg-primary-600/15 text-sm font-semibold text-primary-300"
-                  title={adminDisplayName}
-                >
-                  {adminInitials}
-                </div>
+                <AdminSidebarAvatar name={adminDisplayName} photoUrl={portalPhotoUrl} />
                 {!adminSidebarCollapsed ? (
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{adminDisplayName}</p>

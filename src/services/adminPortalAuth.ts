@@ -15,6 +15,7 @@ type PortalRpcPayload = {
   token?: string
   role?: string
   display_name?: string
+  photo_url?: string | null
   expires_at?: string
 }
 
@@ -32,6 +33,10 @@ const parsePortalSession = (payload: PortalRpcPayload): AdminPortalSession | nul
     token,
     role,
     displayName: String(payload.display_name ?? '').trim() || 'ادمین',
+    photoUrl:
+      typeof payload.photo_url === 'string' && payload.photo_url.trim()
+        ? payload.photo_url.trim()
+        : null,
     expiresAt,
   }
 }

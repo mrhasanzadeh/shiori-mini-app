@@ -6,6 +6,7 @@ export type AdminPortalSession = {
   token: string
   role: AppUserRole
   displayName: string
+  photoUrl: string | null
   expiresAt: string
 }
 
@@ -25,7 +26,12 @@ export const readStoredPortalSession = (): AdminPortalSession | null => {
     const role = normalizeAppUserRole(parsed.role)
     if (role !== 'admin' && role !== 'moderator') return null
 
-    return { ...parsed, role }
+    return {
+      ...parsed,
+      role,
+      photoUrl:
+        typeof parsed.photoUrl === 'string' && parsed.photoUrl.trim() ? parsed.photoUrl.trim() : null,
+    }
   } catch {
     return null
   }
