@@ -14,7 +14,7 @@ import {
   UserIcon,
   Share08Icon,
 } from 'hugeicons-react'
-import { ExternalLink } from 'lucide-react'
+import { ExternalLink, Lock } from 'lucide-react'
 import { useAnime } from '../hooks/useAnime'
 import { useTelegramApp } from '../hooks/useTelegramApp'
 import {
@@ -457,6 +457,87 @@ const SimilarPosterCard = ({
   </AnimePrefetchLink>
 )
 
+const EPISODE_DOWNLOAD_QUALITIES = [
+  { id: '480p', label: '480p', available: false },
+  { id: '720p', label: '720p', available: false },
+  { id: '1080p', label: '1080p', available: true },
+] as const
+
+const EpisodeDownloadCard = ({
+  episode,
+  showSubtitleButton,
+  onDownload1080,
+  onSubtitle,
+  onLockedQuality,
+}: {
+  episode: Episode
+  showSubtitleButton: boolean
+  onDownload1080: () => void
+  onSubtitle: () => void
+  onLockedQuality: (quality: string) => void
+}) => (
+  <div className="overflow-hidden rounded-xl border border-border bg-card/60">
+    <div className="flex items-start justify-between gap-3 px-3 py-3">
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-foreground">
+          قسمت {toPersianNumber(episode.number)}
+        </p>
+        <p className="text-muted-foreground mt-0.5 text-[11px]">زیرنویس چسبیده · x265</p>
+      </div>
+      {showSubtitleButton ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          className="shrink-0"
+          onClick={onSubtitle}
+        >
+          زیرنویس
+        </Button>
+      ) : null}
+    </div>
+
+    <div className="grid grid-cols-3 gap-1.5 border-t border-border/60 bg-muted/10 p-2">
+      {EPISODE_DOWNLOAD_QUALITIES.map((quality) => {
+        const isAvailable = quality.available
+
+        return (
+          <button
+            key={quality.id}
+            type="button"
+            aria-disabled={!isAvailable}
+            aria-label={
+              isAvailable
+                ? `دانلود قسمت ${episode.number} با کیفیت ${quality.label}`
+                : `کیفیت ${quality.label} فعلاً در دسترس نیست`
+            }
+            className={cn(
+              'flex min-h-[3.25rem] flex-col items-center justify-center gap-1 rounded-lg border px-2 py-2 text-center transition-colors',
+              isAvailable
+                ? 'border-primary-400/35 bg-primary-400/10 text-primary-200 hover:bg-primary-400/15 active:scale-[0.98]'
+                : 'cursor-not-allowed border-border/60 bg-muted/20 text-muted-foreground opacity-70'
+            )}
+            onClick={() => {
+              if (isAvailable) {
+                onDownload1080()
+                return
+              }
+              onLockedQuality(quality.label)
+            }}
+          >
+            {isAvailable ? (
+              <Download01Icon className="h-4 w-4 shrink-0" />
+            ) : (
+              <Lock className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
+            )}
+            <span className="text-xs font-semibold tabular-nums">{quality.label}</span>
+          </button>
+        )
+      })}
+    </div>
+  </div>
+)
+
 const EpisodePackDownloadCard = ({
   pack,
   onDownload,
@@ -773,7 +854,7 @@ const AnimeDetail = () => {
             </h1>
             {anime.title_romaji ? (
               <p
-                className="text-muted-foreground mt-1 text-center text-xs leading-5 line-clamp-2"
+                className="text-muted-foreground text-center text-sm leading-5 line-clamp-2"
                 dir="ltr"
               >
                 {anime.title_romaji}
@@ -1035,52 +1116,27 @@ const AnimeDetail = () => {
                     </p>
                   ) : null}
                   {episodesForList.map((episode) => (
-                    <div
+                    <EpisodeDownloadCard
                       key={episode.id}
-                      className="rounded-xl border border-border bg-card/60 p-3 flex items-center justify-between gap-3"
-                    >
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-foreground">
-                          قسمت {toPersianNumber(episode.number)}
-                        </p>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">
-                          زیرنویس چسبیده · 1080p x265
-                        </p>
-                      </div>
-                      <div className="flex gap-2 shrink-0">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="secondary"
-                          className="gap-1 font-semibold"
-                          onClick={() => {
-                            const link =
-                              episode.download_link ||
-                              `https://t.me/ShioriUploadBot?start=get_${episode.id}`
-                            window.open(String(link), '_blank')
-                          }}
-                        >
-                          <Download01Icon className="w-3.5 h-3.5" />
-                          دانلود
-                        </Button>
-                        {(!isFinished || isMovie) && (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => {
-                              if (!episode.subtitle_link) {
-                                showAlert('زیرنویس برای این قسمت موجود نیست')
-                                return
-                              }
-                              window.open(String(episode.subtitle_link), '_blank')
-                            }}
-                          >
-                            زیرنویس
-                          </Button>
-                        )}
-                      </div>
-                    </div>
+                      episode={episode}
+                      showSubtitleButton={!isFinished || isMovie}
+                      onDownload1080={() => {
+                        const link =
+                          episode.download_link ||
+                          `https://t.me/ShioriUploadBot?start=get_${episode.id}`
+                        window.open(String(link), '_blank')
+                      }}
+                      onSubtitle={() => {
+                        if (!episode.subtitle_link) {
+                          showAlert('زیرنویس برای این قسمت موجود نیست')
+                          return
+                        }
+                        window.open(String(episode.subtitle_link), '_blank')
+                      }}
+                      onLockedQuality={(quality) => {
+                        showAlert(`دانلود ${quality} هنوز فعال نشده`)
+                      }}
+                    />
                   ))}
                 </div>
               ))}
