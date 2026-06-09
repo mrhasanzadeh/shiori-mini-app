@@ -9,11 +9,14 @@ export type TelegramUserRow = {
   first_name: string
   last_name: string | null
   username: string | null
+  email: string | null
   language_code: string | null
   photo_url: string | null
   is_premium: boolean
   app_role: AppUserRole
   admin_notes: string | null
+  portal_login_enabled: boolean
+  has_portal_password: boolean
   first_seen_at: string
   last_seen_at: string
   visit_count: number
@@ -43,6 +46,9 @@ export type UpdateTelegramUserAdminPayload = {
   app_role: AppUserRole
   admin_notes?: string | null
   username?: string
+  email?: string | null
+  password?: string | null
+  portal_login_enabled?: boolean
 }
 
 type TelegramUserPayload = {
@@ -146,6 +152,9 @@ export const updateTelegramUserAdmin = async (
     p_app_role: payload.app_role,
     p_admin_notes: payload.admin_notes ?? null,
     p_username: payload.username ?? null,
+    p_email: payload.email ?? null,
+    p_password: payload.password ?? null,
+    p_portal_login_enabled: payload.portal_login_enabled ?? null,
   })
 
   if (error) throw new Error(formatSupabaseError(error))
@@ -182,11 +191,15 @@ const mapTelegramUserRow = (row: Record<string, unknown>): TelegramUserRow => ({
   first_name: String(row.first_name ?? ''),
   last_name: row.last_name != null ? String(row.last_name) : null,
   username: row.username != null ? String(row.username) : null,
+  email: row.email != null ? String(row.email) : null,
   language_code: row.language_code != null ? String(row.language_code) : null,
   photo_url: row.photo_url != null ? String(row.photo_url) : null,
   is_premium: Boolean(row.is_premium),
   app_role: normalizeAppUserRole(row.app_role),
   admin_notes: row.admin_notes != null ? String(row.admin_notes) : null,
+  portal_login_enabled:
+    row.portal_login_enabled === undefined ? true : Boolean(row.portal_login_enabled),
+  has_portal_password: Boolean(row.has_portal_password),
   first_seen_at: String(row.first_seen_at ?? ''),
   last_seen_at: String(row.last_seen_at ?? ''),
   visit_count: typeof row.visit_count === 'number' ? row.visit_count : Number(row.visit_count) || 0,

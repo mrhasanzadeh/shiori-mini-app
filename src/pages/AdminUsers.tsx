@@ -172,6 +172,9 @@ const AdminUsers = () => {
     app_role: AppUserRole
     admin_notes: string | null
     username: string
+    email: string | null
+    password: string | null
+    portal_login_enabled: boolean
   }) => {
     if (!editingUser) return
 
@@ -184,6 +187,24 @@ const AdminUsers = () => {
       return
     }
 
+    if (
+      (payload.app_role === 'admin' || payload.app_role === 'moderator') &&
+      !payload.email?.trim()
+    ) {
+      setSaveError('برای نقش ادمین/مدیر محتوا، ایمیل ورود وب الزامی است.')
+      return
+    }
+
+    if (
+      (payload.app_role === 'admin' || payload.app_role === 'moderator') &&
+      payload.email?.trim() &&
+      !editingUser.has_portal_password &&
+      !payload.password?.trim()
+    ) {
+      setSaveError('رمز عبور ورود وب را وارد کنید.')
+      return
+    }
+
     try {
       setSaving(true)
       setSaveError(null)
@@ -192,6 +213,9 @@ const AdminUsers = () => {
         app_role: payload.app_role,
         admin_notes: payload.admin_notes,
         username: payload.username,
+        email: payload.email,
+        password: payload.password,
+        portal_login_enabled: payload.portal_login_enabled,
       })
       setEditorOpen(false)
       setEditingUser(null)
@@ -201,7 +225,9 @@ const AdminUsers = () => {
       setSaveError(
         raw.includes('cannot demote last admin')
           ? 'نمی‌توان آخرین ادمین را از نقش خارج کرد.'
-          : raw
+          : raw.includes('email already in use')
+            ? 'این ایمیل قبلاً برای کاربر دیگری ثبت شده.'
+            : raw
       )
     } finally {
       setSaving(false)

@@ -46,6 +46,7 @@
 | 21  | `supabase-rls-security-phase2-list-rpc.sql`      | RPC لیست + register با `p_init_data`                         |
 | 22  | **`supabase-rls-security-phase2-post-migration.sql`** | **patch نهایی:** verify decode، upsert، admin، edge SQL، debug |
 | 23  | Edge: `telegram-user-list` + `TELEGRAM_BOT_TOKEN` | [telegram-user-list-edge.md](./telegram-user-list-edge.md)   |
+| 24  | **`supabase-admin-panel-features.sql`** | ایمیل/رمز ادمین از پنل + audit آخرین ویرایش انیمه |
 
 > **اگر قبلاً patchهای جدا (`supabase-fix-*.sql`) را زده‌اید:** اجرای دوبارهٔ `post-migration` بی‌ضرر است (`CREATE OR REPLACE`). فایل‌های `supabase-fix-*` دیگر لازم نیستند.
 

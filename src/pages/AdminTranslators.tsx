@@ -27,6 +27,49 @@ type DraftTranslator = {
   experience: string
 }
 
+const ImageUrlPreview = ({
+  url,
+  label,
+  variant,
+}: {
+  url: string
+  label: string
+  variant: 'avatar' | 'cover'
+}) => {
+  const [failed, setFailed] = useState(false)
+  const trimmed = url.trim()
+
+  useEffect(() => {
+    setFailed(false)
+  }, [trimmed])
+
+  if (!trimmed) return null
+
+  return (
+    <div className="rounded-xl border bg-muted/20 p-3">
+      <p className="text-muted-foreground mb-2 text-[11px]">{label}</p>
+      {failed ? (
+        <p className="text-destructive text-xs">بارگذاری تصویر ناموفق — آدرس را بررسی کنید.</p>
+      ) : (
+        <div
+          className={
+            variant === 'avatar'
+              ? 'mx-auto h-20 w-20 overflow-hidden rounded-full border bg-muted'
+              : 'aspect-[3/1] max-h-28 overflow-hidden rounded-lg border bg-muted'
+          }
+        >
+          <img
+            src={trimmed}
+            alt=""
+            className="h-full w-full object-cover"
+            onError={() => setFailed(true)}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
 const AdminTranslators = () => {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -296,6 +339,7 @@ const AdminTranslators = () => {
             dir="ltr"
             className="font-mono text-xs"
           />
+          <ImageUrlPreview url={draft.avatar_url} label="پیش‌نمایش آواتار" variant="avatar" />
         </div>
         <div className="space-y-2">
           <Label htmlFor="translator-cover">آدرس کاور (اختیاری)</Label>
@@ -307,6 +351,7 @@ const AdminTranslators = () => {
             dir="ltr"
             className="font-mono text-xs"
           />
+          <ImageUrlPreview url={draft.cover_url} label="پیش‌نمایش کاور" variant="cover" />
         </div>
         <div className="space-y-2">
           <Label htmlFor="translator-bio">بیو (اختیاری)</Label>

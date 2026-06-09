@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Crown, UserCircle2 } from 'lucide-react'
+import { Crown, KeyRound, Mail, UserCircle2 } from 'lucide-react'
 import { AdminEditSheet, AdminEditSheetActions } from '@/components/admin/AdminEditSheet'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -10,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import {
   APP_USER_ROLE_LABELS,
@@ -43,6 +45,9 @@ type Props = {
     app_role: AppUserRole
     admin_notes: string | null
     username: string
+    email: string | null
+    password: string | null
+    portal_login_enabled: boolean
   }) => void | Promise<void>
 }
 
@@ -58,12 +63,18 @@ export const TelegramUserEditor = ({
   const [role, setRole] = useState<AppUserRole>('user')
   const [notes, setNotes] = useState('')
   const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [portalLoginEnabled, setPortalLoginEnabled] = useState(true)
 
   useEffect(() => {
     if (!user) return
     setRole(user.app_role)
     setNotes(user.admin_notes ?? '')
     setUsername(user.username ?? '')
+    setEmail(user.email ?? '')
+    setPassword('')
+    setPortalLoginEnabled(user.portal_login_enabled)
     setAvatarFailed(false)
   }, [user])
 
@@ -71,6 +82,7 @@ export const TelegramUserEditor = ({
 
   const name = displayName(user)
   const avatarUrl = user.photo_url && !avatarFailed ? user.photo_url : null
+  const canUsePortal = role === 'admin' || role === 'moderator'
 
   return (
     <AdminEditSheet
@@ -86,6 +98,9 @@ export const TelegramUserEditor = ({
               app_role: role,
               admin_notes: notes.trim() || null,
               username: username.trim().replace(/^@+/, ''),
+              email: email.trim() || null,
+              password: password.trim() || null,
+              portal_login_enabled: portalLoginEnabled,
             })
           }
           onCancel={() => onOpenChange(false)}
@@ -180,11 +195,73 @@ export const TelegramUserEditor = ({
           </p>
         ) : (
           <p className="text-muted-foreground text-xs leading-relaxed">
-            نقش «ادمین» دسترسی پنل را از طریق دیتابیس می‌دهد (علاوه بر لیست env). «مدیر محتوا» برای
-            آینده رزرو شده است.
+            نقش «ادمین» یا «مدیر محتوا» برای ورود وب با ایمیل/رمز لازم است.
           </p>
         )}
       </div>
+
+      {canUsePortal ? (
+        <div className="space-y-4 rounded-xl border border-border bg-muted/15 p-3">
+          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <KeyRound className="h-4 w-4 shrink-0 text-primary-400" />
+            ورود وب پنل ادمین
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="portal-email" className="flex items-center gap-1.5">
+              <Mail className="h-3.5 w-3.5" />
+              ایمیل ورود
+            </Label>
+            <Input
+              id="portal-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="admin@example.com"
+              dir="ltr"
+              className="font-mono text-sm"
+              autoComplete="off"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="portal-password">رمز عبور</Label>
+            <Input
+              id="portal-password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder={
+                user.has_portal_password ? 'برای تغییر، رمز جدید وارد کنید' : 'رمز جدید'
+              }
+              dir="ltr"
+              className="font-mono text-sm"
+              autoComplete="new-password"
+            />
+            {user.has_portal_password && !password ? (
+              <p className="text-muted-foreground text-xs">رمز فعلی تنظیم شده — خالی بگذارید تا عوض نشود.</p>
+            ) : null}
+          </div>
+
+          <div className="flex items-center justify-between gap-3 rounded-lg border bg-background/40 px-3 py-2.5">
+            <div className="space-y-0.5">
+              <Label htmlFor="portal-enabled" className="text-sm">
+                ورود وب فعال
+              </Label>
+              <p className="text-muted-foreground text-xs">غیرفعال = حتی با رمز هم نمی‌تواند وارد شود.</p>
+            </div>
+            <Switch
+              id="portal-enabled"
+              checked={portalLoginEnabled}
+              onCheckedChange={setPortalLoginEnabled}
+            />
+          </div>
+        </div>
+      ) : (
+        <p className="text-muted-foreground rounded-lg border border-dashed px-3 py-2 text-xs leading-relaxed">
+          برای ورود وب، نقش را «ادمین» یا «مدیر محتوا» انتخاب کنید؛ سپس ایمیل و رمز را تنظیم کنید.
+        </p>
+      )}
 
       <div className="space-y-2">
         <label className="text-foreground text-sm font-medium">یادداشت داخلی</label>
@@ -199,7 +276,9 @@ export const TelegramUserEditor = ({
       {role === 'admin' ? (
         <div className="flex items-start gap-2 rounded-lg border border-primary-500/25 bg-primary-500/10 px-3 py-2 text-xs text-primary-200">
           <Crown className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>این کاربر می‌تواند به پنل ادمین دسترسی داشته باشد.</span>
+          <span>
+            این کاربر دسترسی کامل پنل دارد. با ایمیل و رمز بالا می‌تواند از مرورگر وارد شود.
+          </span>
         </div>
       ) : null}
     </AdminEditSheet>

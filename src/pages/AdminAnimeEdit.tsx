@@ -175,6 +175,23 @@ const Field = ({
   </div>
 )
 
+const formatAdminDateTime = (iso: string | null | undefined) => {
+  if (!iso) return null
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return null
+  return d.toLocaleString('fa-IR', { dateStyle: 'short', timeStyle: 'short' })
+}
+
+const formatAnimeEditorName = (editor: supa.AnimeAdminEditor | null | undefined) => {
+  if (!editor) return null
+  const parts = [editor.first_name, editor.last_name].filter(Boolean)
+  const full = parts.join(' ').trim()
+  if (full) return full
+  if (editor.email?.trim()) return editor.email.trim()
+  if (editor.username?.trim()) return `@${editor.username.trim()}`
+  return null
+}
+
 const AdminEditSkeleton = () => (
   <div className="pb-32 animate-pulse">
     <div className="h-44 bg-muted/50" />
@@ -1146,6 +1163,17 @@ const AdminAnimeEdit = () => {
               {!isNew && previewAnimeId ? (
                 <p className="text-[11px] text-muted-foreground mt-2 font-mono truncate dir-ltr">
                   {String(previewAnimeId)}
+                </p>
+              ) : null}
+              {!isNew && anime?.updated_at ? (
+                <p className="text-muted-foreground mt-2 text-[11px] leading-relaxed">
+                  آخرین ویرایش اطلاعات انیمه
+                  {formatAnimeEditorName(anime.last_editor)
+                    ? ` توسط ${formatAnimeEditorName(anime.last_editor)}`
+                    : ''}
+                 <span className="text-muted-foreground"> در تاریخ {formatAdminDateTime(anime.updated_at)
+                    ? ` · ${formatAdminDateTime(anime.updated_at)}`
+                    : ''}</span>
                 </p>
               ) : null}
             </div>

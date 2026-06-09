@@ -1191,6 +1191,13 @@ export const deleteGenre = async (payload: {
   if (error) throw error
 }
 
+export type AnimeAdminEditor = {
+  first_name?: string | null
+  last_name?: string | null
+  email?: string | null
+  username?: string | null
+}
+
 export type AnimeAdminRow = {
   id: number | string
   title?: string | null
@@ -1214,6 +1221,9 @@ export type AnimeAdminRow = {
   end_date?: string | null
   episode_pack_title?: string | null
   episode_pack_link?: string | null
+  updated_at?: string | null
+  last_edited_by?: number | null
+  last_editor?: AnimeAdminEditor | null
 }
 
 export const getAnimeAdminById = async (animeId: string | number): Promise<AnimeAdminRow> => {
@@ -1265,6 +1275,38 @@ export const getAnimeAdminById = async (animeId: string | number): Promise<Anime
     return Number.isFinite(n) ? n : null
   }
 
+  let updatedAt: string | null = null
+  let lastEditedBy: number | null = null
+  let lastEditor: AnimeAdminEditor | null = null
+
+  try {
+    const auditRes = await supabase
+      .from('anime')
+      .select(
+        'updated_at, last_edited_by, last_editor:telegram_users!anime_last_edited_by_fkey(first_name, last_name, email, username)'
+      )
+      .eq('id', animeId)
+      .maybeSingle()
+
+    if (!auditRes.error && auditRes.data) {
+      const audit = auditRes.data as Record<string, unknown>
+      updatedAt = typeof audit.updated_at === 'string' ? audit.updated_at : null
+      lastEditedBy = numOrNull(audit.last_edited_by)
+      const editorRaw = audit.last_editor
+      if (editorRaw && typeof editorRaw === 'object' && !Array.isArray(editorRaw)) {
+        const e = editorRaw as Record<string, unknown>
+        lastEditor = {
+          first_name: e.first_name != null ? String(e.first_name) : null,
+          last_name: e.last_name != null ? String(e.last_name) : null,
+          email: e.email != null ? String(e.email) : null,
+          username: e.username != null ? String(e.username) : null,
+        }
+      }
+    }
+  } catch {
+    // audit columns not migrated yet
+  }
+
   return {
     id: row.id,
     title: row.title ?? null,
@@ -1292,6 +1334,9 @@ export const getAnimeAdminById = async (animeId: string | number): Promise<Anime
       typeof row.episode_pack_title === 'string' ? row.episode_pack_title : (row.episode_pack_title ?? null),
     episode_pack_link:
       typeof row.episode_pack_link === 'string' ? row.episode_pack_link : (row.episode_pack_link ?? null),
+    updated_at: updatedAt,
+    last_edited_by: lastEditedBy,
+    last_editor: lastEditor,
   }
 }
 
