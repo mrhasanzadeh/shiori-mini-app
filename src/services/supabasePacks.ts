@@ -7,6 +7,7 @@ export type FilePack = {
   description: string | null
   is_active: boolean
   created_at: string | null
+  file_count: number
 }
 
 export type FilePackItem = {
@@ -21,7 +22,7 @@ export const getAllFilePacks = async (): Promise<FilePack[]> => {
   if (!hasSupabaseConfig) return []
   const { data, error } = await supabase
     .from('file_packs')
-    .select('id, slug, title, description, is_active, created_at')
+    .select('id, slug, title, description, is_active, created_at, file_pack_items(count)')
     .order('created_at', { ascending: false })
 
   if (error) {
@@ -36,6 +37,10 @@ export const getAllFilePacks = async (): Promise<FilePack[]> => {
     description: typeof row?.description === 'string' ? row.description : (row?.description ?? null),
     is_active: typeof row?.is_active === 'boolean' ? row.is_active : Boolean(row?.is_active ?? true),
     created_at: typeof row?.created_at === 'string' ? row.created_at : (row?.created_at ?? null),
+    file_count:
+      typeof row?.file_pack_items?.[0]?.count === 'number'
+        ? row.file_pack_items[0].count
+        : Number(row?.file_pack_items?.[0]?.count) || 0,
   }))
 }
 
@@ -72,6 +77,7 @@ export const upsertFilePack = async (payload: {
     description: typeof data?.description === 'string' ? data.description : (data?.description ?? null),
     is_active: typeof data?.is_active === 'boolean' ? data.is_active : Boolean(data?.is_active ?? true),
     created_at: typeof data?.created_at === 'string' ? data.created_at : (data?.created_at ?? null),
+    file_count: 0,
   }
 }
 

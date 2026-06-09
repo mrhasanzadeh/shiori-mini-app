@@ -29,7 +29,7 @@ export const AdminEditSheet = ({
   description,
   children,
   footer,
-  side = 'right',
+  side = 'left',
   className,
   bodyClassName,
 }: AdminEditSheetProps) => (
