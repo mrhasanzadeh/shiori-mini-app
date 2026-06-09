@@ -43,8 +43,24 @@
 | 18  | `supabase-rls-security-phase1.sql`               | **امنیت:** portal token RLS + قفل `password_hash`            |
 | 19  | Vault: `telegram_bot_token`                      | Dashboard → Vault (BotFather token) — قبل از فاز ۲           |
 | 20  | `supabase-rls-security-phase2.sql`               | **امنیت:** initData برای `user_anime_list`                   |
-| 21  | `supabase-rls-security-phase2-list-rpc.sql`      | patch: RPC لیست + دیباگ initData                             |
-| 22  | `supabase-rls-security-phase2-verify-fix.sql`    | **fix HMAC** bot token (`convert_to` نه `::bytea`)           |
+| 21  | `supabase-rls-security-phase2-list-rpc.sql`      | RPC لیست + register با `p_init_data`                         |
+| 22  | **`supabase-rls-security-phase2-post-migration.sql`** | **patch نهایی:** verify decode، upsert، admin، edge SQL، debug |
+| 23  | Edge: `telegram-user-list` + `TELEGRAM_BOT_TOKEN` | [telegram-user-list-edge.md](./telegram-user-list-edge.md)   |
+
+> **اگر قبلاً patchهای جدا (`supabase-fix-*.sql`) را زده‌اید:** اجرای دوبارهٔ `post-migration` بی‌ضرر است (`CREATE OR REPLACE`). فایل‌های `supabase-fix-*` دیگر لازم نیستند.
+
+### patchهای قدیمی (جایگزین شده با #22)
+
+| فایل (آرشیو) | نقش |
+| --- | --- |
+| `supabase-rls-security-phase2-verify-fix.sql` | HMAC `convert_to` — داخل post-migration |
+| `supabase-fix-telegram-list-init-data.sql` | header fallback + RPC — داخل post-migration |
+| `supabase-fix-user-anime-list-upsert.sql` | upsert UPDATE + trigger — داخل post-migration |
+| `supabase-fix-telegram-init-debug.sql` | پیام خطا — داخل post-migration |
+| `supabase-fix-telegram-init-decode.sql` | decode + `signature` — داخل post-migration |
+| `supabase-fix-vault-token-audit.sql` | دیباگ Vault — داخل post-migration |
+| `supabase-rls-security-admin-users-fix.sql` | admin overview RPC — داخل post-migration |
+| `supabase-rls-security-phase2-edge.sql` | register internal — داخل post-migration |
 
 ## ۵. اختیاری
 

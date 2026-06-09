@@ -1,3 +1,4 @@
+-- ⚠️ SUPERSEDED: از supabase-rls-security-phase2-post-migration.sql استفاده کنید.
 -- Fix hash_mismatch: data-check-string باید مقادیر decode‌شده باشد (مثل URLSearchParams)
 -- + اگر signature هست، HMAC بدون signature هم امتحان شود (direct link / startapp)
 -- بعد از supabase-fix-telegram-list-init-data.sql اجرا کنید.

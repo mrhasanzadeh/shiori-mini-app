@@ -1,12 +1,13 @@
 # Edge Function: telegram-user-list
 
-Validates Telegram `initData` with **Web Crypto** (same as official Telegram algorithm) and reads/writes `user_anime_list` with service role.
+Validates Telegram `initData` (HMAC + Ed25519 برای direct link / `signature`) and reads/writes `user_anime_list` with service role.
 
-## Deploy
+## Deploy checklist
 
 ### 1. SQL
 
-Run **`supabase-rls-security-phase2-edge.sql`** in Supabase SQL Editor.
+[`supabase-rls-security-phase2-post-migration.sql`](../supabase-rls-security-phase2-post-migration.sql)  
+(شامل `register_telegram_user_visit_internal` از phase2-edge)
 
 ### 2. Secret
 
@@ -14,42 +15,55 @@ Dashboard → **Edge Functions** → **Secrets**:
 
 | Name | Value |
 |------|--------|
-| `TELEGRAM_BOT_TOKEN` | BotFather API token (same bot as Mini App) |
-
-Or CLI:
+| `TELEGRAM_BOT_TOKEN` | BotFather API token (**همان bot** مینی‌اپ) |
 
 ```bash
-supabase secrets set TELEGRAM_BOT_TOKEN="YOUR_BOT_TOKEN" --project-ref olscbzxwcddwumxispst
+npx supabase secrets set TELEGRAM_BOT_TOKEN="YOUR_BOT_TOKEN" --project-ref YOUR_PROJECT_REF
 ```
 
 ### 3. Deploy function
 
 ```bash
-supabase functions deploy telegram-user-list --project-ref olscbzxwcddwumxispst
+npx supabase functions deploy telegram-user-list --project-ref YOUR_PROJECT_REF
 ```
+
+CORS در function اجازه می‌دهد:  
+`authorization, x-client-info, apikey, content-type, x-telegram-init-data, x-portal-token`
 
 ### 4. Deploy frontend
 
-Vercel redeploy after pulling latest code (uses `supabase.functions.invoke`).
+Vercel redeploy — `src/lib/supabase.ts` برای Edge درخواست header سفارشی نمی‌فرستد (initData در body).
 
-## Debug (inside Telegram Desktop console)
+## Debug (Telegram Desktop console)
 
 ```javascript
+const SUPABASE_URL = 'https://YOUR_PROJECT.supabase.co'
+const ANON_KEY = 'YOUR_ANON_KEY'
 const initData = window.Telegram.WebApp.initData
-const key = 'YOUR_ANON_KEY'
 
-const { data, error } = await supabase.functions.invoke('telegram-user-list', {
-  body: { action: 'debug', initData },
+const res = await fetch(`${SUPABASE_URL}/functions/v1/telegram-user-list`, {
+  method: 'POST',
+  headers: {
+    apikey: ANON_KEY,
+    Authorization: `Bearer ${ANON_KEY}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({ action: 'debug', initData }),
 })
-
-console.log(data, error)
+console.log(await res.json())
 ```
 
-Or use app's supabase client if available.
+Expected: `{ reason: 'ok', verified_user_id: YOUR_ID, verify_method: '...', edge_bot_username: '...' }`
 
-Expected: `{ reason: 'ok', verified_user_id: YOUR_ID, ... }`
+## Architecture
+
+| Path | Verify | Write |
+|------|--------|-------|
+| Edge (primary) | `TELEGRAM_BOT_TOKEN` secret + Web Crypto | service role |
+| SQL RPC | Vault `telegram_bot_token` | SECURITY DEFINER |
+| RLS direct | header `x-telegram-init-data` | policy |
 
 ## Related
 
 - [security-phase2.md](./security-phase2.md)
-- Vault `telegram_bot_token` is only for SQL RPC path; Edge uses `TELEGRAM_BOT_TOKEN` secret.
+- [SQL_MIGRATIONS.md](./SQL_MIGRATIONS.md)
