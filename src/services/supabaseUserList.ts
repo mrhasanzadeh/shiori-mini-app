@@ -32,39 +32,123 @@ const mapListRow = (row: Record<string, unknown>): UserAnimeListRow => ({
   updated_at: typeof row.updated_at === 'string' ? row.updated_at : undefined,
 })
 
-type EdgeListResponse = { items?: Record<string, unknown>[]; error?: string; reason?: string }
+type ListApiResult = {
+  items: UserAnimeListRow[]
+  source: 'rpc' | 'edge'
+  reason?: string
+}
 
-const invokeTelegramUserList = async (body: Record<string, unknown>): Promise<EdgeListResponse> => {
+const requireInitData = (): string => {
   const initData = getTelegramInitData()
   if (!initData) {
-    throw new Error('Telegram initData یافت نشد')
+    throw new Error('Telegram initData یافت نشد — مینی‌اپ را فقط از داخل Telegram باز کنید')
+  }
+  return initData
+}
+
+/** SQL RPC — primary (بدون نیاز به deploy Edge Function) */
+const listViaRpc = async (initData: string): Promise<ListApiResult> => {
+  const { data, error } = await supabase.rpc('get_user_anime_list_verified', {
+    p_init_data: initData,
+  })
+
+  if (error) {
+    throw new Error(formatSupabaseError(error))
   }
 
-  const { data, error } = await supabase.functions.invoke('telegram-user-list', {
-    body: { ...body, initData },
+  return {
+    source: 'rpc',
+    items: (data ?? []).map((row: Record<string, unknown>) => mapListRow(row)),
+  }
+}
+
+const mutateViaRpc = async (
+  initData: string,
+  action: 'upsert' | 'remove',
+  animeId: number | string,
+  payload?: { episodes_watched?: number; user_rating?: number | null }
+): Promise<void> => {
+  if (action === 'upsert') {
+    const { error } = await supabase.rpc('upsert_user_anime_list_verified', {
+      p_init_data: initData,
+      p_anime_id: animeId,
+      p_episodes_watched:
+        payload?.episodes_watched !== undefined
+          ? Math.max(0, Math.floor(payload.episodes_watched))
+          : null,
+      p_user_rating: payload?.user_rating ?? null,
+    })
+    if (error) throw new Error(formatSupabaseError(error))
+    return
+  }
+
+  const { error } = await supabase.rpc('remove_user_anime_list_verified', {
+    p_init_data: initData,
+    p_anime_id: animeId,
   })
+  if (error) throw new Error(formatSupabaseError(error))
+}
+
+/** Edge Function — optional fallback if RPC verify fails (token در Vault vs Edge) */
+const listViaEdge = async (initData: string): Promise<ListApiResult> => {
+  const { data, error } = await supabase.functions.invoke('telegram-user-list', {
+    body: { action: 'list', initData },
+  })
+
+  const payload = (data ?? {}) as {
+    items?: Record<string, unknown>[]
+    error?: string
+    reason?: string
+  }
+
+  if (payload.error) {
+    const detail = payload.reason ? `${payload.error} (${payload.reason})` : payload.error
+    throw new Error(detail)
+  }
 
   if (error) {
     throw new Error(error.message)
   }
 
-  return (data ?? {}) as EdgeListResponse
+  return {
+    source: 'edge',
+    items: (payload.items ?? []).map((row) => mapListRow(row)),
+  }
 }
 
-export const getUserAnimeList = async (
-  _telegramUserId: number
-): Promise<UserAnimeListRow[]> => {
+const loadUserAnimeList = async (initData: string): Promise<ListApiResult> => {
+  try {
+    return await listViaRpc(initData)
+  } catch (rpcError) {
+    const rpcMsg = rpcError instanceof Error ? rpcError.message : String(rpcError)
+    if (
+      rpcMsg.includes('get_user_anime_list_verified') ||
+      rpcMsg.includes('Could not find the function')
+    ) {
+      throw rpcError
+    }
+
+    try {
+      const edge = await listViaEdge(initData)
+      return { ...edge, reason: `rpc failed: ${rpcMsg}` }
+    } catch {
+      throw rpcError
+    }
+  }
+}
+
+export const getUserAnimeList = async (_telegramUserId: number): Promise<UserAnimeListRow[]> => {
   if (!hasSupabaseConfig) return []
 
-  if (!getTelegramInitData()) return []
+  const initData = getTelegramInitData()
+  if (!initData) return []
 
   try {
-    const result = await invokeTelegramUserList({ action: 'list' })
-    if (result.error) {
-      console.warn('getUserAnimeList:', result.error, result.reason ?? '')
-      return []
+    const result = await loadUserAnimeList(initData)
+    if (result.reason && import.meta.env.DEV) {
+      console.warn('getUserAnimeList fallback:', result.reason)
     }
-    return (result.items ?? []).map((row) => mapListRow(row))
+    return result.items
   } catch (e) {
     console.warn('getUserAnimeList:', e instanceof Error ? e.message : e)
     return []
@@ -83,21 +167,31 @@ export const upsertUserAnimeListEntry = async (
     throw new Error('تنظیمات Supabase یافت نشد')
   }
 
-  const body: Record<string, unknown> = {
-    action: 'upsert',
-    anime_id: animeId,
-  }
+  const initData = requireInitData()
 
-  if (payload.episodes_watched !== undefined) {
-    body.episodes_watched = Math.max(0, Math.floor(payload.episodes_watched))
-  }
-  if (payload.user_rating !== undefined) {
-    body.user_rating = payload.user_rating
-  }
+  try {
+    await mutateViaRpc(initData, 'upsert', animeId, payload)
+  } catch (rpcError) {
+    const rpcMsg = rpcError instanceof Error ? rpcError.message : String(rpcError)
 
-  const result = await invokeTelegramUserList(body)
-  if (result.error) {
-    throw new Error(formatSupabaseError({ message: result.error }))
+    const { data, error } = await supabase.functions.invoke('telegram-user-list', {
+      body: {
+        action: 'upsert',
+        initData,
+        anime_id: animeId,
+        episodes_watched: payload.episodes_watched,
+        user_rating: payload.user_rating,
+      },
+    })
+
+    const body = (data ?? {}) as { error?: string; reason?: string }
+    if (body.error) {
+      const edgeDetail = body.reason ? `${body.error} (${body.reason})` : body.error
+      throw new Error(`${rpcMsg} | edge: ${edgeDetail}`)
+    }
+    if (error) {
+      throw new Error(`${rpcMsg} | edge: ${error.message}`)
+    }
   }
 }
 
@@ -106,11 +200,23 @@ export const removeUserAnimeListEntry = async (
   animeId: number | string
 ): Promise<void> => {
   if (!hasSupabaseConfig) return
-  if (!getTelegramInitData()) return
 
-  const result = await invokeTelegramUserList({ action: 'remove', anime_id: animeId })
-  if (result.error) {
-    throw new Error(formatSupabaseError({ message: result.error }))
+  const initData = getTelegramInitData()
+  if (!initData) return
+
+  try {
+    await mutateViaRpc(initData, 'remove', animeId)
+  } catch (rpcError) {
+    const rpcMsg = rpcError instanceof Error ? rpcError.message : String(rpcError)
+
+    const { data, error } = await supabase.functions.invoke('telegram-user-list', {
+      body: { action: 'remove', initData, anime_id: animeId },
+    })
+
+    const body = (data ?? {}) as { error?: string; reason?: string }
+    if (body.error || error) {
+      throw new Error(rpcMsg)
+    }
   }
 }
 

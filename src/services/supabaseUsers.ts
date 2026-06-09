@@ -73,7 +73,22 @@ export const registerTelegramUserVisit = async (user: TelegramUserPayload): Prom
   const initData = getTelegramInitData()
   if (!initData) return
 
-  const { data, error } = await supabase.functions.invoke('telegram-user-list', {
+  const { error: rpcError } = await supabase.rpc('register_telegram_user_visit', {
+    p_telegram_user_id: user.id,
+    p_first_name: user.first_name ?? '',
+    p_last_name: user.last_name ?? null,
+    p_username: user.username?.trim() || null,
+    p_language_code: user.language_code ?? null,
+    p_photo_url: user.photo_url ?? null,
+    p_is_premium: user.is_premium ?? false,
+    p_init_data: initData,
+  })
+
+  if (!rpcError) return
+
+  if (import.meta.env.DEV) console.warn('registerTelegramUserVisit rpc:', rpcError.message)
+
+  const { data, error: edgeError } = await supabase.functions.invoke('telegram-user-list', {
     body: {
       action: 'register',
       initData,
@@ -87,14 +102,13 @@ export const registerTelegramUserVisit = async (user: TelegramUserPayload): Prom
     },
   })
 
-  if (error) {
-    if (import.meta.env.DEV) console.warn('registerTelegramUserVisit:', error.message)
-    return
+  if (edgeError && import.meta.env.DEV) {
+    console.warn('registerTelegramUserVisit edge:', edgeError.message)
   }
 
   const payload = data as { error?: string; reason?: string } | null
-  if (payload?.error) {
-    if (import.meta.env.DEV) console.warn('registerTelegramUserVisit:', payload.error, payload.reason ?? '')
+  if (payload?.error && import.meta.env.DEV) {
+    console.warn('registerTelegramUserVisit edge:', payload.error, payload.reason ?? '')
   }
 }
 
@@ -142,40 +156,24 @@ export const getTelegramUsersOverview = async (): Promise<TelegramUsersOverview>
     return { totalUsers: 0, activeLast24h: 0, activeLast7d: 0, premiumUsers: 0, adminUsers: 0 }
   }
 
-  const now = Date.now()
-  const dayAgo = new Date(now - 24 * 60 * 60 * 1000).toISOString()
-  const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString()
+  const portalToken = readStoredPortalSession()?.token
+  if (!portalToken) {
+    throw new Error('نشست ورود ادمین یافت نشد — دوباره وارد شوید')
+  }
 
-  const [totalRes, dayRes, weekRes, premiumRes, adminRes] = await Promise.all([
-    supabase.from('telegram_users').select('*', { count: 'exact', head: true }),
-    supabase
-      .from('telegram_users')
-      .select('*', { count: 'exact', head: true })
-      .gte('last_seen_at', dayAgo),
-    supabase
-      .from('telegram_users')
-      .select('*', { count: 'exact', head: true })
-      .gte('last_seen_at', weekAgo),
-    supabase
-      .from('telegram_users')
-      .select('*', { count: 'exact', head: true })
-      .eq('is_premium', true),
-    supabase
-      .from('telegram_users')
-      .select('*', { count: 'exact', head: true })
-      .eq('app_role', 'admin'),
-  ])
+  const { data, error } = await supabase.rpc('admin_telegram_users_overview', {
+    p_portal_token: portalToken,
+  })
 
-  const firstError =
-    totalRes.error ?? dayRes.error ?? weekRes.error ?? premiumRes.error ?? adminRes.error
-  if (firstError) throw new Error(formatSupabaseError(firstError))
+  if (error) throw new Error(formatSupabaseError(error))
 
+  const row = (data ?? {}) as Record<string, unknown>
   return {
-    totalUsers: totalRes.count ?? 0,
-    activeLast24h: dayRes.count ?? 0,
-    activeLast7d: weekRes.count ?? 0,
-    premiumUsers: premiumRes.count ?? 0,
-    adminUsers: adminRes.count ?? 0,
+    totalUsers: Number(row.totalUsers) || 0,
+    activeLast24h: Number(row.activeLast24h) || 0,
+    activeLast7d: Number(row.activeLast7d) || 0,
+    premiumUsers: Number(row.premiumUsers) || 0,
+    adminUsers: Number(row.adminUsers) || 0,
   }
 }
 
@@ -202,6 +200,10 @@ export const getTelegramUsers = async (
   params: GetTelegramUsersParams
 ): Promise<{ items: TelegramUserRow[]; total: number }> => {
   if (!hasSupabaseConfig) return { items: [], total: 0 }
+
+  if (!readStoredPortalSession()?.token) {
+    throw new Error('نشست ورود ادمین یافت نشد — دوباره وارد شوید')
+  }
 
   const page = Number.isFinite(params.page) && params.page > 0 ? params.page : 1
   const pageSize = Number.isFinite(params.pageSize) && params.pageSize > 0 ? params.pageSize : 20
