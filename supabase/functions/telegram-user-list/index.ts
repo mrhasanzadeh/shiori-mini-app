@@ -102,6 +102,8 @@ Deno.serve(async (req) => {
 
     if (body.episodes_watched !== undefined && body.episodes_watched !== null) {
       row.episodes_watched = Math.max(0, Math.floor(Number(body.episodes_watched)))
+    } else if (action === 'upsert') {
+      row.episodes_watched = 0
     }
     if (body.user_rating !== undefined) {
       row.user_rating = body.user_rating === null ? null : Number(body.user_rating)

@@ -69,24 +69,33 @@ BEGIN
     RAISE EXCEPTION 'invalid telegram init data';
   END IF;
 
-  INSERT INTO user_anime_list (
-    telegram_user_id,
-    anime_id,
-    episodes_watched,
-    user_rating
-  )
-  VALUES (
-    v_user_id,
-    p_anime_id,
-    GREATEST(0, COALESCE(p_episodes_watched, 0)),
-    p_user_rating
-  )
-  ON CONFLICT (telegram_user_id, anime_id) DO UPDATE SET
-    episodes_watched = COALESCE(
-      EXCLUDED.episodes_watched,
-      user_anime_list.episodes_watched
+  UPDATE user_anime_list
+  SET
+    episodes_watched = GREATEST(
+      0,
+      COALESCE(p_episodes_watched, user_anime_list.episodes_watched)
     ),
-    user_rating = COALESCE(EXCLUDED.user_rating, user_anime_list.user_rating);
+    user_rating = CASE
+      WHEN p_user_rating IS NOT NULL THEN p_user_rating
+      ELSE user_anime_list.user_rating
+    END
+  WHERE telegram_user_id = v_user_id
+    AND anime_id = p_anime_id;
+
+  IF NOT FOUND THEN
+    INSERT INTO user_anime_list (
+      telegram_user_id,
+      anime_id,
+      episodes_watched,
+      user_rating
+    )
+    VALUES (
+      v_user_id,
+      p_anime_id,
+      GREATEST(0, COALESCE(p_episodes_watched, 0)),
+      p_user_rating
+    );
+  END IF;
 END;
 $$;
 

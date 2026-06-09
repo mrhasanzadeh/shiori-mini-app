@@ -685,8 +685,9 @@ const AnimeDetail = () => {
       await saveProgress(anime.id, progress)
       setProgressEditorOpen(false)
       showAlert('پیشرفت و امتیاز ذخیره شد')
-    } catch {
-      showAlert('خطا در ذخیره')
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'خطا در ذخیره'
+      showAlert(msg.length > 120 ? `${msg.slice(0, 120)}…` : msg)
     }
   }
 

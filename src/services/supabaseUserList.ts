@@ -25,10 +25,7 @@ const mapListRow = (row: Record<string, unknown>): UserAnimeListRow => ({
     typeof row.episodes_watched === 'number'
       ? row.episodes_watched
       : Number(row.episodes_watched) || 0,
-  user_rating:
-    row.user_rating != null && row.user_rating !== ''
-      ? Number(row.user_rating)
-      : null,
+  user_rating: row.user_rating != null && row.user_rating !== '' ? Number(row.user_rating) : null,
   updated_at: typeof row.updated_at === 'string' ? row.updated_at : undefined,
 })
 
@@ -76,7 +73,7 @@ const mutateViaRpc = async (
         payload?.episodes_watched !== undefined
           ? Math.max(0, Math.floor(payload.episodes_watched))
           : null,
-      p_user_rating: payload?.user_rating ?? null,
+      p_user_rating: payload?.user_rating !== undefined ? payload.user_rating : null,
     })
     if (error) throw new Error(formatSupabaseError(error))
     return
