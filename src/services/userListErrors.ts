@@ -1,18 +1,23 @@
 export const formatUserListSaveError = (error: unknown): string => {
   const msg = error instanceof Error ? error.message : String(error)
 
+  if (msg.includes('hash_mismatch')) {
+    return msg
+  }
+
   if (msg.includes('invalid telegram init data')) {
-    return 'خطا در تأیید Telegram — در Supabase Vault مقدار secret با نام telegram_bot_token باید دقیقاً همان API token ربات مینی‌اپ (BotFather) باشد.'
+    return msg.includes('(')
+      ? msg
+      : 'خطا در تأیید Telegram — توکن Vault باید همان bot مینی‌اپ باشد (BotFather → Mini Apps).'
   }
 
   if (msg.includes('row-level security') || msg.includes('permission denied')) {
-    return 'دسترسی رد شد — مینی‌اپ را فقط از داخل Telegram باز کنید.'
+    return 'دسترسی رد شد — معمولاً یعنی initData تأیید نشده. مینی‌اپ را از Telegram ببندید و دوباره باز کنید.'
   }
 
   if (msg.includes('Telegram initData یافت نشد')) {
     return msg
   }
 
-  const withoutEdge = msg.split('| edge:')[0]?.trim() ?? msg
-  return withoutEdge.length > 160 ? `${withoutEdge.slice(0, 160)}…` : withoutEdge
+  return msg.length > 200 ? `${msg.slice(0, 200)}…` : msg
 }

@@ -17,6 +17,14 @@ export type UserAnimeListStats = {
 
 export type AnimeFavoriteCountMap = Record<string, number>
 
+type TelegramInitDebug = {
+  failure_reason?: string
+  verified_user_id?: number | null
+  vault_token_configured?: boolean
+  body_init_data_length?: number
+  header_init_data_length?: number
+}
+
 const entryKey = (animeId: number | string) => String(animeId)
 
 const mapListRow = (row: Record<string, unknown>): UserAnimeListRow => ({
@@ -37,13 +45,62 @@ const requireInitData = (): string => {
   return initData
 }
 
-const isRlsOrVerifyError = (message: string): boolean =>
-  message.includes('invalid telegram init data') ||
-  message.includes('row-level security') ||
-  message.includes('permission denied') ||
-  message.includes('JWT')
+const debugInitDataStatus = async (initData: string): Promise<TelegramInitDebug | null> => {
+  if (!hasSupabaseConfig) return null
 
-/** RLS + header x-telegram-init-data (مثل register) */
+  const { data, error } = await supabase.rpc('debug_telegram_init_status', {
+    p_init_data: initData,
+  })
+
+  if (error) {
+    if (import.meta.env.DEV) console.warn('debug_telegram_init_status:', error.message)
+    return null
+  }
+
+  return (data ?? null) as TelegramInitDebug
+}
+
+const enrichVerifyError = async (message: string, initData: string): Promise<string> => {
+  if (!message.includes('invalid telegram init data')) return message
+
+  const reasonMatch = message.match(/invalid telegram init data \(([^)]+)\)/)
+  const inlineReason = reasonMatch?.[1]
+
+  const debug = await debugInitDataStatus(initData)
+  const reason = inlineReason ?? debug?.failure_reason
+
+  if (reason === 'hash_mismatch') {
+    return 'توکن bot در Vault با رباتی که مینی‌اپ را ازش باز کردید یکی نیست (hash_mismatch). در BotFather ببینید Mini App روی کدام bot است؛ همان token را در Vault بگذارید.'
+  }
+
+  if (reason === 'vault_token_missing') {
+    return 'secret با نام telegram_bot_token در Supabase Vault یافت نشد.'
+  }
+
+  if (reason === 'init_data_empty') {
+    return 'initData خالی است — مینی‌اپ را فقط از داخل Telegram باز کنید.'
+  }
+
+  if (reason === 'auth_date_expired') {
+    return 'initData منقضی شده — مینی‌اپ را ببندید و دوباره از Telegram باز کنید.'
+  }
+
+  if (reason) {
+    return `خطا در تأیید Telegram (${reason})`
+  }
+
+  return message
+}
+
+const listViaRpc = async (initData: string): Promise<UserAnimeListRow[]> => {
+  const { data, error } = await supabase.rpc('get_user_anime_list_verified', {
+    p_init_data: initData,
+  })
+
+  if (error) throw new Error(formatSupabaseError(error))
+  return (data ?? []).map((row: Record<string, unknown>) => mapListRow(row))
+}
+
 const listViaTable = async (): Promise<UserAnimeListRow[]> => {
   const { data, error } = await supabase
     .from('user_anime_list')
@@ -54,13 +111,22 @@ const listViaTable = async (): Promise<UserAnimeListRow[]> => {
   return (data ?? []).map((row) => mapListRow(row as Record<string, unknown>))
 }
 
-const listViaRpc = async (initData: string): Promise<UserAnimeListRow[]> => {
-  const { data, error } = await supabase.rpc('get_user_anime_list_verified', {
+const upsertViaRpc = async (
+  initData: string,
+  animeId: number | string,
+  payload: { episodes_watched?: number; user_rating?: number | null }
+): Promise<void> => {
+  const { error } = await supabase.rpc('upsert_user_anime_list_verified', {
     p_init_data: initData,
+    p_anime_id: animeId,
+    p_episodes_watched:
+      payload.episodes_watched !== undefined
+        ? Math.max(0, Math.floor(payload.episodes_watched))
+        : null,
+    p_user_rating: payload.user_rating !== undefined ? payload.user_rating : null,
   })
 
   if (error) throw new Error(formatSupabaseError(error))
-  return (data ?? []).map((row: Record<string, unknown>) => mapListRow(row))
 }
 
 const upsertViaTable = async (
@@ -88,19 +154,10 @@ const upsertViaTable = async (
   if (error) throw new Error(formatSupabaseError(error))
 }
 
-const upsertViaRpc = async (
-  initData: string,
-  animeId: number | string,
-  payload: { episodes_watched?: number; user_rating?: number | null }
-): Promise<void> => {
-  const { error } = await supabase.rpc('upsert_user_anime_list_verified', {
+const removeViaRpc = async (initData: string, animeId: number | string): Promise<void> => {
+  const { error } = await supabase.rpc('remove_user_anime_list_verified', {
     p_init_data: initData,
     p_anime_id: animeId,
-    p_episodes_watched:
-      payload.episodes_watched !== undefined
-        ? Math.max(0, Math.floor(payload.episodes_watched))
-        : null,
-    p_user_rating: payload.user_rating !== undefined ? payload.user_rating : null,
   })
 
   if (error) throw new Error(formatSupabaseError(error))
@@ -119,32 +176,21 @@ const removeViaTable = async (
   if (error) throw new Error(formatSupabaseError(error))
 }
 
-const removeViaRpc = async (initData: string, animeId: number | string): Promise<void> => {
-  const { error } = await supabase.rpc('remove_user_anime_list_verified', {
-    p_init_data: initData,
-    p_anime_id: animeId,
-  })
-
-  if (error) throw new Error(formatSupabaseError(error))
-}
-
 export const getUserAnimeList = async (_telegramUserId: number): Promise<UserAnimeListRow[]> => {
   if (!hasSupabaseConfig) return []
-
   if (!getTelegramInitData()) return []
 
-  try {
-    return await listViaTable()
-  } catch (tableError) {
-    const tableMsg = tableError instanceof Error ? tableError.message : String(tableError)
-    if (!isRlsOrVerifyError(tableMsg)) {
-      if (import.meta.env.DEV) console.warn('getUserAnimeList table:', tableMsg)
-    }
+  const initData = requireInitData()
 
+  try {
+    return await listViaRpc(initData)
+  } catch (rpcError) {
     try {
-      return await listViaRpc(requireInitData())
-    } catch (e) {
-      if (import.meta.env.DEV) console.warn('getUserAnimeList:', e instanceof Error ? e.message : e)
+      return await listViaTable()
+    } catch {
+      if (import.meta.env.DEV) {
+        console.warn('getUserAnimeList:', rpcError instanceof Error ? rpcError.message : rpcError)
+      }
       return []
     }
   }
@@ -162,20 +208,19 @@ export const upsertUserAnimeListEntry = async (
     throw new Error('تنظیمات Supabase یافت نشد')
   }
 
-  requireInitData()
+  const initData = requireInitData()
 
   try {
-    await upsertViaTable(telegramUserId, animeId, payload)
+    await upsertViaRpc(initData, animeId, payload)
     return
-  } catch (tableError) {
-    const tableMsg = tableError instanceof Error ? tableError.message : String(tableError)
+  } catch (rpcError) {
+    const rpcMsg = rpcError instanceof Error ? rpcError.message : String(rpcError)
 
     try {
-      await upsertViaRpc(getTelegramInitData(), animeId, payload)
+      await upsertViaTable(telegramUserId, animeId, payload)
       return
-    } catch (rpcError) {
-      const rpcMsg = rpcError instanceof Error ? rpcError.message : String(rpcError)
-      throw new Error(rpcMsg || tableMsg)
+    } catch {
+      throw new Error(await enrichVerifyError(rpcMsg, initData))
     }
   }
 }
@@ -187,17 +232,24 @@ export const removeUserAnimeListEntry = async (
   if (!hasSupabaseConfig) return
   if (!getTelegramInitData()) return
 
+  const initData = requireInitData()
+
   try {
-    await removeViaTable(telegramUserId, animeId)
-  } catch (tableError) {
-    const tableMsg = tableError instanceof Error ? tableError.message : String(tableError)
+    await removeViaRpc(initData, animeId)
+  } catch (rpcError) {
+    const rpcMsg = rpcError instanceof Error ? rpcError.message : String(rpcError)
     try {
-      await removeViaRpc(getTelegramInitData(), animeId)
-    } catch (rpcError) {
-      const rpcMsg = rpcError instanceof Error ? rpcError.message : String(rpcError)
-      throw new Error(rpcMsg || tableMsg)
+      await removeViaTable(telegramUserId, animeId)
+    } catch {
+      throw new Error(await enrichVerifyError(rpcMsg, initData))
     }
   }
+}
+
+export const debugTelegramInitStatus = async (): Promise<TelegramInitDebug | null> => {
+  const initData = getTelegramInitData()
+  if (!initData) return null
+  return debugInitDataStatus(initData)
 }
 
 export const getAnimeFavoriteCounts = async (): Promise<AnimeFavoriteCountMap> => {
