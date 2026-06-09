@@ -27,6 +27,7 @@ import {
 import { prefetchAnimeDetail, prefetchSimilarAnime } from '../hooks/queries/prefetch'
 import { formatAnilistPercent } from '../services/externalScores'
 import { cacheExternalScoresToDb } from '../services/supabaseAnime'
+import { formatUserListSaveError } from '../services/userListErrors'
 import type { GenreItem } from '../services/supabaseAnime'
 import {
   buildAnilistUrl,
@@ -686,8 +687,7 @@ const AnimeDetail = () => {
       setProgressEditorOpen(false)
       showAlert('پیشرفت و امتیاز ذخیره شد')
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'خطا در ذخیره'
-      showAlert(msg.length > 120 ? `${msg.slice(0, 120)}…` : msg)
+      showAlert(formatUserListSaveError(e))
     }
   }
 

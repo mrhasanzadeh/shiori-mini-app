@@ -10,7 +10,7 @@ import AnimePrefetchLink from '../components/AnimePrefetchLink'
 import { useFavoriteAnimeDetailsQueries } from '../hooks/queries/useAnimeQueries'
 import emptyListImage from '../assets/images/frieren-03.webp'
 import type { GenreItem } from '../services/supabaseAnime'
-import type { FavoriteProgress } from '../store/animeStore'
+import { formatUserListSaveError } from '../services/userListErrors'
 import { cn } from '@/lib/utils'
 
 type FavoriteAnime = {
@@ -341,8 +341,8 @@ const MyList = () => {
       await saveProgress(editingAnime.id, progress)
       setEditingAnime(null)
       showAlert('ذخیره شد')
-    } catch {
-      showAlert('خطا در ذخیره')
+    } catch (e) {
+      showAlert(formatUserListSaveError(e))
     }
   }
 
