@@ -70,19 +70,31 @@ const splitSearchTokens = (query: string): string[] =>
 export const registerTelegramUserVisit = async (user: TelegramUserPayload): Promise<void> => {
   if (!hasSupabaseConfig || !user?.id) return
 
-  const { error } = await supabase.rpc('register_telegram_user_visit', {
-    p_telegram_user_id: user.id,
-    p_first_name: user.first_name ?? '',
-    p_last_name: user.last_name ?? null,
-    p_username: user.username?.trim() || null,
-    p_language_code: user.language_code ?? null,
-    p_photo_url: user.photo_url ?? null,
-    p_is_premium: user.is_premium ?? false,
-    p_init_data: getTelegramInitData() || null,
+  const initData = getTelegramInitData()
+  if (!initData) return
+
+  const { data, error } = await supabase.functions.invoke('telegram-user-list', {
+    body: {
+      action: 'register',
+      initData,
+      telegram_user_id: user.id,
+      first_name: user.first_name ?? '',
+      last_name: user.last_name ?? null,
+      username: user.username?.trim() || null,
+      language_code: user.language_code ?? null,
+      photo_url: user.photo_url ?? null,
+      is_premium: user.is_premium ?? false,
+    },
   })
 
   if (error) {
     if (import.meta.env.DEV) console.warn('registerTelegramUserVisit:', error.message)
+    return
+  }
+
+  const payload = data as { error?: string; reason?: string } | null
+  if (payload?.error) {
+    if (import.meta.env.DEV) console.warn('registerTelegramUserVisit:', payload.error, payload.reason ?? '')
   }
 }
 
