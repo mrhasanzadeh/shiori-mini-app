@@ -52,9 +52,10 @@ SQLها را **به ترتیب** در [`docs/SQL_MIGRATIONS.md`](./SQL_MIGRATION
 
 حداقل production:
 
-1. `supabase-rls-production.sql`
-2. `supabase-sync-external-scores-cron.sql` + deploy Edge Function
-3. `supabase-cron-sync-external-scores.sql` → Cron از **Integrations → Cron** یا SQL `supabase-cron-job-sync-external-scores.sql`
+1. `sql/bootstrap/supabase-rls-production.sql` (یا کل bootstrap #1–#21)
+2. `sql/bootstrap/supabase-sync-external-scores-cron.sql` + deploy Edge Function
+3. `supabase-consolidated-reapply.sql`
+4. Cron (اختیاری): `sql/optional/supabase-cron-sync-external-scores.sql` (راهنما) یا قالب `sql/archive/supabase-cron-job-sync-external-scores.sql`
 
 ## CI
 

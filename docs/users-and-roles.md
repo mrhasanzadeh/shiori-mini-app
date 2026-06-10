@@ -73,7 +73,7 @@ VALUES (
 ## مهاجرت
 
 1. `supabase-admin-portal-auth.sql` (نسخه یکپارچه)
-2. اگر قبلاً `admin_portal_*` داشتید → `supabase-unify-portal-users.sql`
+2. اگر قبلاً `admin_portal_*` داشتید → `sql/archive/supabase-unify-portal-users.sql`
 
 ---
 

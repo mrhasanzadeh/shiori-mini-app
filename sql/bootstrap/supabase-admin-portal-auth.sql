@@ -1,5 +1,5 @@
 -- یکپارچه‌سازی: ورود وب روی telegram_users (بدون admin_portal_accounts)
--- اگر قبلاً admin_portal_* ساخته‌اید → بعد از این فایل، supabase-unify-portal-users.sql را اجرا کنید.
+-- اگر قبلاً admin_portal_* ساخته‌اید → sql/archive/supabase-unify-portal-users.sql
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
 

@@ -1,13 +1,10 @@
 import { Link } from 'react-router-dom'
 import { AlarmClockIcon } from 'hugeicons-react'
-import {
-  formatNotificationTime,
-  useNotificationsStore,
-} from '../store/notificationsStore'
+import { useNotifications } from '../hooks/useNotifications'
+import { formatNotificationTime } from '../services/supabaseNotifications'
 
 const Notifications = () => {
-  const { notifications, markAllRead, markRead } = useNotificationsStore()
-  const unreadCount = notifications.filter((n) => !n.isRead).length
+  const { notifications, unreadCount, isLoading, markRead, markAllRead } = useNotifications()
 
   return (
     <div className="pb-24">
@@ -24,7 +21,7 @@ const Notifications = () => {
           </div>
           {notifications.length > 0 && (
             <button
-              onClick={markAllRead}
+              onClick={() => void markAllRead()}
               className="text-primary-500 text-sm hover:text-primary-400 transition-colors"
             >
               خواندن همه
@@ -33,7 +30,13 @@ const Notifications = () => {
         </div>
       </div>
 
-      {notifications.length > 0 ? (
+      {isLoading ? (
+        <div className="p-4 space-y-3 animate-pulse">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-20 rounded-lg bg-muted" />
+          ))}
+        </div>
+      ) : notifications.length > 0 ? (
         <div className="space-y-3 p-4">
           {notifications.map((notification) => {
             const inner = (
@@ -41,7 +44,7 @@ const Notifications = () => {
                 <div className="flex-1 min-w-0 mt-1">
                   <div className="flex items-center gap-2">
                     <h3 className="font-medium text-foreground">{notification.title}</h3>
-                    {!notification.isRead && (
+                    {!notification.is_read && (
                       <span className="px-2 py-0.5 bg-primary text-primary-foreground text-xs rounded-full">
                         جدید
                       </span>
@@ -49,18 +52,24 @@ const Notifications = () => {
                   </div>
                   <p className="text-muted-foreground text-sm mt-1">{notification.message}</p>
                   <span className="text-muted-foreground text-xs mt-2 block">
-                    {formatNotificationTime(notification.createdAt)}
+                    {formatNotificationTime(notification.created_at)}
                   </span>
                 </div>
               </>
             )
 
+            const onOpen = () => {
+              if (!notification.is_read) {
+                void markRead(notification.id)
+              }
+            }
+
             return notification.href ? (
               <Link
                 key={notification.id}
                 to={notification.href}
-                onClick={() => markRead(notification.id)}
-                className={`flex bg-card gap-4 p-3 rounded-lg border border-border ${!notification.isRead ? 'ring-1 ring-primary-500/20' : ''}`}
+                onClick={onOpen}
+                className={`flex bg-card gap-4 p-3 rounded-lg border border-border ${!notification.is_read ? 'ring-1 ring-primary-500/20' : ''}`}
               >
                 {inner}
               </Link>
@@ -69,11 +78,11 @@ const Notifications = () => {
                 key={notification.id}
                 role="button"
                 tabIndex={0}
-                onClick={() => markRead(notification.id)}
+                onClick={onOpen}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') markRead(notification.id)
+                  if (e.key === 'Enter') onOpen()
                 }}
-                className={`flex bg-card gap-4 p-3 rounded-lg border border-border cursor-pointer ${!notification.isRead ? 'ring-1 ring-primary-500/20' : ''}`}
+                className={`flex bg-card gap-4 p-3 rounded-lg border border-border cursor-pointer ${!notification.is_read ? 'ring-1 ring-primary-500/20' : ''}`}
               >
                 {inner}
               </div>
@@ -85,7 +94,7 @@ const Notifications = () => {
           <AlarmClockIcon className="w-12 h-12 mb-2" />
           <p className="text-foreground font-medium">اعلانی وجود ندارد</p>
           <p className="text-sm leading-6">
-            وقتی اعلان جدیدی منتشر شود اینجا نمایش داده می‌شود.
+            وقتی قسمت جدید انیمه‌ای از لیستت منتشر شود اینجا نمایش داده می‌شود.
           </p>
         </div>
       )}

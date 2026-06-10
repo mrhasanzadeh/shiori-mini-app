@@ -8,9 +8,10 @@ import {
   StarIcon,
   UserIcon,
 } from 'hugeicons-react'
-import { ExternalLink, Pencil, Search } from 'lucide-react'
+import { ExternalLink, Pencil, Search, Bell } from 'lucide-react'
 import * as supa from '../services/supabaseAnime'
 import { syncAnimeExternalScores } from '../services/syncAnimeExternalScores'
+import { notifyEpisodeReleaseAdmin } from '../services/supabaseNotificationsAdmin'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -388,13 +389,17 @@ const MediaListRow = ({
   subtitle,
   onEdit,
   onDelete,
+  onNotify,
   disabled,
+  notifyLoading,
 }: {
   title: string
   subtitle: string
   onEdit: () => void
   onDelete: () => void
+  onNotify?: () => void
   disabled?: boolean
+  notifyLoading?: boolean
 }) => (
   <div className="rounded-xl border border-border bg-card/40 p-3 flex items-center justify-between gap-3">
     <div className="min-w-0">
@@ -402,6 +407,19 @@ const MediaListRow = ({
       <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{subtitle || '—'}</p>
     </div>
     <div className="flex gap-1.5 shrink-0">
+      {onNotify && (
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          disabled={disabled || notifyLoading}
+          className="gap-1"
+          onClick={onNotify}
+        >
+          <Bell className={`w-3.5 h-3.5 ${notifyLoading ? 'animate-pulse' : ''}`} />
+          اعلان
+        </Button>
+      )}
       <Button type="button" size="sm" variant="secondary" disabled={disabled} onClick={onEdit}>
         ویرایش
       </Button>
@@ -431,6 +449,7 @@ const AdminAnimeEdit = () => {
   const [activeTab, setActiveTab] = useState<AdminTab>('info')
   const [mediaSubTab, setMediaSubTab] = useState<MediaSubTab>('episodes')
   const [syncScoresLoading, setSyncScoresLoading] = useState(false)
+  const [notifyEpisodeNumber, setNotifyEpisodeNumber] = useState<number | null>(null)
 
   const [allGenres, setAllGenres] = useState<supa.GenreAdminItem[]>([])
   const [selectedGenreSlugs, setSelectedGenreSlugs] = useState<Set<string>>(new Set())
@@ -871,6 +890,42 @@ const AdminAnimeEdit = () => {
       showError(msg)
     } finally {
       setSaving(false)
+    }
+  }
+
+  const onNotifyEpisodeRelease = async (episodeNumber: number) => {
+    const animeId = (anime?.id ?? draft.id) as string | number | undefined
+    if (!animeId) {
+      showError('اول انیمه را ذخیره کن')
+      return
+    }
+
+    const epNum = typeof episodeNumber === 'number' ? episodeNumber : Number(episodeNumber)
+    if (!Number.isFinite(epNum) || epNum < 1) return
+
+    const favoritesHint =
+      'کاربرانی که این انیمه را در لیست دارند اعلان inbox (+ Telegram در صورت فعال بودن) می‌گیرند.'
+    if (!confirm(`اعلان انتشار قسمت ${epNum} ارسال شود؟\n\n${favoritesHint}`)) return
+
+    try {
+      setNotifyEpisodeNumber(epNum)
+      setToast(null)
+      const result = await notifyEpisodeReleaseAdmin({
+        animeId: String(animeId),
+        episodeNumber: epNum,
+        sendTelegram: true,
+      })
+      const inbox = result.inbox_created ?? 0
+      const tg = result.telegram_sent ?? 0
+      if (inbox === 0) {
+        showSuccess('هیچ کاربری این انیمه را در لیست ندارد — اعلانی ساخته نشد')
+      } else {
+        showSuccess(`اعلان ارسال شد — inbox: ${inbox} نفر · Telegram: ${tg} نفر`)
+      }
+    } catch (e) {
+      showError(e instanceof Error ? e.message : 'خطا در ارسال اعلان')
+    } finally {
+      setNotifyEpisodeNumber(null)
     }
   }
 
@@ -1837,6 +1892,8 @@ const AdminAnimeEdit = () => {
                           title={`قسمت ${e.episode_number ?? 0}`}
                           subtitle={e.download_link ?? ''}
                           disabled={saving}
+                          notifyLoading={notifyEpisodeNumber === (e.episode_number ?? 0)}
+                          onNotify={() => onNotifyEpisodeRelease(e.episode_number ?? 0)}
                           onEdit={() => onEditEpisode(e)}
                           onDelete={() => onDeleteEpisode(e)}
                         />

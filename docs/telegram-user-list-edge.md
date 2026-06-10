@@ -6,8 +6,8 @@ Validates Telegram `initData` (HMAC + Ed25519 برای direct link / `signature`
 
 ### 1. SQL
 
-[`supabase-rls-security-phase2-post-migration.sql`](../supabase-rls-security-phase2-post-migration.sql)  
-(شامل `register_telegram_user_visit_internal` از phase2-edge)
+[`supabase-consolidated-reapply.sql`](../supabase-consolidated-reapply.sql)  
+(شامل post-migration و `register_telegram_user_visit_internal`)
 
 ### 2. Secret
 

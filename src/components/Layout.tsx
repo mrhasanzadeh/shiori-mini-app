@@ -11,6 +11,7 @@ import {
 } from 'hugeicons-react'
 import {
   Building2,
+  Bell,
   ChevronLeft,
   Download,
   Film,
@@ -196,6 +197,12 @@ const Layout = ({ children }: LayoutProps) => {
       isActive: () => location.pathname.startsWith('/admin/file-packs'),
       label: 'پک فایل‌ها',
       Icon: Package,
+    },
+    {
+      to: '/admin/notifications',
+      isActive: () => location.pathname.startsWith('/admin/notifications'),
+      label: 'اعلان‌ها',
+      Icon: Bell,
     },
     {
       to: '/admin/users',

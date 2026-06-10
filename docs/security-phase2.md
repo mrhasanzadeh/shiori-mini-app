@@ -1,12 +1,12 @@
 # Security — RLS phase 2 (Telegram initData)
 
-Apply after [`supabase-rls-security-phase1.sql`](../supabase-rls-security-phase1.sql).
+Apply after [`sql/bootstrap/supabase-rls-security-phase1.sql`](../sql/bootstrap/supabase-rls-security-phase1.sql).
 
 | Step | File |
 |------|------|
-| 1 | [`supabase-rls-security-phase2.sql`](../supabase-rls-security-phase2.sql) |
-| 2 | [`supabase-rls-security-phase2-list-rpc.sql`](../supabase-rls-security-phase2-list-rpc.sql) |
-| 3 | [`supabase-rls-security-phase2-post-migration.sql`](../supabase-rls-security-phase2-post-migration.sql) |
+| 1 | [`sql/bootstrap/supabase-rls-security-phase2.sql`](../sql/bootstrap/supabase-rls-security-phase2.sql) |
+| 2 | [`sql/bootstrap/supabase-rls-security-phase2-list-rpc.sql`](../sql/bootstrap/supabase-rls-security-phase2-list-rpc.sql) |
+| 3 | [`supabase-consolidated-reapply.sql`](../supabase-consolidated-reapply.sql) |
 | 4 | Edge Function — [telegram-user-list-edge.md](./telegram-user-list-edge.md) |
 
 ## What changes
@@ -40,7 +40,7 @@ SELECT vault.create_secret(
 
 مینی‌اپ از **direct link / startapp** فیلد `signature` در initData دارد. Edge با Web Crypto + Ed25519 این حالت را پوشش می‌دهد.
 
-1. SQL: [`supabase-consolidated-reapply.sql`](../supabase-consolidated-reapply.sql) یا [`supabase-rls-security-phase2-post-migration.sql`](../supabase-rls-security-phase2-post-migration.sql) (شامل register internal؛ فایل قدیمی `phase2-edge` در `sql/archive/` است)
+1. SQL: [`supabase-consolidated-reapply.sql`](../supabase-consolidated-reapply.sql) (شامل post-migration و register internal)
 2. Secret `TELEGRAM_BOT_TOKEN` = همان BotFather token
 3. `npx supabase functions deploy telegram-user-list --project-ref YOUR_REF`
 

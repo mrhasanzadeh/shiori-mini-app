@@ -29,6 +29,7 @@ const AdminTranslators = lazy(() => import('./pages/AdminTranslators'))
 const AdminFilesDownloads = lazy(() => import('./pages/AdminFilesDownloads'))
 const AdminFilePacks = lazy(() => import('./pages/AdminFilePacks'))
 const AdminUsers = lazy(() => import('./pages/AdminUsers'))
+const AdminNotifications = lazy(() => import('./pages/AdminNotifications'))
 
 function App() {
   const { isReady } = useTelegramApp()
@@ -146,6 +147,15 @@ function App() {
             element={
               <AdminGate requireFullAdmin>
                 <AdminUsers />
+              </AdminGate>
+            }
+          />
+
+          <Route
+            path="/admin/notifications"
+            element={
+              <AdminGate>
+                <AdminNotifications />
               </AdminGate>
             }
           />

@@ -1,5 +1,5 @@
 -- مهاجرت از admin_portal_accounts / admin_portal_sessions به telegram_users
--- پیش‌نیاز: supabase-admin-portal-auth.sql (نسخه یکپارچه) اجرا شده باشد.
+-- پیش‌نیاز: sql/bootstrap/supabase-admin-portal-auth.sql (نسخه یکپارچه) اجرا شده باشد.
 -- اگر admin_portal_* هرگز نساخته‌اید، این فایل لازم نیست.
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;

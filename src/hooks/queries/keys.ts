@@ -21,6 +21,9 @@ export const queryKeys = {
       ids.imdb_id ?? '',
     ] as const,
   userAnimeList: (telegramUserId: number) => ['user', 'anime-list', telegramUserId] as const,
+  notifications: (telegramUserId: number) => ['notifications', telegramUserId] as const,
+  notificationPreferences: (telegramUserId: number) =>
+    ['notification-preferences', telegramUserId] as const,
   animeFavoriteCounts: ['anime', 'favorite-counts'] as const,
   animeFavoriteCount: (animeId: string | number) =>
     ['anime', 'favorite-count', String(animeId)] as const,

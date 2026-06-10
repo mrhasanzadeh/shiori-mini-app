@@ -1,8 +1,8 @@
 # Security — RLS phase 1
 
-Apply after [`supabase-rls-production.sql`](../supabase-rls-production.sql) and admin portal auth SQL.
+Apply after [`sql/bootstrap/supabase-rls-production.sql`](../sql/bootstrap/supabase-rls-production.sql) and admin portal auth SQL.
 
-**File:** [`supabase-rls-security-phase1.sql`](../supabase-rls-security-phase1.sql)
+**File:** [`sql/bootstrap/supabase-rls-security-phase1.sql`](../sql/bootstrap/supabase-rls-security-phase1.sql)
 
 ## What changes
 

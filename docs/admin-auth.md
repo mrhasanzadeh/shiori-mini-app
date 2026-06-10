@@ -14,9 +14,9 @@ See **[users-and-roles.md](./users-and-roles.md)** for the table map (`telegram_
 
 ### 1. SQL
 
-Run **`supabase-admin-portal-auth.sql`**.
+Run **`sql/bootstrap/supabase-admin-portal-auth.sql`**.
 
-If you previously created `admin_portal_accounts`, also run **`supabase-unify-portal-users.sql`**.
+If you previously created `admin_portal_accounts`, also run **`sql/archive/supabase-unify-portal-users.sql`** (one-time legacy migration).
 
 Set web login on an existing Telegram user:
 

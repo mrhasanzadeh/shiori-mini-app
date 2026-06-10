@@ -6,8 +6,8 @@ Apply policies in the Supabase SQL Editor or via migrations in your Supabase pro
 
 **Ready-made files:**
 
-- [`supabase-rls-production.sql`](../supabase-rls-production.sql) — public SELECT + user tables
-- [`supabase-rls-security-phase1.sql`](../supabase-rls-security-phase1.sql) — portal token writes + lock `password_hash` (**recommended after launch**)
+- [`sql/bootstrap/supabase-rls-production.sql`](../sql/bootstrap/supabase-rls-production.sql) — public SELECT + user tables
+- [`sql/bootstrap/supabase-rls-security-phase1.sql`](../sql/bootstrap/supabase-rls-security-phase1.sql) — portal token writes + lock `password_hash` (**recommended after launch**)
 
 Catalog write policies in production file are commented; phase 1 security replaces open anon writes with portal-session checks. See [security-phase1.md](./security-phase1.md).
 

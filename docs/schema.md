@@ -168,7 +168,7 @@ Telegram Mini App users (registered on each app open via RPC `register_telegram_
 
 View: `telegram_users_admin` (includes `favorites_count` from join).
 
-SQL: `supabase-telegram-users.sql`, `supabase-telegram-users-roles.sql`, `supabase-telegram-users-fix-username.sql`
+SQL: `sql/bootstrap/supabase-telegram-users.sql`, `supabase-telegram-users-roles.sql`, `supabase-telegram-users-fix-username.sql`
 
 ### `user_anime_list`
 
@@ -183,11 +183,11 @@ Per-user favorites, watch progress, and rating.
 
 Updates `anime.shiori_score` via trigger on rating changes.
 
-SQL: `supabase-user-anime-list.sql`
+SQL: `sql/bootstrap/supabase-user-anime-list.sql`
 
 RPC: `get_anime_favorite_counts()` — favorite counts per anime for Home popular sort.
 
-SQL: `supabase-anime-favorite-counts.sql`
+SQL: `sql/bootstrap/supabase-anime-favorite-counts.sql`
 
 ---
 

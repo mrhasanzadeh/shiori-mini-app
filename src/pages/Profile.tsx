@@ -4,7 +4,9 @@ import { AlarmClockIcon, FavouriteIcon, UserIcon } from 'hugeicons-react'
 import { ChevronLeft } from 'lucide-react'
 import { useTelegramApp } from '../hooks/useTelegramApp'
 import { useUserAnimeList } from '../hooks/useUserAnimeList'
-import { useNotificationsStore } from '../store/notificationsStore'
+import { useNotifications } from '../hooks/useNotifications'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 import logo from '../assets/images/shiori-logo.svg'
 
 const APP_VERSION = '۱.۰.۰'
@@ -75,7 +77,13 @@ const ProfileSkeleton = () => (
 const Profile = () => {
   const { user, isReady } = useTelegramApp()
   const { stats } = useUserAnimeList()
-  const unreadCount = useNotificationsStore((s) => s.notifications.filter((n) => !n.isRead).length)
+  const {
+    unreadCount,
+    preferences,
+    preferencesLoading,
+    updatePreferences,
+    updatingPreferences,
+  } = useNotifications()
   const [avatarFailed, setAvatarFailed] = useState(false)
 
   const displayName = useMemo(() => {
@@ -201,6 +209,45 @@ const Profile = () => {
           hint={unreadCount > 0 ? `${toPersianNumber(unreadCount)} پیام جدید` : 'همه خوانده شده'}
           badge={unreadCount}
         />
+      </div>
+
+      <div className="px-4 pt-5 pb-2">
+        <h2 className="text-sm font-semibold text-muted-foreground">تنظیمات اعلان</h2>
+      </div>
+
+      <div className="mx-4 rounded-2xl border border-border bg-card overflow-hidden divide-y divide-border">
+        <div className="flex items-center justify-between gap-3 px-4 py-3.5">
+          <div className="min-w-0 text-right">
+            <Label htmlFor="notify-new-episode" className="text-sm font-medium text-foreground">
+              قسمت جدید انیمه‌های لیست
+            </Label>
+            <p className="text-xs text-muted-foreground mt-0.5">inbox داخل مینی‌اپ</p>
+          </div>
+          <Switch
+            id="notify-new-episode"
+            checked={preferences?.notify_new_episode ?? true}
+            disabled={preferencesLoading || updatingPreferences}
+            onCheckedChange={(checked) => {
+              void updatePreferences({ notify_new_episode: checked })
+            }}
+          />
+        </div>
+        <div className="flex items-center justify-between gap-3 px-4 py-3.5">
+          <div className="min-w-0 text-right">
+            <Label htmlFor="notify-telegram-dm" className="text-sm font-medium text-foreground">
+              پیام Telegram
+            </Label>
+            <p className="text-xs text-muted-foreground mt-0.5">وقتی مینی‌اپ بسته است</p>
+          </div>
+          <Switch
+            id="notify-telegram-dm"
+            checked={preferences?.notify_telegram_dm ?? true}
+            disabled={preferencesLoading || updatingPreferences}
+            onCheckedChange={(checked) => {
+              void updatePreferences({ notify_telegram_dm: checked })
+            }}
+          />
+        </div>
       </div>
 
       {/* About */}

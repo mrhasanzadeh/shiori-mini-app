@@ -12,7 +12,7 @@
 --    Headers: Authorization: Bearer YOUR_ANON_KEY
 --             x-cron-secret: YOUR_CRON_SECRET
 --
---    یا SQL آماده: supabase-cron-job-sync-external-scores.sql
+--    یا SQL آماده: sql/archive/supabase-cron-job-sync-external-scores.sql
 --
 -- یا pg_cron (اگر در پروژه فعال است):
 
@@ -43,5 +43,5 @@
 --   -H "Authorization: Bearer YOUR_ANON_KEY" \
 --   -H "x-cron-secret: YOUR_CRON_SECRET"
 
--- RPC (باید از supabase-sync-external-scores-cron.sql اجرا شده باشد):
+-- RPC (باید از sql/bootstrap/supabase-sync-external-scores-cron.sql اجرا شده باشد):
 -- update_anime_external_scores(UUID, NUMERIC, NUMERIC, NUMERIC)

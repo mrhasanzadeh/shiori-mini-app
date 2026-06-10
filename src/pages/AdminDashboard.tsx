@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import {
   Building2,
+  Bell,
   ChevronLeft,
   Download,
   Film,
@@ -61,6 +62,12 @@ const navItems: AdminNavItem[] = [
     title: 'پک فایل‌ها',
     description: 'ساخت پک، ترتیب فایل و deep-link',
     Icon: Package,
+  },
+  {
+    to: '/admin/notifications',
+    title: 'اعلان‌ها',
+    description: 'تاریخچهٔ انتشار قسمت و راهنمای ارسال',
+    Icon: Bell,
   },
   {
     to: '/admin/users',

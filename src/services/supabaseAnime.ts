@@ -618,7 +618,7 @@ export const getEpisodePackByAnimeId = async (
     if (code === '42703' || code === 'PGRST204' || msg.toLowerCase().includes('does not exist')) {
       if (import.meta.env.DEV) {
         console.warn(
-          '[getEpisodePackByAnimeId] ستون episode_pack در anime وجود ندارد. supabase-add-episode-pack.sql را اجرا کنید.'
+          '[getEpisodePackByAnimeId] ستون episode_pack در anime وجود ندارد. supabase-consolidated-reapply.sql را اجرا کنید.'
         )
       }
       return null
@@ -648,7 +648,7 @@ export const updateEpisodePackAdmin = async (
     const msg = String(error.message ?? '')
     if (String(error.code ?? '') === '42703' || msg.toLowerCase().includes('episode_pack')) {
       throw new Error(
-        'ستون‌های episode_pack_title و episode_pack_link در جدول anime پیدا نشد. فایل supabase-add-episode-pack.sql را در SQL Editor اجرا کنید.'
+        'ستون‌های episode_pack_title و episode_pack_link در جدول anime پیدا نشد. فایل supabase-consolidated-reapply.sql را در SQL Editor اجرا کنید.'
       )
     }
     throw error
@@ -1563,7 +1563,7 @@ export const upsertAnimeAdmin = async (payload: {
 
       if (missingExternal) {
         throw new Error(
-          `${msg}\n\nستون‌های MAL/IMDb هنوز در Supabase ساخته نشده‌اند. فایل supabase-add-external-ids-scores.sql را در SQL Editor اجرا کنید.`
+          `${msg}\n\nستون‌های MAL/IMDb هنوز در Supabase ساخته نشده‌اند. فایل supabase-consolidated-reapply.sql را در SQL Editor اجرا کنید.`
         )
       }
     } else {

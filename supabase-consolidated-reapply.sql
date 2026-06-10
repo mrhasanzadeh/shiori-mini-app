@@ -8,9 +8,8 @@
 -- ✅ ADD COLUMN IF NOT EXISTS · CREATE OR REPLACE · DROP POLICY IF EXISTS
 --
 -- ❌ عمداً شامل نیست:
---    supabase-unify-portal-users.sql (DROP TABLE admin_portal_* — فقط مهاجرت یک‌بار)
---    supabase-cron-job-sync-external-scores.sql (کلیدهای YOUR_* را دستی بگذارید)
---    bootstrap اولیه (#1–#21)
+--    sql/archive/supabase-unify-portal-users.sql · sql/archive/supabase-cron-job-*.sql
+--    sql/bootstrap/ (#1–#21)
 --
 -- پیش‌نیاز: Vault → secret با نام telegram_bot_token
 -- ═══════════════════════════════════════════════════════════════════════════
