@@ -869,7 +869,11 @@ const AnimeDetail = () => {
                 key={genre.slug}
                 type="button"
                 className="text-[10px] px-2 py-0.5 rounded-md bg-primary-500/15 border border-primary-400/25 text-primary-300 hover:bg-primary-500/25 transition-colors"
-                onClick={() => navigate(`/search?genre=${encodeURIComponent(genre.slug)}`)}
+                onClick={() =>
+                  navigate(
+                    `/search?genre=${encodeURIComponent(genre.slug)}&label=${encodeURIComponent(genreLabel(genre))}`
+                  )
+                }
               >
                 {genreLabel(genre)}
               </button>
@@ -1005,7 +1009,10 @@ const AnimeDetail = () => {
                         className="text-primary-300 font-medium hover:underline"
                         onClick={() => {
                           if (!s.slug) return
-                          navigate(`/studios/${encodeURIComponent(String(s.slug))}`)
+                          const studioName = s.name || s.slug
+                          navigate(
+                            `/studios/${encodeURIComponent(String(s.slug))}?name=${encodeURIComponent(studioName)}`
+                          )
                         }}
                       >
                         {s.name || s.slug}

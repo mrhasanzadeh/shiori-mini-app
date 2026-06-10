@@ -1,16 +1,77 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
+import AnimePrefetchLink from '../components/AnimePrefetchLink'
 import * as supa from '../services/supabaseAnime'
-import { fetchAnimeByStudioSlug } from '../utils/api'
+import type { GenreItem } from '../services/supabaseAnime'
+import { fetchAnimeByStudioSlug, type UiAnimeCard } from '../utils/api'
+
+const genreLabel = (g: GenreItem) => g.name_fa || g.name_en || g.slug
+
+const SkeletonGrid = () => (
+  <div className="grid grid-cols-3 gap-3 px-4 pt-2">
+    {Array.from({ length: 9 }).map((_, i) => (
+      <div key={i} className="animate-pulse">
+        <div className="aspect-[2/3] rounded-xl bg-muted" />
+      </div>
+    ))}
+  </div>
+)
+
+const AnimeGridCard = ({ anime }: { anime: UiAnimeCard }) => {
+  const genres = (anime.genres || []).slice(0, 3)
+
+  return (
+    <AnimePrefetchLink
+      animeId={anime.id}
+      to={`/anime/${anime.id}`}
+      className="group block active:scale-[0.98] transition-transform"
+      aria-label={`مشاهده ${anime.title}`}
+    >
+      <div className="relative aspect-[2/3] rounded-xl overflow-hidden border border-border bg-muted shadow-sm">
+        <img
+          src={anime.image}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+          loading="lazy"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-transparent" />
+        {anime.isNew && (
+          <span className="absolute top-2 right-2 text-[10px] font-semibold bg-primary-400 text-white px-1.5 py-0.5 rounded-md">
+            جدید
+          </span>
+        )}
+        <div className="absolute inset-x-0 bottom-0 p-2.5 pt-10">
+          <h3 className="text-xs text-left font-semibold text-white line-clamp-2 leading-2">
+            {anime.title}
+          </h3>
+          {genres.length > 0 ? (
+            <div className="flex flex-wrap gap-1 mt-1 justify-end">
+              {genres.map((g) => (
+                <span
+                  key={g.slug}
+                  className="text-[9px] leading-none px-1 py-0.5 rounded-md bg-white/15 text-white/90 border border-white/10 max-w-full truncate"
+                >
+                  {genreLabel(g)}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-[10px] text-white/60 mt-1">{anime.episode || 'شیوری'}</p>
+          )}
+        </div>
+      </div>
+    </AnimePrefetchLink>
+  )
+}
 
 const StudioDetail = () => {
   const { slug } = useParams<{ slug: string }>()
+  const [searchParams] = useSearchParams()
+  const nameParam = searchParams.get('name')?.trim() || null
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [studio, setStudio] = useState<supa.StudioPublicItem | null>(null)
-  const [anime, setAnime] = useState<Array<{ id: string | number; title: string; image: string }>>(
-    []
-  )
+  const [anime, setAnime] = useState<UiAnimeCard[]>([])
 
   useEffect(() => {
     const run = async () => {
@@ -33,51 +94,39 @@ const StudioDetail = () => {
     run()
   }, [slug])
 
+  const studioDisplayName = nameParam || studio?.name || null
+  const showTitleSkeleton = loading && !nameParam
+
   const pageTitle = useMemo(() => {
-    const name = studio?.name || slug
-    return `انیمه‌های استودیو ${name}`
-  }, [studio, slug])
+    if (!studioDisplayName) return null
+    return `انیمه‌های استودیو ${studioDisplayName}`
+  }, [studioDisplayName])
 
   return (
     <div className="pb-24">
       <div className="px-4 pt-4 pb-2 flex items-center justify-between gap-3">
-        <h2 className="text-base font-semibold text-foreground">{pageTitle}</h2>
-        <Link to="/search" className="text-sm text-muted-foreground">
+        {showTitleSkeleton ? (
+          <div className="h-6 w-56 max-w-full bg-muted animate-pulse rounded" aria-hidden />
+        ) : (
+          <h2 className="text-base font-semibold text-foreground">
+            {pageTitle ?? `انیمه‌های استودیو ${slug}`}
+          </h2>
+        )}
+        <Link to="/search" className="text-sm text-muted-foreground shrink-0">
           جستجو
         </Link>
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
-        </div>
+        <SkeletonGrid />
       ) : error ? (
         <div className="text-center text-red-500 p-4">{error}</div>
       ) : anime.length === 0 ? (
         <div className="text-center text-muted-foreground p-4 text-sm">انیمه‌ای پیدا نشد.</div>
       ) : (
-        <div className="grid grid-cols-3 gap-3 p-4">
+        <div className="grid grid-cols-3 gap-3 px-4 pt-2">
           {anime.map((a) => (
-            <Link
-              key={String(a.id)}
-              to={`/anime/${encodeURIComponent(String(a.id))}`}
-              className="block"
-              aria-label={`مشاهده ${a.title}`}
-            >
-              <div className="card">
-                <div className="relative aspect-[2/3] overflow-hidden rounded-lg border-2 border-border">
-                  <img
-                    src={a.image}
-                    alt={a.title}
-                    className="w-full h-full object-cover absolute inset-0"
-                    loading="lazy"
-                  />
-                </div>
-                <div className="mt-3">
-                  <h3 className="text-sm font-medium line-clamp-1 text-foreground">{a.title}</h3>
-                </div>
-              </div>
-            </Link>
+            <AnimeGridCard key={String(a.id)} anime={a} />
           ))}
         </div>
       )}

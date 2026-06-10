@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Search01Icon } from 'hugeicons-react'
 import type { UiAnimeCard } from '../utils/api'
+import * as supa from '../services/supabaseAnime'
 import type { GenreItem } from '../services/supabaseAnime'
 import { Button } from '@/components/ui/button'
 import AnimePrefetchLink from '../components/AnimePrefetchLink'
@@ -92,9 +93,38 @@ const Search = () => {
   const yearParam = searchParams.get('year')
   const seasonParam = searchParams.get('season')
   const genreParam = searchParams.get('genre')
+  const labelParam = searchParams.get('label')?.trim() || null
   const selectedYear = yearParam ? Number(yearParam) : null
   const selectedSeason = seasonParam ? seasonParam.trim().toUpperCase() : null
   const selectedGenre = genreParam ? genreParam.trim().toLowerCase() : null
+  const [genreDisplayName, setGenreDisplayName] = useState<string | null>(labelParam)
+  const [genreNameLoading, setGenreNameLoading] = useState(Boolean(selectedGenre && !labelParam))
+
+  useEffect(() => {
+    if (!selectedGenre) {
+      setGenreDisplayName(null)
+      setGenreNameLoading(false)
+      return
+    }
+
+    if (labelParam) {
+      setGenreDisplayName(labelParam)
+      setGenreNameLoading(false)
+      return
+    }
+
+    setGenreNameLoading(true)
+    let cancelled = false
+    void supa.getGenreBySlug(selectedGenre).then((genre) => {
+      if (cancelled) return
+      setGenreDisplayName(genre ? genre.name_fa || genre.name_en || genre.slug : selectedGenre)
+      setGenreNameLoading(false)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [selectedGenre, labelParam])
 
   const translateSeason = (season: string): string => {
     switch (season) {
@@ -111,15 +141,19 @@ const Search = () => {
     }
   }
 
+  const resolvedGenreName = labelParam || genreDisplayName
+
   const pageTitle = (() => {
     if (selectedSeason && selectedYear !== null && Number.isFinite(selectedYear)) {
       return `فصل ${translateSeason(selectedSeason)} ${toPersianNumber(selectedYear)}`
     }
-    if (selectedGenre) {
-      return `بهترین انیمه‌ای ژانر ${genreParam}`
+    if (selectedGenre && resolvedGenreName) {
+      return `بهترین انیمه‌های ژانر ${resolvedGenreName}`
     }
     return null
   })()
+
+  const showGenreTitleSkeleton = Boolean(selectedGenre && !resolvedGenreName && genreNameLoading)
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -155,9 +189,13 @@ const Search = () => {
 
   return (
     <div className="pb-24">
-      {pageTitle && (
+      {(pageTitle || showGenreTitleSkeleton) && (
         <div className="px-4 pt-4 pb-1">
-          <h2 className="text-base font-semibold text-foreground">{pageTitle}</h2>
+          {showGenreTitleSkeleton ? (
+            <div className="h-6 w-56 max-w-full bg-muted animate-pulse rounded" aria-hidden />
+          ) : (
+            <h2 className="text-base font-semibold text-foreground">{pageTitle}</h2>
+          )}
         </div>
       )}
 

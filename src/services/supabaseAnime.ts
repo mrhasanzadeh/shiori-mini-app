@@ -1268,6 +1268,32 @@ export const getAllGenres = async (): Promise<GenreAdminItem[]> => {
   }))
 }
 
+export const getGenreBySlug = async (slug: string): Promise<GenreAdminItem | null> => {
+  if (!hasSupabaseConfig) return null
+  const safeSlug = String(slug ?? '')
+    .trim()
+    .toLowerCase()
+  if (!safeSlug) return null
+
+  const { data, error } = await supabase
+    .from('genres')
+    .select('id, slug, name_en, name_fa')
+    .eq('slug', safeSlug)
+    .maybeSingle()
+
+  if (error || !data) {
+    if (error) console.warn('getGenreBySlug:', error.message)
+    return null
+  }
+
+  return {
+    id: typeof data.id === 'number' || typeof data.id === 'string' ? data.id : undefined,
+    slug: String(data.slug ?? '').trim(),
+    name_en: typeof data.name_en === 'string' ? data.name_en : (data.name_en ?? null),
+    name_fa: typeof data.name_fa === 'string' ? data.name_fa : (data.name_fa ?? null),
+  }
+}
+
 export const upsertGenre = async (payload: {
   id?: number
   slug: string
