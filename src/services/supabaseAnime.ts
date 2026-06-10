@@ -1709,6 +1709,37 @@ export const getLocalAnimeIdByAniListId = async (
   return typeof id === 'string' || typeof id === 'number' ? id : null
 }
 
+/** یک query برای نگاشت AniList ID → ID محلی (برنامه پخش و …) */
+export const getLocalAnimeIdsByAniListIds = async (
+  anilistIds: number[]
+): Promise<Map<number, string | number>> => {
+  const map = new Map<number, string | number>()
+  if (!hasSupabaseConfig) return map
+
+  const unique = [...new Set(anilistIds.filter((id) => Number.isFinite(id) && id > 0))]
+  if (unique.length === 0) return map
+
+  const { data, error } = await supabase
+    .from('anime')
+    .select('id, anilist_id')
+    .in('anilist_id', unique)
+
+  if (error) {
+    if (import.meta.env.DEV) console.warn('getLocalAnimeIdsByAniListIds:', error.message)
+    return map
+  }
+
+  for (const row of data || []) {
+    const anilistId = Number(row?.anilist_id)
+    const id = row?.id
+    if (Number.isFinite(anilistId) && (typeof id === 'string' || typeof id === 'number')) {
+      map.set(anilistId, id)
+    }
+  }
+
+  return map
+}
+
 export type EpisodeAdminRow = {
   id: number | string
   anime_id: number | string

@@ -267,21 +267,44 @@ export const fetchAnimeByStudioSlug = async (slug: string): Promise<UiAnimeCard[
   return list.map(toCacheAnime)
 }
 
+type ScheduleAnimeItem = {
+  id: number
+  title: string
+  time: string
+  episode: string
+  image: string
+  genres?: { slug: string; name_en?: string }[]
+  localId?: string | number | null
+}
+
+type SchedulePayload = {
+  schedule: Record<string, ScheduleAnimeItem[]>
+  currentSeason: string
+  currentYear: number
+}
+
+const enrichScheduleWithLocalIds = async (payload: SchedulePayload): Promise<SchedulePayload> => {
+  const anilistIds = Object.values(payload.schedule)
+    .flat()
+    .map((item) => item.id)
+  const localMap = await supa.getLocalAnimeIdsByAniListIds(anilistIds)
+
+  const schedule: Record<string, ScheduleAnimeItem[]> = {}
+  for (const [day, list] of Object.entries(payload.schedule)) {
+    schedule[day] = list.map((anime) => ({
+      ...anime,
+      localId: localMap.get(anime.id) ?? null,
+    }))
+  }
+
+  return { ...payload, schedule }
+}
+
 export const fetchSchedule = async () => {
   const cacheKey = 'anilist_schedule_v1'
   const cacheTtlMs = 10 * 60 * 1000
 
-  const emptySchedule: Record<
-    string,
-    Array<{
-      id: number
-      title: string
-      time: string
-      episode: string
-      image: string
-      genres?: any[]
-    }>
-  > = {
+  const emptySchedule: Record<string, ScheduleAnimeItem[]> = {
     شنبه: [],
     یکشنبه: [],
     دوشنبه: [],
@@ -314,7 +337,7 @@ export const fetchSchedule = async () => {
         parsed.data &&
         typeof parsed.data === 'object'
       ) {
-        return parsed.data
+        return enrichScheduleWithLocalIds(parsed.data as SchedulePayload)
       }
     }
   } catch {
@@ -428,12 +451,13 @@ export const fetchSchedule = async () => {
     )
   }
 
-  const data = { schedule, currentSeason, currentYear }
+  const data: SchedulePayload = { schedule, currentSeason, currentYear }
+  const enriched = await enrichScheduleWithLocalIds(data)
   try {
-    sessionStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), data }))
+    sessionStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), data: enriched }))
   } catch {
     // ignore
   }
 
-  return data
+  return enriched
 }

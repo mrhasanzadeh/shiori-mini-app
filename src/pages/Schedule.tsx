@@ -2,13 +2,14 @@ import { useMemo, useState, type MouseEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AnimePrefetchLink from '../components/AnimePrefetchLink'
 import { Calendar01Icon, Alert02Icon } from 'hugeicons-react'
-import * as supa from '../services/supabaseAnime'
 import type { GenreItem } from '../services/supabaseAnime'
 import { Button } from '@/components/ui/button'
 import { useScheduleQuery } from '../hooks/queries/useAnimeQueries'
+import shioriLogo from '../assets/images/shiori-logo.svg'
 
 type Anime = {
   id: number
+  localId?: string | number | null
   title: string
   image: string
   episode: string
@@ -153,21 +154,14 @@ const Schedule = () => {
   )
 
   const handleAnimeClick = (e: MouseEvent<HTMLAnchorElement>, anime: Anime) => {
-    const rawId = String(anime.id)
-    const isUuid =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawId)
-    const isNumeric = /^[0-9]+$/.test(rawId)
-
-    if (isUuid || !isNumeric) return
-
     e.preventDefault()
-    supa
-      .getLocalAnimeIdByAniListId(Number(rawId))
-      .then((localId) => {
-        if (localId) navigate(`/anime/${localId}`)
-        else setToast('این انیمه در کاتالوگ شیوری نیست یا فعلاً امکان ترجمه‌ی آن وجود ندارد.')
-      })
-      .catch(() => setToast('این انیمه در کاتالوگ شیوری نیست یا فعلاً امکان ترجمه‌ی آن وجود ندارد.'))
+
+    if (anime.localId) {
+      navigate(`/anime/${anime.localId}`)
+      return
+    }
+
+    setToast('این انیمه در لیست ترجمه‌ی شیوری نیست یا فعلاً امکان ترجمه‌ی آن وجود ندارد.')
   }
 
   if (loading) return <ScheduleSkeleton />
@@ -265,8 +259,8 @@ const Schedule = () => {
           {activeList.map((anime) => (
             <AnimePrefetchLink
               key={anime.id}
-              animeId={anime.id}
-              to={`/anime/${anime.id}`}
+              animeId={anime.localId ?? anime.id}
+              to={anime.localId ? `/anime/${anime.localId}` : '#'}
               onClick={(e) => handleAnimeClick(e, anime)}
               className="group block active:scale-[0.98] transition-transform"
             >
@@ -279,11 +273,21 @@ const Schedule = () => {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
 
-                <div className="absolute inset-x-0 bottom-0 p-2 pt-10">
-                  <h3 className="text-xs font-semibold text-white line-clamp-3 drop-shadow-sm">
+                {anime.localId ? (
+                  <span
+                    className="absolute top-1.5 start-1.5 flex h-6 w-6 items-center justify-center rounded-md bg-rose-500 shadow-sm"
+                    title="ترجمه شیوری"
+                    aria-label="موجود در کاتالوگ شیوری"
+                  >
+                    <img src={shioriLogo} alt="" className="h-3.5 w-3.5 object-contain" />
+                  </span>
+                ) : null}
+
+                <div className="absolute left-0 bottom-0 p-2 pt-10">
+                  <h3 className="text-xs text-left font-semibold text-white line-clamp-2 drop-shadow-sm">
                     {anime.title}
                   </h3>
-                  <p className="text-[11px] text-white/75 mt-0.5">
+                  <p className="text-[11px] text-white/75 mt-0.5 text-left">
                     {anime.time ? (
                       <>
                         <span>{anime.time}</span>
