@@ -480,7 +480,7 @@ const SeriesSeasonSwitcher = ({
                   ) : null}
                   <div className="absolute inset-x-0 bottom-0 p-2">
                     <p className="truncate text-[10px] font-bold leading-none text-white tabular-nums">
-                      {seasonNumber}
+                      فصل {seasonNumber}
                     </p>
                   </div>
                 </div>
