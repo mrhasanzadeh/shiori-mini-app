@@ -440,7 +440,7 @@ const SeriesSeasonSwitcher = ({
         <div className="relative -mx-0.5 flex gap-3 overflow-x-auto px-0.5 pb-1 scrollbar-none snap-x snap-mandatory">
           {series.members.map((member) => {
             const isActive = String(member.id) === String(currentAnimeId)
-            const label = member.label_fa || `فصل ${toPersianNumber(member.sort_order)}`
+            const seasonNumber = toPersianNumber(member.sort_order)
 
             return (
               <button
@@ -448,7 +448,7 @@ const SeriesSeasonSwitcher = ({
                 type="button"
                 onClick={() => !isActive && onSelect(member.id)}
                 aria-current={isActive ? 'true' : undefined}
-                aria-label={`${label}: ${member.title}`}
+                aria-label={`فصل ${seasonNumber}: ${member.title}`}
                 className={cn(
                   'group shrink-0 snap-start text-right transition-all duration-300',
                   isActive ? 'scale-100' : 'scale-[0.94] opacity-75 hover:scale-[0.97] hover:opacity-100'
@@ -479,7 +479,9 @@ const SeriesSeasonSwitcher = ({
                     <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-primary-400 shadow-[0_0_8px_rgba(129,140,248,0.9)]" />
                   ) : null}
                   <div className="absolute inset-x-0 bottom-0 p-2">
-                    <p className="truncate text-[10px] font-bold leading-none text-white">{label}</p>
+                    <p className="truncate text-[10px] font-bold leading-none text-white tabular-nums">
+                      {seasonNumber}
+                    </p>
                   </div>
                 </div>
               </button>
