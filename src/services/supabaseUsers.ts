@@ -118,11 +118,14 @@ export const registerTelegramUserVisit = async (user: TelegramUserPayload): Prom
   }
 }
 
-export const getTelegramUserRole = async (telegramUserId: number): Promise<AppUserRole | null> => {
+export const getTelegramUserRole = async (_telegramUserId: number): Promise<AppUserRole | null> => {
   if (!hasSupabaseConfig) return null
 
-  const { data, error } = await supabase.rpc('get_telegram_user_role', {
-    p_telegram_user_id: telegramUserId,
+  const initData = getTelegramInitData()
+  if (!initData) return null
+
+  const { data, error } = await supabase.rpc('get_my_telegram_app_role', {
+    p_init_data: initData,
   })
 
   if (error) {

@@ -124,7 +124,7 @@ const fetchExternalScores = async (
 
 const isAuthorized = (req: Request) => {
   const cronSecret = Deno.env.get('CRON_SECRET')?.trim()
-  if (!cronSecret) return true
+  if (!cronSecret) return false
 
   const headerSecret = req.headers.get('x-cron-secret')?.trim()
   if (headerSecret && headerSecret === cronSecret) return true
@@ -141,10 +141,16 @@ Deno.serve(async (req) => {
   }
 
   if (!isAuthorized(req)) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
+    const cronConfigured = Boolean(Deno.env.get('CRON_SECRET')?.trim())
+    return new Response(
+      JSON.stringify({
+        error: cronConfigured ? 'Unauthorized' : 'CRON_SECRET not configured',
+      }),
+      {
+        status: cronConfigured ? 401 : 503,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
+    )
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')?.trim()

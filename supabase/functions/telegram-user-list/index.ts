@@ -43,6 +43,10 @@ Deno.serve(async (req) => {
   const verified = await verifyTelegramInitData(initData, botToken)
 
   if (action === 'debug') {
+    if (Deno.env.get('ALLOW_TELEGRAM_DEBUG') !== 'true') {
+      return json({ error: 'debug disabled' }, 403)
+    }
+
     let botUsername: string | null = null
     let botId: number | null = null
     try {

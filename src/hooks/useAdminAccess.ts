@@ -2,9 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { normalizeAppUserRole, type AppUserRole } from '@/constants/userRoles'
 import {
   isWebAdminOnlyMode,
-  isWebAdminPasswordEnabled,
   parseAdminTelegramIds,
-  readWebAdminAuthed,
   resolveAdminAccess,
   type AdminAccessState,
 } from '@/lib/adminAccess'
@@ -28,10 +26,8 @@ export const useAdminAccess = (): AdminAccessState => {
     () => parseAdminTelegramIds(import.meta.env.VITE_ADMIN_TELEGRAM_IDS),
     []
   )
-  const webPasswordEnabled = isWebAdminPasswordEnabled()
   const webOnlyMode = isWebAdminOnlyMode()
   const inTelegramMiniApp = isTelegramMiniApp()
-  const webAuthed = useMemo(() => readWebAdminAuthed(), [])
 
   const userId = user?.id
 
@@ -107,8 +103,6 @@ export const useAdminAccess = (): AdminAccessState => {
     userId,
     dbRole,
     allowedIds,
-    webPasswordEnabled,
-    webAuthed,
     webOnlyMode,
     inTelegramMiniApp,
     portalRole,

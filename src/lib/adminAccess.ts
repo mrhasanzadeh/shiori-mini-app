@@ -41,28 +41,10 @@ export const parseAdminTelegramIds = (value: unknown): Set<number> => {
 export const isWebAdminOnlyMode = (): boolean =>
   String(import.meta.env.VITE_ADMIN_WEB_ONLY ?? '').trim().toLowerCase() === 'true'
 
-export const isWebAdminPasswordEnabled = (): boolean => {
-  const webPassword = String(import.meta.env.VITE_ADMIN_WEB_PASSWORD ?? '').trim()
-  if (!webPassword) return false
-  if (import.meta.env.DEV) return true
-  if (isWebAdminOnlyMode()) return true
-  return String(import.meta.env.VITE_ADMIN_WEB_AUTH ?? '').trim().toLowerCase() === 'true'
-}
-
-export const readWebAdminAuthed = (): boolean => {
-  try {
-    return localStorage.getItem('admin_web_authed') === '1'
-  } catch {
-    return false
-  }
-}
-
 export const resolveAdminAccess = (params: {
   userId?: number
   dbRole: AppUserRole | null
   allowedIds: Set<number>
-  webPasswordEnabled: boolean
-  webAuthed: boolean
   webOnlyMode: boolean
   inTelegramMiniApp: boolean
   portalRole: AppUserRole | null
@@ -83,8 +65,6 @@ export const resolveAdminAccess = (params: {
     userId,
     dbRole,
     allowedIds,
-    webPasswordEnabled,
-    webAuthed,
     webOnlyMode,
     inTelegramMiniApp,
     portalRole,
@@ -130,22 +110,20 @@ export const resolveAdminAccess = (params: {
   }
 
   if (webOnlyMode && !inTelegramMiniApp) {
-    const isLegacyWebAdmin = webPasswordEnabled && webAuthed
     return {
       dbRole: null,
-      isStaff: isLegacyWebAdmin,
-      isFullAdmin: isLegacyWebAdmin,
+      isStaff: false,
+      isFullAdmin: false,
       isModerator: false,
       ...meta,
     }
   }
 
   const isEnvAdmin = typeof userId === 'number' && allowedIds.has(userId)
-  const isWebAdmin = !userId && webPasswordEnabled && webAuthed
   const isDbAdmin = dbRole === 'admin'
   const isDbModerator = dbRole === 'moderator'
 
-  const isFullAdmin = isEnvAdmin || isWebAdmin || isDbAdmin
+  const isFullAdmin = isEnvAdmin || isDbAdmin
   const isStaff = isFullAdmin || isDbModerator
 
   return {

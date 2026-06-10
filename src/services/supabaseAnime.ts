@@ -1637,58 +1637,6 @@ export const getAnimeExternalMetaById = async (
   return {}
 }
 
-/** کش امتیازهای زنده در DB (فقط ستون‌های خالی؛ نیاز به RPC cache_anime_external_scores) */
-export const cacheExternalScoresToDb = async (
-  animeId: string | number,
-  scores: {
-    anilistScore?: number | null
-    malScore?: number | null
-    imdbScore?: number | null
-  },
-  existing: {
-    averageScore?: number | null
-    malScore?: number | null
-    imdbScore?: number | null
-  }
-): Promise<void> => {
-  if (!hasSupabaseConfig) return
-
-  const average_score =
-    existing.averageScore == null &&
-    typeof scores.anilistScore === 'number' &&
-    Number.isFinite(scores.anilistScore) &&
-    scores.anilistScore > 0
-      ? scores.anilistScore
-      : null
-
-  const mal_score =
-    existing.malScore == null &&
-    typeof scores.malScore === 'number' &&
-    Number.isFinite(scores.malScore)
-      ? scores.malScore
-      : null
-
-  const imdb_score =
-    existing.imdbScore == null &&
-    typeof scores.imdbScore === 'number' &&
-    Number.isFinite(scores.imdbScore)
-      ? scores.imdbScore
-      : null
-
-  if (average_score === null && mal_score === null && imdb_score === null) return
-
-  const { error } = await supabase.rpc('cache_anime_external_scores', {
-    p_anime_id: animeId,
-    p_average_score: average_score,
-    p_mal_score: mal_score,
-    p_imdb_score: imdb_score,
-  })
-
-  if (error && import.meta.env.DEV) {
-    console.warn('cacheExternalScoresToDb:', error.message)
-  }
-}
-
 export const getLocalAnimeIdByAniListId = async (
   anilistId: number
 ): Promise<string | number | null> => {

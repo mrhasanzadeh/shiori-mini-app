@@ -124,6 +124,10 @@ const enrichVerifyError = async (message: string, initData: string): Promise<str
     return message
   }
 
+  if (!import.meta.env.DEV) {
+    return 'خطا در تأیید Telegram — مینی‌اپ را ببندید و دوباره از ربات باز کنید.'
+  }
+
   const reasonMatch = message.match(/invalid telegram init data \(([^)]+)\)/)
   const inlineReason = reasonMatch?.[1]
 
@@ -209,16 +213,6 @@ const listViaRpc = async (initData: string): Promise<UserAnimeListRow[]> => {
   return (data ?? []).map((row: Record<string, unknown>) => mapListRow(row))
 }
 
-const listViaTable = async (): Promise<UserAnimeListRow[]> => {
-  const { data, error } = await supabase
-    .from('user_anime_list')
-    .select('anime_id, episodes_watched, user_rating, updated_at')
-    .order('updated_at', { ascending: false })
-
-  if (error) throw new Error(formatSupabaseError(error))
-  return (data ?? []).map((row) => mapListRow(row as Record<string, unknown>))
-}
-
 const upsertViaRpc = async (
   initData: string,
   animeId: number | string,
@@ -237,49 +231,11 @@ const upsertViaRpc = async (
   if (error) throw new Error(formatSupabaseError(error))
 }
 
-const upsertViaTable = async (
-  telegramUserId: number,
-  animeId: number | string,
-  payload: { episodes_watched?: number; user_rating?: number | null }
-): Promise<void> => {
-  const row: Record<string, unknown> = {
-    telegram_user_id: telegramUserId,
-    anime_id: animeId,
-    episodes_watched:
-      payload.episodes_watched !== undefined
-        ? Math.max(0, Math.floor(payload.episodes_watched))
-        : 0,
-  }
-
-  if (payload.user_rating !== undefined) {
-    row.user_rating = payload.user_rating
-  }
-
-  const { error } = await supabase.from('user_anime_list').upsert(row, {
-    onConflict: 'telegram_user_id,anime_id',
-  })
-
-  if (error) throw new Error(formatSupabaseError(error))
-}
-
 const removeViaRpc = async (initData: string, animeId: number | string): Promise<void> => {
   const { error } = await supabase.rpc('remove_user_anime_list_verified', {
     p_init_data: initData,
     p_anime_id: animeId,
   })
-
-  if (error) throw new Error(formatSupabaseError(error))
-}
-
-const removeViaTable = async (
-  telegramUserId: number,
-  animeId: number | string
-): Promise<void> => {
-  const { error } = await supabase
-    .from('user_anime_list')
-    .delete()
-    .eq('telegram_user_id', telegramUserId)
-    .eq('anime_id', animeId)
 
   if (error) throw new Error(formatSupabaseError(error))
 }
@@ -300,18 +256,16 @@ export const getUserAnimeList = async (_telegramUserId: number): Promise<UserAni
 
     try {
       return await listViaRpc(initData)
-    } catch {
-      try {
-        return await listViaTable()
-      } catch {
-        return []
-      }
+    } catch (rpcError) {
+      const rpcMsg = rpcError instanceof Error ? rpcError.message : String(rpcError)
+      if (import.meta.env.DEV) console.warn('getUserAnimeList rpc:', rpcMsg)
+      return []
     }
   }
 }
 
 export const upsertUserAnimeListEntry = async (
-  telegramUserId: number,
+  _telegramUserId: number,
   animeId: number | string,
   payload: {
     episodes_watched?: number
@@ -340,21 +294,14 @@ export const upsertUserAnimeListEntry = async (
 
   try {
     await upsertViaRpc(initData, animeId, payload)
-    return
   } catch (rpcError) {
     const rpcMsg = rpcError instanceof Error ? rpcError.message : String(rpcError)
-
-    try {
-      await upsertViaTable(telegramUserId, animeId, payload)
-      return
-    } catch {
-      throw new Error(await enrichVerifyError(rpcMsg, initData))
-    }
+    throw new Error(await enrichVerifyError(rpcMsg, initData))
   }
 }
 
 export const removeUserAnimeListEntry = async (
-  telegramUserId: number,
+  _telegramUserId: number,
   animeId: number | string
 ): Promise<void> => {
   if (!hasSupabaseConfig) return
@@ -376,11 +323,7 @@ export const removeUserAnimeListEntry = async (
     await removeViaRpc(initData, animeId)
   } catch (rpcError) {
     const rpcMsg = rpcError instanceof Error ? rpcError.message : String(rpcError)
-    try {
-      await removeViaTable(telegramUserId, animeId)
-    } catch {
-      throw new Error(await enrichVerifyError(rpcMsg, initData))
-    }
+    throw new Error(await enrichVerifyError(rpcMsg, initData))
   }
 }
 
@@ -389,6 +332,10 @@ export const debugTelegramInitStatus = async (): Promise<{
   edge: EdgeDebug | null
   initDataLength: number
 }> => {
+  if (!import.meta.env.DEV) {
+    return { sql: null, edge: null, initDataLength: 0 }
+  }
+
   const initData = getTelegramInitData()
   if (!initData) {
     return { sql: null, edge: null, initDataLength: 0 }

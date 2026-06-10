@@ -42,13 +42,11 @@ REVOKE ALL ON FUNCTION public.update_anime_external_scores(UUID, NUMERIC, NUMERI
 GRANT EXECUTE ON FUNCTION public.update_anime_external_scores(UUID, NUMERIC, NUMERIC, NUMERIC)
   TO service_role;
 
--- دکمه سینک ادمین در صفحه انیمه (مینی‌اپ — قبل از لانچ عمومی)
-GRANT EXECUTE ON FUNCTION public.update_anime_external_scores(UUID, NUMERIC, NUMERIC, NUMERIC)
-  TO anon, authenticated;
+-- staff: sql/supabase-security-hardening.sql → admin_update_anime_external_scores
 
 -- ─── زمان‌بندی cron (اختیاری) ───
 -- 1) Edge Function را deploy کنید: supabase functions deploy sync-external-scores
--- 2) Secrets: CRON_SECRET (اختیاری)، OMDB_API_KEY (اختیاری)
+-- 2) Secrets: CRON_SECRET (الزامی در production)، OMDB_API_KEY (اختیاری)
 -- 3) یکی از روش‌ها:
 --    الف) Supabase Dashboard → Edge Functions → sync-external-scores → Schedules → هفتگی
 --    ب) pg_cron + pg_net (اگر فعال است):

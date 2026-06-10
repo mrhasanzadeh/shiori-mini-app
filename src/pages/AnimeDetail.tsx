@@ -26,7 +26,6 @@ import {
 } from '../hooks/queries/useAnimeQueries'
 import { prefetchAnimeDetail, prefetchSimilarAnime } from '../hooks/queries/prefetch'
 import { formatAnilistPercent } from '../services/externalScores'
-import { cacheExternalScoresToDb } from '../services/supabaseAnime'
 import { formatUserListSaveError } from '../services/userListErrors'
 import type { GenreItem } from '../services/supabaseAnime'
 import {
@@ -658,15 +657,6 @@ const AnimeDetail = () => {
     setDownloadTab('episodes')
     setShowFullDescription(false)
   }, [id])
-
-  useEffect(() => {
-    if (!anime?.id || !liveScores) return
-    void cacheExternalScoresToDb(anime.id, liveScores, {
-      averageScore: anime.averageScore,
-      malScore: anime.malScore,
-      imdbScore: anime.imdbScore,
-    })
-  }, [anime?.id, anime?.averageScore, anime?.malScore, anime?.imdbScore, liveScores])
 
   useEffect(() => {
     if (activeTab === 'similar' && anime?.id && genreSlugs.length > 0) {

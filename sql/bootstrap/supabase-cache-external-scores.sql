@@ -26,5 +26,8 @@ BEGIN
 END;
 $$;
 
+REVOKE ALL ON FUNCTION public.cache_anime_external_scores(UUID, NUMERIC, NUMERIC, NUMERIC)
+  FROM PUBLIC, anon, authenticated;
+
 GRANT EXECUTE ON FUNCTION public.cache_anime_external_scores(UUID, NUMERIC, NUMERIC, NUMERIC)
-  TO anon, authenticated;
+  TO service_role;

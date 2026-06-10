@@ -5,7 +5,8 @@
 | مسیر | کاربرد |
 | --- | --- |
 | **`supabase-consolidated-reapply.sql`** (root) | تنها فایل SQL پایه — به‌روزرسانی دیتابیس |
-| **`sql/supabase-notifications.sql`** | اعلان‌ها (بعد از consolidated) |
+| **`sql/supabase-notifications.sql`** | اعلان‌ها |
+| **`sql/supabase-security-hardening.sql`** | hardening امنیتی |
 | **`sql/bootstrap/`** | نصب اولیه #1–#21 (دیتابیس تازه) |
 | **`sql/archive/`** | patchهای قدیمی، تکراری، یک‌بار — **اجرا نکنید** |
 | **`sql/optional/`** | راهنمای Cron (بدون SQL اجرایی) |
@@ -85,6 +86,14 @@
 | **`sql/supabase-notifications.sql`** | inbox + کمپین + RPC |
 | `notify-episode-release` Edge | پیام Telegram + فراخوانی RPC |
 | [notifications.md](./notifications.md) | راهنمای ادمین و کاربر |
+
+## ۸. Hardening امنیتی (قبل از لانچ عمومی)
+
+| فایل / action | توضیح |
+| --- | --- |
+| **`sql/supabase-security-hardening.sql`** | بستن RPC امتیاز، debug، role enumeration، rate limit login |
+| redeploy `sync-external-scores` + `telegram-user-list` | CRON_SECRET اجباری؛ debug Edge غیرفعال |
+| [security-hardening.md](./security-hardening.md) | چک‌لیست کامل |
 
 ---
 

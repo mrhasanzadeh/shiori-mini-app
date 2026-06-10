@@ -63,7 +63,12 @@ export const loginAdminPortal = async (
 
   if (error) throw new Error(error.message)
 
-  const session = parsePortalSession((data ?? {}) as PortalRpcPayload)
+  const payload = (data ?? {}) as PortalRpcPayload
+  if (payload.error === 'too_many_attempts') {
+    throw new Error('تلاش‌های زیاد — ۱۵ دقیقه بعد دوباره امتحان کنید')
+  }
+
+  const session = parsePortalSession(payload)
   if (!session) {
     throw new Error('ایمیل یا رمز عبور اشتباه است')
   }
