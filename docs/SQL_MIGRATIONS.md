@@ -1,6 +1,17 @@
 # SQL migrations — ترتیب اجرا
 
-همه فایل‌ها در **Supabase SQL Editor** اجرا می‌شوند (root پروژه).
+همه فایل‌های فعال در **root** پروژه هستند و در **Supabase SQL Editor** اجرا می‌شوند.
+
+## کدام مسیر را بروید؟
+
+| وضعیت | کار |
+| --- | --- |
+| **دیتابیس تازه** | جدول‌های زیر (#1–#26) را به ترتیب اجرا کنید |
+| **دیتابیس موجود — فقط به‌روزرسانی** | یک فایل: **`supabase-consolidated-reapply.sql`** |
+| **patchهای قدیمی** | `sql/archive/` — **اجرا نکنید** (جایگزین شده با consolidated) |
+
+> **`supabase-consolidated-reapply.sql`** idempotent است: ستون‌های جدید، RPC، view، trigger و RLS patchها — **بدون** `TRUNCATE` / `DROP TABLE` روی `anime`، `user_anime_list`، `telegram_users` و غیره.  
+> عمداً شامل **`supabase-unify-portal-users.sql`** نیست (آن فایل `admin_portal_*` را حذف می‌کند — فقط اگر قبلاً آن جداول را داشتید و یک‌بار مهاجرت نکرده‌اید).
 
 ## ۱. هسته کاتالوگ و کاربر
 
@@ -50,27 +61,41 @@
 | 25  | **`supabase-translators-is-active.sql`**              | ستون `is_active` برای مترجم‌ها                                 |
 | 26  | **`supabase-anime-title-romaji.sql`**                 | ستون `title_romaji` برای جستجو و نمایش عنوان Romaji           |
 
-> **اگر قبلاً patchهای جدا (`supabase-fix-*.sql`) را زده‌اید:** اجرای دوبارهٔ `post-migration` بی‌ضرر است (`CREATE OR REPLACE`). فایل‌های `supabase-fix-*` دیگر لازم نیستند.
+> **دیتابیس موجود:** به‌جای اجرای جداگانهٔ #22–#26 و `supabase-fix-score-columns.sql`، فقط **`supabase-consolidated-reapply.sql`** را بزنید.
 
-### patchهای قدیمی (جایگزین شده با #22)
+### patchهای قدیمی (آرشیو — اجرا نکنید)
 
-| فایل (آرشیو)                                  | نقش                                           |
-| --------------------------------------------- | --------------------------------------------- |
-| `supabase-rls-security-phase2-verify-fix.sql` | HMAC `convert_to` — داخل post-migration       |
-| `supabase-fix-telegram-list-init-data.sql`    | header fallback + RPC — داخل post-migration   |
-| `supabase-fix-user-anime-list-upsert.sql`     | upsert UPDATE + trigger — داخل post-migration |
-| `supabase-fix-telegram-init-debug.sql`        | پیام خطا — داخل post-migration                |
-| `supabase-fix-telegram-init-decode.sql`       | decode + `signature` — داخل post-migration    |
-| `supabase-fix-vault-token-audit.sql`          | دیباگ Vault — داخل post-migration             |
-| `supabase-rls-security-admin-users-fix.sql`   | admin overview RPC — داخل post-migration      |
-| `supabase-rls-security-phase2-edge.sql`       | register internal — داخل post-migration       |
+منتقل شده به **`sql/archive/`** — محتوا داخل `post-migration` / `consolidated-reapply` است. جزئیات: [sql/archive/README.md](../sql/archive/README.md).
 
-## ۵. اختیاری
+| فایل (آرشیو) | نقش |
+| --- | --- |
+| `supabase-rls-security-phase2-verify-fix.sql` | HMAC `convert_to` |
+| `supabase-fix-telegram-list-init-data.sql` | header fallback + RPC |
+| `supabase-fix-user-anime-list-upsert.sql` | upsert UPDATE + trigger |
+| `supabase-fix-telegram-init-debug.sql` | پیام خطا |
+| `supabase-fix-telegram-init-decode.sql` | decode + `signature` |
+| `supabase-fix-vault-token-audit.sql` | دیباگ Vault |
+| `supabase-rls-security-admin-users-fix.sql` | admin overview RPC |
+| `supabase-rls-security-phase2-edge.sql` | register internal |
+| `supabase-admin-portal-auth-fix-crypt.sql` | pgcrypto search_path (در #24) |
 
-| فایل                            | توضیح                        |
-| ------------------------------- | ---------------------------- |
-| `supabase-add-episode-pack.sql` | پک قسمت‌ها                   |
-| `supabase-final-data.sql`       | seed (خارج از repo ممکن است) |
+## ۵. به‌روزرسانی یک‌جا (دیتابیس موجود)
+
+| فایل | توضیح |
+| --- | --- |
+| **`supabase-consolidated-reapply.sql`** | patchهای #22–#26 + ستون‌های MAL/IMDb/episode_pack + fix overflow امتیاز — **بدون حذف داده** |
+
+شامل: `pgcrypto` · schema patches · `admin-panel-features` · `post-migration`
+
+## ۶. اختیاری / جدا
+
+| فایل | توضیح |
+| --- | --- |
+| `supabase-add-episode-pack.sql` | فقط اگر consolidated را نزده‌اید (در consolidated هم هست) |
+| `supabase-fix-score-columns.sql` | فقط اگر consolidated را نزده‌اید (در consolidated هم هست) |
+| `supabase-cron-sync-external-scores.sql` | **راهنما** — SQL اجرایی نیست |
+| `supabase-unify-portal-users.sql` | **یک‌بار** و فقط اگر `admin_portal_*` قدیمی دارید — DROP TABLE |
+| `supabase-final-data.sql` | seed (خارج از repo ممکن است) |
 
 ## اولین ادمین
 

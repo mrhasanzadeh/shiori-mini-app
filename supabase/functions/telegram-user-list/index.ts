@@ -94,7 +94,7 @@ Deno.serve(async (req) => {
     })
 
     if (error?.code === 'PGRST202' || error?.message?.includes('register_telegram_user_visit_internal')) {
-      return json({ error: 'Run supabase-rls-security-phase2-edge.sql in SQL Editor first' }, 500)
+      return json({ error: 'Run supabase-consolidated-reapply.sql (or post-migration) in SQL Editor first' }, 500)
     }
     if (error) return json({ error: error.message }, 500)
 

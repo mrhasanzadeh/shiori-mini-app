@@ -40,7 +40,7 @@ SELECT vault.create_secret(
 
 مینی‌اپ از **direct link / startapp** فیلد `signature` در initData دارد. Edge با Web Crypto + Ed25519 این حالت را پوشش می‌دهد.
 
-1. SQL: [`supabase-rls-security-phase2-edge.sql`](../supabase-rls-security-phase2-edge.sql) (یا داخل post-migration)
+1. SQL: [`supabase-consolidated-reapply.sql`](../supabase-consolidated-reapply.sql) یا [`supabase-rls-security-phase2-post-migration.sql`](../supabase-rls-security-phase2-post-migration.sql) (شامل register internal؛ فایل قدیمی `phase2-edge` در `sql/archive/` است)
 2. Secret `TELEGRAM_BOT_TOKEN` = همان BotFather token
 3. `npx supabase functions deploy telegram-user-list --project-ref YOUR_REF`
 
