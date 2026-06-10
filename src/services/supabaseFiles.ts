@@ -245,6 +245,15 @@ export const getFilesDownloadOverview = async (): Promise<FilesDownloadOverview>
   }
 }
 
+const mapFilePickerRows = (data: unknown): FilePickerItem[] =>
+  ((data as any[]) || []).map((row: any) => ({
+    key: String(row?.key ?? '').trim(),
+    file_name: typeof row?.file_name === 'string' ? row.file_name : (row?.file_name ?? null),
+    caption: typeof row?.caption === 'string' ? row.caption : (row?.caption ?? null),
+    is_active:
+      typeof row?.is_active === 'boolean' ? row.is_active : Boolean(row?.is_active ?? true),
+  }))
+
 export const searchFilesForPicker = async (payload: {
   query: string
   matchAnyTerms?: string[]
@@ -254,38 +263,51 @@ export const searchFilesForPicker = async (payload: {
   if (!hasSupabaseConfig) return []
 
   const limit = Number.isFinite(payload.limit) && payload.limit > 0 ? payload.limit : 20
-  const terms = [
+  const query = String(payload.query ?? '').trim()
+  const extraTerms = [
     ...new Set(
-      [payload.query, ...(payload.matchAnyTerms ?? [])]
-        .map((t) => String(t ?? '').trim())
-        .filter(Boolean)
+      (payload.matchAnyTerms ?? []).map((t) => String(t ?? '').trim()).filter(Boolean)
     ),
   ]
-  if (terms.length === 0) return []
 
-  let q = supabase.from('files').select('key, file_name, caption, is_active').limit(limit)
+  if (!query && extraTerms.length === 0) return []
 
-  if (payload.activeOnly) {
-    q = q.eq('is_active', true)
+  const fetchMatches = async (searchText: string, fileNameOnly: boolean) => {
+    let q = supabase.from('files').select('key, file_name, caption, is_active').limit(limit)
+
+    if (payload.activeOnly) {
+      q = q.eq('is_active', true)
+    }
+
+    q = applyFileSearchFilters(q, searchText, { fileNameOnly })
+    q = q.order('created_at', { ascending: false })
+
+    const { data, error } = await q
+    if (error) {
+      if (import.meta.env.DEV) console.warn('searchFilesForPicker:', error.message)
+      return [] as FilePickerItem[]
+    }
+
+    return mapFilePickerRows(data)
   }
 
-  const orParts = terms.flatMap((term) => {
-    const safe = escapeIlikePattern(term)
-    return [`file_name.ilike.%${safe}%`, `caption.ilike.%${safe}%`]
-  })
-  q = q.or(orParts.join(',')).order('created_at', { ascending: false })
+  const byKey = new Map<string, FilePickerItem>()
 
-  const { data, error } = await q
-  if (error) {
-    if (import.meta.env.DEV) console.warn('searchFilesForPicker:', error.message)
-    return []
+  const addRows = (rows: FilePickerItem[]) => {
+    for (const row of rows) {
+      if (!byKey.has(row.key)) byKey.set(row.key, row)
+      if (byKey.size >= limit) break
+    }
   }
 
-  return (data || []).map((row: any) => ({
-    key: String(row?.key ?? '').trim(),
-    file_name: typeof row?.file_name === 'string' ? row.file_name : (row?.file_name ?? null),
-    caption: typeof row?.caption === 'string' ? row.caption : (row?.caption ?? null),
-    is_active:
-      typeof row?.is_active === 'boolean' ? row.is_active : Boolean(row?.is_active ?? true),
-  }))
+  if (query) {
+    addRows(await fetchMatches(query, true))
+  }
+
+  for (const term of extraTerms) {
+    if (byKey.size >= limit) break
+    addRows(await fetchMatches(term, true))
+  }
+
+  return [...byKey.values()].slice(0, limit)
 }
