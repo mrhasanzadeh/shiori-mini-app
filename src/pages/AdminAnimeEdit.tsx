@@ -8,7 +8,7 @@ import {
   StarIcon,
   UserIcon,
 } from 'hugeicons-react'
-import { ExternalLink, Pencil, Search, Bell } from 'lucide-react'
+import { ExternalLink, Pencil, Search, Bell, ChevronDown } from 'lucide-react'
 import * as supa from '../services/supabaseAnime'
 import { syncAnimeExternalScores } from '../services/syncAnimeExternalScores'
 import { notifyEpisodeReleaseAdmin } from '../services/supabaseNotificationsAdmin'
@@ -54,6 +54,13 @@ type DraftAnime = {
   studio: string
   start_date: string
   end_date: string
+}
+
+type SeriesMemberDraft = {
+  key: string
+  anime_id: string
+  sort_order: number
+  label_fa: string
 }
 
 type EpisodeDraft = {
@@ -176,6 +183,104 @@ const Field = ({
     {children}
   </div>
 )
+
+const AnimeSearchSelect = ({
+  value,
+  onChange,
+  options,
+  placeholder = 'انتخاب انیمه',
+}: {
+  value: string
+  onChange: (value: string) => void
+  options: supa.AnimeCard[]
+  placeholder?: string
+}) => {
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+
+  const selected = options.find((item) => String(item.id) === value)
+
+  const filteredOptions = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    const list = q
+      ? options.filter((item) => item.title.toLowerCase().includes(q))
+      : options
+    return list.slice(0, 80)
+  }, [options, query])
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next)
+        if (!next) setQuery('')
+      }}
+    >
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full justify-between gap-2 font-normal h-10 px-3"
+        >
+          <span className={cn('truncate text-right flex-1', !selected && 'text-muted-foreground')}>
+            {selected?.title || placeholder}
+          </span>
+          <ChevronDown className="w-4 h-4 shrink-0 opacity-60" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-[min(100vw-2rem,24rem)] p-0">
+        <div className="p-2 border-b border-border">
+          <div className="relative">
+            <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="جستجوی عنوان انیمه..."
+              className="pr-9 h-9"
+            />
+          </div>
+        </div>
+        <div className="max-h-60 overflow-y-auto p-1">
+          <button
+            type="button"
+            className="w-full text-right px-2 py-2 rounded-lg text-sm text-muted-foreground hover:bg-muted/60"
+            onClick={() => {
+              onChange('')
+              setOpen(false)
+            }}
+          >
+            —
+          </button>
+          {filteredOptions.length === 0 ? (
+            <p className="px-2 py-4 text-sm text-center text-muted-foreground">نتیجه‌ای یافت نشد</p>
+          ) : (
+            filteredOptions.map((item) => {
+              const isSelected = String(item.id) === value
+              return (
+                <button
+                  key={String(item.id)}
+                  type="button"
+                  className={cn(
+                    'w-full text-right px-2 py-2 rounded-lg text-sm transition-colors',
+                    isSelected
+                      ? 'bg-primary-500/15 text-primary-300'
+                      : 'hover:bg-muted/60 text-foreground'
+                  )}
+                  onClick={() => {
+                    onChange(String(item.id))
+                    setOpen(false)
+                  }}
+                >
+                  {item.title}
+                </button>
+              )
+            })
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+}
 
 const TRANSLATOR_LINK_ROLES = ['مترجم', 'ویراستار'] as const
 const DEFAULT_TRANSLATOR_LINK_ROLE = 'مترجم'
@@ -456,6 +561,7 @@ const AdminAnimeEdit = () => {
 
   const [allStudios, setAllStudios] = useState<supa.StudioAdminItem[]>([])
   const [selectedStudioSlugs, setSelectedStudioSlugs] = useState<Set<string>>(new Set())
+  const [allAnimeOptions, setAllAnimeOptions] = useState<supa.AnimeCard[]>([])
 
   const [anime, setAnime] = useState<supa.AnimeAdminRow | null>(null)
   const [draft, setDraft] = useState<DraftAnime>({
@@ -480,6 +586,10 @@ const AdminAnimeEdit = () => {
     start_date: '',
     end_date: '',
   })
+
+  const [seriesId, setSeriesId] = useState<string | null>(null)
+  const [seriesTitle, setSeriesTitle] = useState('')
+  const [seriesMembers, setSeriesMembers] = useState<SeriesMemberDraft[]>([])
 
   const [episodes, setEpisodes] = useState<supa.EpisodeAdminRow[]>([])
   const [subtitles, setSubtitles] = useState<supa.SubtitleAdminRow[]>([])
@@ -554,7 +664,7 @@ const AdminAnimeEdit = () => {
       ({
         RELEASING: 'در حال پخش',
         FINISHED: 'پایان یافته',
-        NOT_YET_RELEASED: 'هنوز پخش نشده',
+        NOT_YET_RELEASED: 'منتشر نشده',
       }) as Record<string, string>
     )[String(v || '').toUpperCase()] || v
 
@@ -1093,7 +1203,7 @@ const AdminAnimeEdit = () => {
   }
 
   const reload = async (animeId: string | number) => {
-    const [g, studios, translators, tLinks, a, eps, subs, packs, aGenres, aStudios] =
+    const [g, studios, translators, tLinks, a, eps, subs, packs, aGenres, aStudios, animeCards, seriesDraft] =
       await Promise.all([
         supa.getAllGenres(),
         supa.getAllStudiosAdmin(),
@@ -1105,11 +1215,14 @@ const AdminAnimeEdit = () => {
         supa.getSubtitlePacksByAnimeId(animeId),
         supa.getAnimeGenreSlugs(animeId),
         supa.getAnimeStudioSlugsAdmin(animeId),
+        supa.getAllAnime(),
+        supa.getAnimeSeriesDraftForAdmin(animeId),
       ])
 
     setAllGenres(g)
     setAllStudios(studios)
     setAllTranslators(translators)
+    setAllAnimeOptions(animeCards)
     setTranslatorLinks(tLinks)
     setAnime(a)
     setEpisodes(eps)
@@ -1121,6 +1234,23 @@ const AdminAnimeEdit = () => {
     })
     setSelectedGenreSlugs(new Set(aGenres))
     setSelectedStudioSlugs(new Set(aStudios))
+
+    if (seriesDraft) {
+      setSeriesId(seriesDraft.series_id)
+      setSeriesTitle(seriesDraft.title)
+      setSeriesMembers(
+        seriesDraft.members.map((member, index) => ({
+          key: `series-${String(member.anime_id)}-${index}`,
+          anime_id: String(member.anime_id),
+          sort_order: member.sort_order,
+          label_fa: member.label_fa ?? '',
+        }))
+      )
+    } else {
+      setSeriesId(null)
+      setSeriesTitle('')
+      setSeriesMembers([])
+    }
 
     setDraft({
       id: a.id,
@@ -1176,6 +1306,9 @@ const AdminAnimeEdit = () => {
         const g = await supa.getAllGenres()
         setAllGenres(g)
 
+        const animeCards = await supa.getAllAnime()
+        setAllAnimeOptions(animeCards)
+
         const studios = await supa.getAllStudiosAdmin()
         setAllStudios(studios)
 
@@ -1205,6 +1338,62 @@ const AdminAnimeEdit = () => {
         )
       )
   }, [allGenres])
+
+  const animeLinkOptions = useMemo(() => {
+    return allAnimeOptions.slice().sort((a, b) => a.title.localeCompare(b.title, 'fa'))
+  }, [allAnimeOptions])
+
+  const addSeriesMember = () => {
+    const nextOrder =
+      seriesMembers.length > 0
+        ? Math.max(...seriesMembers.map((member) => member.sort_order)) + 1
+        : 1
+    setSeriesMembers((prev) => [
+      ...prev,
+      {
+        key: `series-new-${Date.now()}`,
+        anime_id: '',
+        sort_order: nextOrder,
+        label_fa: `فصل ${nextOrder}`,
+      },
+    ])
+  }
+
+  const startSeriesWithCurrentAnime = () => {
+    const currentId = draft.id ?? anime?.id
+    if (currentId == null) {
+      showError('اول انیمه را ذخیره کن')
+      return
+    }
+    setSeriesMembers([
+      {
+        key: `series-${String(currentId)}-1`,
+        anime_id: String(currentId),
+        sort_order: 1,
+        label_fa: 'فصل ۱',
+      },
+    ])
+    if (!seriesTitle.trim()) setSeriesTitle(draft.title.trim())
+  }
+
+  const updateSeriesMember = (
+    key: string,
+    patch: Partial<Pick<SeriesMemberDraft, 'anime_id' | 'sort_order' | 'label_fa'>>
+  ) => {
+    setSeriesMembers((prev) =>
+      prev.map((member) => (member.key === key ? { ...member, ...patch } : member))
+    )
+  }
+
+  const removeSeriesMember = (key: string) => {
+    setSeriesMembers((prev) => prev.filter((member) => member.key !== key))
+  }
+
+  const clearSeries = () => {
+    setSeriesId(null)
+    setSeriesTitle('')
+    setSeriesMembers([])
+  }
 
   const toggleGenre = (slug: string) => {
     setSelectedGenreSlugs((prev) => {
@@ -1247,6 +1436,19 @@ const AdminAnimeEdit = () => {
 
       const animeId = upserted.id
       await supa.replaceAnimeStudiosAdmin(animeId, Array.from(selectedStudioSlugs))
+      await supa.saveAnimeSeriesAdmin(animeId, {
+        series_id: seriesId,
+        title: seriesTitle.trim() || draft.title.trim(),
+        members: seriesMembers
+          .filter((member) => member.anime_id.trim())
+          .map((member) => ({
+            anime_id: member.anime_id,
+            sort_order: member.sort_order,
+            label_fa: member.label_fa.trim() || null,
+          })),
+      }).then((result) => {
+        setSeriesId(result.series_id)
+      })
 
       if (isNew) {
         invalidateAnimeQueries()
@@ -1773,10 +1975,102 @@ const AdminAnimeEdit = () => {
             )}
 
             {activeTab === 'relations' && (
-              <AdminSection
-                title="استودیوها و ژانرها"
-                description="روابط many-to-many — بعد از ذخیره انیمه اعمال می‌شوند"
-              >
+              <>
+                <AdminSection
+                  title="سری فصل‌ها"
+                  description="هر فصل یک انیمه جدا است — همه فصل‌ها را اینجا لیست کن"
+                >
+                  <Field label="عنوان سری (اختیاری)">
+                    <Input
+                      value={seriesTitle}
+                      onChange={(e) => setSeriesTitle(e.target.value)}
+                      placeholder="مثلاً Solo Leveling"
+                    />
+                  </Field>
+
+                  {seriesMembers.length === 0 ? (
+                    <div className="space-y-2">
+                      <p className="text-sm text-muted-foreground">
+                        هنوز سری فصل تعریف نشده. هر ردیف = یک انیمه در کاتالوگ.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <Button type="button" variant="secondary" onClick={startSeriesWithCurrentAnime}>
+                          شروع با این انیمه
+                        </Button>
+                        <Button type="button" variant="outline" onClick={addSeriesMember}>
+                          افزودن فصل
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {seriesMembers
+                        .slice()
+                        .sort((a, b) => a.sort_order - b.sort_order)
+                        .map((member) => (
+                          <div
+                            key={member.key}
+                            className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end rounded-xl border border-border p-3"
+                          >
+                            <Field label="شماره" className="sm:col-span-2">
+                              <Input
+                                inputMode="numeric"
+                                value={String(member.sort_order)}
+                                onChange={(e) =>
+                                  updateSeriesMember(member.key, {
+                                    sort_order: Number(e.target.value || 1),
+                                  })
+                                }
+                              />
+                            </Field>
+                            <Field label="برچسب" className="sm:col-span-3">
+                              <Input
+                                value={member.label_fa}
+                                onChange={(e) =>
+                                  updateSeriesMember(member.key, { label_fa: e.target.value })
+                                }
+                                placeholder="فصل ۱"
+                              />
+                            </Field>
+                            <Field label="انیمه" className="sm:col-span-6">
+                              <AnimeSearchSelect
+                                value={member.anime_id}
+                                onChange={(animeId) =>
+                                  updateSeriesMember(member.key, { anime_id: animeId })
+                                }
+                                options={animeLinkOptions}
+                              />
+                            </Field>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              className="sm:col-span-1 text-destructive"
+                              onClick={() => removeSeriesMember(member.key)}
+                            >
+                              حذف
+                            </Button>
+                          </div>
+                        ))}
+
+                      <div className="flex flex-wrap gap-2">
+                        <Button type="button" variant="secondary" onClick={addSeriesMember}>
+                          افزودن فصل
+                        </Button>
+                        <Button type="button" variant="outline" onClick={clearSeries}>
+                          پاک کردن سری
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        برای نمایش سوییچر در اپ حداقل ۲ فصل با انیمه انتخاب‌شده لازم است.
+                      </p>
+                    </div>
+                  )}
+                </AdminSection>
+
+                <AdminSection
+                  title="استودیوها و ژانرها"
+                  description="روابط many-to-many — بعد از ذخیره انیمه اعمال می‌شوند"
+                >
                 <div>
                   <p className="text-xs font-medium text-foreground mb-2">استودیوها</p>
                   <div className="flex flex-wrap gap-1.5">
@@ -1818,6 +2112,7 @@ const AdminAnimeEdit = () => {
                   </div>
                 </div>
               </AdminSection>
+              </>
             )}
 
             {activeTab === 'media' && (

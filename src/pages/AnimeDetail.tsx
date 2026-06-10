@@ -92,6 +92,17 @@ interface Anime {
   startDate: string
   endDate: string
   score?: number
+  series?: {
+    series_id: string
+    title: string
+    members: Array<{
+      id: string | number
+      title: string
+      image?: string
+      sort_order: number
+      label_fa: string | null
+    }>
+  } | null
 }
 
 type TabType = 'info' | 'episodes' | 'similar'
@@ -112,7 +123,7 @@ const translateStatus = (status: string) => {
   const statusMap: Record<string, string> = {
     RELEASING: 'در حال پخش',
     FINISHED: 'پایان یافته',
-    NOT_YET_RELEASED: 'هنوز پخش نشده',
+    NOT_YET_RELEASED: 'منتشر نشده',
     CANCELLED: 'لغو شده',
     HIATUS: 'متوقف شده',
   }
@@ -382,6 +393,103 @@ const SegmentedTabs = <T extends string>({
     })}
   </div>
 )
+
+const SeriesSeasonSwitcher = ({
+  series,
+  currentAnimeId,
+  onSelect,
+}: {
+  series: NonNullable<Anime['series']>
+  currentAnimeId: string | number
+  onSelect: (id: string | number) => void
+}) => {
+  const currentIndex = series.members.findIndex(
+    (member) => String(member.id) === String(currentAnimeId)
+  )
+  const progressLabel =
+    currentIndex >= 0
+      ? `${toPersianNumber(currentIndex + 1)} از ${toPersianNumber(series.members.length)}`
+      : null
+
+  return (
+    <div className="mx-4 mt-4">
+      <div className="relative overflow-hidden rounded-2xl border border-primary-400/15 bg-gradient-to-br from-primary-500/[0.12] via-card/90 to-card/70 p-3.5 shadow-[0_8px_30px_-12px_rgba(99,102,241,0.35)]">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-10 -left-6 h-28 w-28 rounded-full bg-primary-400/15 blur-3xl"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -bottom-8 -right-4 h-24 w-24 rounded-full bg-primary-300/10 blur-2xl"
+        />
+
+        <div className="relative mb-3 flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-foreground">
+              {series.title || 'فصل‌های سری'}
+            </p>
+            <p className="text-[11px] text-muted-foreground">دسترسی سریع به سایر فصل‌های انیمه</p>
+          </div>
+          {progressLabel ? (
+            <span className="shrink-0 rounded-full border border-primary-400/20 bg-primary-400/10 px-2.5 py-1 text-[10px] font-semibold tabular-nums text-primary-300">
+              {progressLabel}
+            </span>
+          ) : null}
+        </div>
+
+        <div className="relative -mx-0.5 flex gap-3 overflow-x-auto px-0.5 pb-1 scrollbar-none snap-x snap-mandatory">
+          {series.members.map((member) => {
+            const isActive = String(member.id) === String(currentAnimeId)
+            const label = member.label_fa || `فصل ${toPersianNumber(member.sort_order)}`
+
+            return (
+              <button
+                key={String(member.id)}
+                type="button"
+                onClick={() => !isActive && onSelect(member.id)}
+                aria-current={isActive ? 'true' : undefined}
+                aria-label={`${label}: ${member.title}`}
+                className={cn(
+                  'group shrink-0 snap-start text-right transition-all duration-300',
+                  isActive ? 'scale-100' : 'scale-[0.94] opacity-75 hover:scale-[0.97] hover:opacity-100'
+                )}
+              >
+                <div
+                  className={cn(
+                    'relative aspect-[2/3] w-[5.25rem] overflow-hidden rounded-xl border-2 transition-all duration-300',
+                    isActive
+                      ? 'border-primary-400 shadow-lg shadow-primary-400/30 ring-2 ring-primary-400/25'
+                      : 'border-border/70 group-hover:border-primary-400/35'
+                  )}
+                >
+                  {member.image ? (
+                    <img
+                      src={member.image}
+                      alt=""
+                      className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center bg-muted">
+                      <Video01Icon className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/35 to-black/10" />
+                  {isActive ? (
+                    <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-primary-400 shadow-[0_0_8px_rgba(129,140,248,0.9)]" />
+                  ) : null}
+                  <div className="absolute inset-x-0 bottom-0 p-2">
+                    <p className="truncate text-[10px] font-bold leading-none text-white">{label}</p>
+                  </div>
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 const InfoRow = ({
   icon,
@@ -923,6 +1031,14 @@ const AnimeDetail = () => {
           onClick={handleFavorite}
         />
       </div>
+
+      {(anime.series?.members?.length ?? 0) > 1 && (
+        <SeriesSeasonSwitcher
+          series={anime.series!}
+          currentAnimeId={anime.id}
+          onSelect={(memberId) => navigate(`/anime/${encodeURIComponent(String(memberId))}`)}
+        />
+      )}
 
       {favoriteActive && (
         <div className="mx-4 mt-2 text-center">

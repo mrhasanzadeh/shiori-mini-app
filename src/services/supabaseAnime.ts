@@ -1376,6 +1376,14 @@ export type AnimeAdminRow = {
   updated_at?: string | null
   last_edited_by?: number | null
   last_editor?: AnimeAdminEditor | null
+  prev_anime_id?: string | number | null
+  next_anime_id?: string | number | null
+}
+
+const parseOptionalAnimeId = (v: unknown): string | number | null => {
+  if (typeof v === 'string' && v.trim()) return v.trim()
+  if (typeof v === 'number' && Number.isFinite(v)) return v
+  return null
 }
 
 export const getAnimeAdminById = async (animeId: string | number): Promise<AnimeAdminRow> => {
@@ -1460,6 +1468,22 @@ export const getAnimeAdminById = async (animeId: string | number): Promise<Anime
     // audit columns not migrated yet
   }
 
+  let prevAnimeId: string | number | null = null
+  let nextAnimeId: string | number | null = null
+  try {
+    const linkRes = await supabase
+      .from('anime')
+      .select('prev_anime_id, next_anime_id')
+      .eq('id', animeId)
+      .maybeSingle()
+    if (!linkRes.error && linkRes.data) {
+      prevAnimeId = parseOptionalAnimeId(linkRes.data.prev_anime_id)
+      nextAnimeId = parseOptionalAnimeId(linkRes.data.next_anime_id)
+    }
+  } catch {
+    // series link columns not migrated yet
+  }
+
   return {
     id: row.id,
     title: row.title ?? null,
@@ -1498,7 +1522,404 @@ export const getAnimeAdminById = async (animeId: string | number): Promise<Anime
     updated_at: updatedAt,
     last_edited_by: lastEditedBy,
     last_editor: lastEditor,
+    prev_anime_id: prevAnimeId,
+    next_anime_id: nextAnimeId,
   }
+}
+
+export type AnimeSeriesMemberPublic = {
+  id: string | number
+  title: string
+  image?: string
+  sort_order: number
+  label_fa: string | null
+}
+
+export type AnimeSeriesPublic = {
+  series_id: string
+  title: string
+  members: AnimeSeriesMemberPublic[]
+}
+
+export type AnimeSeriesMemberAdmin = {
+  anime_id: string | number
+  sort_order: number
+  label_fa: string | null
+}
+
+export type AnimeSeriesDraftAdmin = {
+  series_id: string
+  title: string
+  members: AnimeSeriesMemberAdmin[]
+}
+
+const enrichSeriesMembersWithImages = async (
+  members: AnimeSeriesMemberPublic[]
+): Promise<AnimeSeriesMemberPublic[]> => {
+  if (members.length === 0) return members
+
+  const ids = members.map((member) => member.id)
+  const select =
+    `id, title, ${IMAGE_COLUMN}, featured_image, cover_image` as 'id, title, cover_image, featured_image'
+  const { data, error } = await supabase.from('anime').select(select).in('id', ids)
+
+  if (error || !data) {
+    if (error && import.meta.env.DEV) {
+      console.warn('enrichSeriesMembersWithImages:', error.message)
+    }
+    return members
+  }
+
+  const imageById = new Map<string, string>()
+  for (const row of data as Array<Record<string, unknown>>) {
+    const id = parseOptionalAnimeId(row.id)
+    if (id == null) continue
+    imageById.set(String(id), getImageUrl(row))
+  }
+
+  return members.map((member) => ({
+    ...member,
+    image: imageById.get(String(member.id)) || member.image || '',
+  }))
+}
+
+const buildSeriesFromPrevNextLinks = async (
+  animeId: string | number
+): Promise<AnimeSeriesPublic | null> => {
+  if (!hasSupabaseConfig) return null
+
+  const fetchNode = async (id: string | number) => {
+    const { data, error } = await supabase
+      .from('anime')
+      .select('id, title, prev_anime_id, next_anime_id')
+      .eq('id', id)
+      .maybeSingle()
+    if (error || !data) return null
+    return data
+  }
+
+  const current = await fetchNode(animeId)
+  if (!current) return null
+
+  let headId = parseOptionalAnimeId(current.id)
+  if (headId == null) return null
+
+  for (let i = 0; i < 30; i++) {
+    const node = await fetchNode(headId)
+    const prevId = parseOptionalAnimeId(node?.prev_anime_id)
+    if (!prevId) break
+    headId = prevId
+  }
+
+  const chain: AnimeSeriesMemberPublic[] = []
+  let cursor: string | number | null = headId
+
+  for (let i = 0; i < 30 && cursor != null; i++) {
+    const node = await fetchNode(cursor)
+    if (!node) break
+    const id = parseOptionalAnimeId(node.id)
+    const title = typeof node.title === 'string' ? node.title.trim() : ''
+    if (id == null || !title) break
+    chain.push({
+      id,
+      title,
+      sort_order: chain.length + 1,
+      label_fa: null,
+    })
+    cursor = parseOptionalAnimeId(node.next_anime_id)
+  }
+
+  if (chain.length <= 1) return null
+
+  const members = await enrichSeriesMembersWithImages(chain)
+
+  return {
+    series_id: 'legacy-prev-next',
+    title: '',
+    members,
+  }
+}
+
+export const getAnimeSeriesByAnimeId = async (
+  animeId: string | number
+): Promise<AnimeSeriesPublic | null> => {
+  if (!hasSupabaseConfig) return null
+
+  const membershipRes = await supabase
+    .from('anime_series_members')
+    .select('series_id')
+    .eq('anime_id', animeId)
+    .maybeSingle()
+
+  if (membershipRes.error) {
+    if (import.meta.env.DEV) console.warn('getAnimeSeriesByAnimeId membership:', membershipRes.error.message)
+    return buildSeriesFromPrevNextLinks(animeId)
+  }
+
+  const seriesId = membershipRes.data?.series_id
+  if (!seriesId) return buildSeriesFromPrevNextLinks(animeId)
+
+  const [seriesRes, membersRes] = await Promise.all([
+    supabase.from('anime_series').select('id, title').eq('id', seriesId).maybeSingle(),
+    supabase
+      .from('anime_series_members')
+      .select('anime_id, sort_order, label_fa')
+      .eq('series_id', seriesId)
+      .order('sort_order', { ascending: true }),
+  ])
+
+  if (seriesRes.error || membersRes.error || !membersRes.data?.length) {
+    if (import.meta.env.DEV) {
+      if (seriesRes.error) console.warn('getAnimeSeriesByAnimeId series:', seriesRes.error.message)
+      if (membersRes.error) console.warn('getAnimeSeriesByAnimeId members:', membersRes.error.message)
+    }
+    return buildSeriesFromPrevNextLinks(animeId)
+  }
+
+  const animeIds = membersRes.data
+    .map((row) => parseOptionalAnimeId(row.anime_id))
+    .filter((id): id is string | number => id != null)
+
+  if (animeIds.length === 0) return null
+
+  const animeMetaSelect =
+    `id, title, ${IMAGE_COLUMN}, featured_image, cover_image` as 'id, title, cover_image, featured_image'
+  const titlesRes = await supabase.from('anime').select(animeMetaSelect).in('id', animeIds)
+  if (titlesRes.error || !titlesRes.data) {
+    if (import.meta.env.DEV) console.warn('getAnimeSeriesByAnimeId titles:', titlesRes.error?.message)
+    return null
+  }
+
+  const metaById = new Map<string, { title: string; image: string }>()
+  for (const row of titlesRes.data as Array<Record<string, unknown>>) {
+    const id = parseOptionalAnimeId(row.id)
+    const title = typeof row.title === 'string' ? row.title.trim() : ''
+    if (id != null && title) {
+      metaById.set(String(id), { title, image: getImageUrl(row) })
+    }
+  }
+
+  const members: AnimeSeriesMemberPublic[] = membersRes.data.flatMap((row) => {
+    const id = parseOptionalAnimeId(row.anime_id)
+    if (id == null) return []
+    const meta = metaById.get(String(id))
+    if (!meta) return []
+    const sortOrder =
+      typeof row.sort_order === 'number' && Number.isFinite(row.sort_order) ? row.sort_order : 1
+    const labelFa =
+      typeof row.label_fa === 'string' && row.label_fa.trim() ? row.label_fa.trim() : null
+    return [
+      {
+        id,
+        title: meta.title,
+        image: meta.image,
+        sort_order: sortOrder,
+        label_fa: labelFa,
+      },
+    ]
+  })
+
+  if (members.length <= 1) return null
+
+  return {
+    series_id: String(seriesId),
+    title: typeof seriesRes.data?.title === 'string' ? seriesRes.data.title.trim() : '',
+    members,
+  }
+}
+
+export const getAnimeSeriesDraftForAdmin = async (
+  animeId: string | number
+): Promise<AnimeSeriesDraftAdmin | null> => {
+  if (!hasSupabaseConfig) return null
+
+  const membershipRes = await supabase
+    .from('anime_series_members')
+    .select('series_id')
+    .eq('anime_id', animeId)
+    .maybeSingle()
+
+  if (membershipRes.error || !membershipRes.data?.series_id) return null
+
+  const seriesId = String(membershipRes.data.series_id)
+
+  const [seriesRes, membersRes] = await Promise.all([
+    supabase.from('anime_series').select('id, title').eq('id', seriesId).maybeSingle(),
+    supabase
+      .from('anime_series_members')
+      .select('anime_id, sort_order, label_fa')
+      .eq('series_id', seriesId)
+      .order('sort_order', { ascending: true }),
+  ])
+
+  if (seriesRes.error || membersRes.error || !membersRes.data) return null
+
+  return {
+    series_id: seriesId,
+    title: typeof seriesRes.data?.title === 'string' ? seriesRes.data.title.trim() : '',
+    members: membersRes.data.map((row) => ({
+      anime_id: parseOptionalAnimeId(row.anime_id) ?? '',
+      sort_order:
+        typeof row.sort_order === 'number' && Number.isFinite(row.sort_order) ? row.sort_order : 1,
+      label_fa:
+        typeof row.label_fa === 'string' && row.label_fa.trim() ? row.label_fa.trim() : null,
+    })),
+  }
+}
+
+export const saveAnimeSeriesAdmin = async (
+  animeId: string | number,
+  payload: {
+    series_id?: string | null
+    title: string
+    members: AnimeSeriesMemberAdmin[]
+  }
+): Promise<{ series_id: string | null }> => {
+  if (!hasSupabaseConfig) throw new Error('Supabase config missing')
+
+  const cleanedMembers = payload.members
+    .map((member) => ({
+      anime_id: parseOptionalAnimeId(member.anime_id),
+      sort_order: member.sort_order,
+      label_fa: member.label_fa?.trim() ? member.label_fa.trim() : null,
+    }))
+    .filter(
+      (member): member is { anime_id: string | number; sort_order: number; label_fa: string | null } =>
+        member.anime_id != null
+    )
+
+  if (cleanedMembers.length === 0) {
+    const existing = await supabase
+      .from('anime_series_members')
+      .select('series_id')
+      .eq('anime_id', animeId)
+      .maybeSingle()
+
+    const oldSeriesId = existing.data?.series_id ? String(existing.data.series_id) : null
+
+    await supabase.from('anime_series_members').delete().eq('anime_id', animeId)
+
+    if (oldSeriesId) {
+      const { count } = await supabase
+        .from('anime_series_members')
+        .select('id', { count: 'exact', head: true })
+        .eq('series_id', oldSeriesId)
+      if ((count ?? 0) === 0) {
+        await supabase.from('anime_series').delete().eq('id', oldSeriesId)
+      }
+    }
+
+    return { series_id: null }
+  }
+
+  const animeIds = cleanedMembers.map((m) => String(m.anime_id))
+  if (new Set(animeIds).size !== animeIds.length) {
+    throw new Error('هر انیمه فقط یک‌بار در سری می‌تواند باشد')
+  }
+
+  const sortOrders = cleanedMembers.map((m) => m.sort_order)
+  if (new Set(sortOrders).size !== sortOrders.length) {
+    throw new Error('شماره فصل‌ها نباید تکراری باشد')
+  }
+
+  if (!animeIds.includes(String(animeId))) {
+    throw new Error('انیمه فعلی باید در لیست فصل‌ها باشد')
+  }
+
+  let seriesId = payload.series_id?.trim() ? payload.series_id.trim() : null
+  const seriesTitle = payload.title.trim()
+
+  if (seriesId) {
+    const { error } = await supabase
+      .from('anime_series')
+      .update({ title: seriesTitle })
+      .eq('id', seriesId)
+    if (error) throw error
+  } else {
+    const { data, error } = await supabase
+      .from('anime_series')
+      .insert({ title: seriesTitle })
+      .select('id')
+      .single()
+    if (error) throw error
+    seriesId = String(data.id)
+  }
+
+  for (const member of cleanedMembers) {
+    await supabase.from('anime_series_members').delete().eq('anime_id', member.anime_id)
+  }
+
+  await supabase.from('anime_series_members').delete().eq('series_id', seriesId)
+
+  const { error: insertError } = await supabase.from('anime_series_members').insert(
+    cleanedMembers.map((member) => ({
+      series_id: seriesId,
+      anime_id: member.anime_id,
+      sort_order: member.sort_order,
+      label_fa: member.label_fa,
+    }))
+  )
+
+  if (insertError) throw insertError
+
+  return { series_id: seriesId }
+}
+
+/** @deprecated Use getAnimeSeriesByAnimeId — kept for legacy prev/next columns */
+export type AnimeSeriesLinkRef = AnimeSeriesMemberPublic
+/** @deprecated */
+export type AnimeSeriesLinks = {
+  prev: AnimeSeriesLinkRef | null
+  next: AnimeSeriesLinkRef | null
+}
+
+/** @deprecated Use getAnimeSeriesByAnimeId */
+export const getAnimeSeriesLinksById = async (
+  animeId: string | number
+): Promise<AnimeSeriesLinks> => {
+  const series = await getAnimeSeriesByAnimeId(animeId)
+  if (!series || series.members.length <= 1) return { prev: null, next: null }
+
+  const index = series.members.findIndex((m) => String(m.id) === String(animeId))
+  if (index < 0) return { prev: null, next: null }
+
+  return {
+    prev: index > 0 ? series.members[index - 1] : null,
+    next: index < series.members.length - 1 ? series.members[index + 1] : null,
+  }
+}
+
+/** @deprecated Use saveAnimeSeriesAdmin */
+export const updateAnimeSeriesLinksAdmin = async (
+  animeId: string | number,
+  links: { prev_anime_id?: string | number | null; next_anime_id?: string | number | null }
+): Promise<void> => {
+  const members: AnimeSeriesMemberAdmin[] = []
+  const ids: Array<string | number> = []
+
+  if (links.prev_anime_id != null) ids.push(links.prev_anime_id)
+  ids.push(animeId)
+  if (links.next_anime_id != null) ids.push(links.next_anime_id)
+
+  ids.forEach((id, index) => {
+    members.push({
+      anime_id: id,
+      sort_order: index + 1,
+      label_fa: index === 0 ? 'فصل ۱' : index === 1 && ids.length === 2 ? 'فصل ۲' : `فصل ${index + 1}`,
+    })
+  })
+
+  if (members.length <= 1) {
+    await saveAnimeSeriesAdmin(animeId, { series_id: null, title: '', members: [] })
+    return
+  }
+
+  const draft = await getAnimeSeriesDraftForAdmin(animeId)
+  await saveAnimeSeriesAdmin(animeId, {
+    series_id: draft?.series_id ?? null,
+    title: draft?.title ?? '',
+    members,
+  })
 }
 
 export const upsertAnimeAdmin = async (payload: {

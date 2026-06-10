@@ -197,6 +197,13 @@ export const fetchAnimeById = async (id: number | string) => {
     studioLinks = []
   }
 
+  let seriesLinks: supa.AnimeSeriesPublic | null = null
+  try {
+    seriesLinks = await supa.getAnimeSeriesByAnimeId(anime.id)
+  } catch {
+    seriesLinks = null
+  }
+
   if (import.meta.env.DEV && subtitlesList.length === 0) {
     console.warn(
       '[fetchAnimeById] subtitlesList خالی برگشت. اگر در جدول subtitles داده دارید، احتمالاً RLS/Policy جلوی SELECT را گرفته. برای تست می‌توانید روی جدول subtitles یک policy خواندن عمومی مثل episodes بگذارید.'
@@ -259,6 +266,7 @@ export const fetchAnimeById = async (id: number | string) => {
     year: typeof anime.year === 'number' ? anime.year : undefined,
     startDate: anime.startDate ?? '',
     endDate: anime.endDate ?? '',
+    series: seriesLinks,
   }
 }
 
