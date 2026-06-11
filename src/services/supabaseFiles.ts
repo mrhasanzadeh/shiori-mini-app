@@ -348,6 +348,25 @@ export const getFilePickerItemByKey = async (key: string): Promise<FilePickerIte
   return rows[0] ?? null
 }
 
+export const getFilePickerItemsByKeys = async (keys: string[]): Promise<FilePickerItem[]> => {
+  if (!hasSupabaseConfig) return []
+
+  const uniqueKeys = [...new Set(keys.map((k) => String(k ?? '').trim()).filter(Boolean))]
+  if (uniqueKeys.length === 0) return []
+
+  const { data, error } = await supabase
+    .from('files')
+    .select('key, file_name, caption, is_active')
+    .in('key', uniqueKeys)
+
+  if (error) {
+    if (import.meta.env.DEV) console.warn('getFilePickerItemsByKeys:', error.message)
+    return []
+  }
+
+  return mapFilePickerRows(data)
+}
+
 export const getRecentFilesForPicker = async (payload: {
   fileExtension: string
   limit?: number

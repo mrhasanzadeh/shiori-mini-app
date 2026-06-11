@@ -20,6 +20,7 @@ import {
   parseTelegramFileDownloadLink,
   parseTelegramFilePackLink,
 } from '../utils/externalLinks'
+import { AdminBulkEpisodeImport } from '../components/admin/AdminBulkEpisodeImport'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -83,6 +84,7 @@ type SeriesMemberDraft = {
 type EpisodeDraft = {
   episode_number: number
   download_link: string
+  file_label: string
 }
 
 type SubtitleDraft = {
@@ -326,12 +328,14 @@ const TelegramFileSearchSelect = ({
   disabled,
   fileExtension,
   placeholder,
+  onPickFile,
 }: {
   value: string
   onChange: (value: string) => void
   disabled?: boolean
   fileExtension: string
   placeholder?: string
+  onPickFile?: (file: filesSvc.FilePickerItem) => void
 }) => {
   const ext = String(fileExtension ?? '')
     .trim()
@@ -412,6 +416,7 @@ const TelegramFileSearchSelect = ({
     const link = buildTelegramFileDownloadLink(file.key)
     if (!link) return
     onChange(link)
+    onPickFile?.(file)
     setSelectedFile(file)
     setOpen(false)
     setSearch('')
@@ -994,7 +999,9 @@ const AdminAnimeEdit = () => {
   const [episodeDraft, setEpisodeDraft] = useState<EpisodeDraft>({
     episode_number: 1,
     download_link: '',
+    file_label: '',
   })
+  const [episodeFileNames, setEpisodeFileNames] = useState<Map<string, string>>(new Map())
 
   const [subtitleDraft, setSubtitleDraft] = useState<SubtitleDraft>({
     episode_number: 1,
@@ -1205,17 +1212,58 @@ const AdminAnimeEdit = () => {
     return Math.max(1, max + 1)
   }, [episodes])
 
+  useEffect(() => {
+    const keys = [
+      ...new Set(
+        episodes
+          .map((e) => {
+            if (String(e.title ?? '').trim()) return null
+            return parseTelegramFileDownloadLink(e.download_link ?? '')
+          })
+          .filter((key): key is string => Boolean(key))
+      ),
+    ]
+    if (keys.length === 0) {
+      setEpisodeFileNames(new Map())
+      return
+    }
+
+    let cancelled = false
+    void filesSvc.getFilePickerItemsByKeys(keys).then((items) => {
+      if (cancelled) return
+      const next = new Map<string, string>()
+      for (const item of items) {
+        next.set(item.key, item.file_name?.trim() || item.key)
+      }
+      setEpisodeFileNames(next)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [episodes])
+
+  const getEpisodeListSubtitle = (row: supa.EpisodeAdminRow) => {
+    const fromTitle = String(row.title ?? '').trim()
+    if (fromTitle) return fromTitle
+    const key = parseTelegramFileDownloadLink(row.download_link ?? '')
+    if (key && episodeFileNames.has(key)) return episodeFileNames.get(key)!
+    if (key) return key
+    return '—'
+  }
+
   const onEditEpisode = (row: supa.EpisodeAdminRow) => {
     setEditingEpisodeId(row.id)
     setEpisodeDraft({
       episode_number: typeof row.episode_number === 'number' ? row.episode_number : 1,
       download_link: row.download_link ?? '',
+      file_label: String(row.title ?? '').trim(),
     })
   }
 
   const onCancelEditEpisode = () => {
     setEditingEpisodeId(null)
-    setEpisodeDraft((p) => ({ ...p, download_link: '' }))
+    setEpisodeDraft((p) => ({ ...p, download_link: '', file_label: '' }))
   }
 
   const onSaveEpisodeEdit = async () => {
@@ -1237,11 +1285,11 @@ const AdminAnimeEdit = () => {
       await supa.updateEpisodeAdmin({
         id: editingEpisodeId,
         episode_number: episodeDraft.episode_number,
-        title: null,
+        title: episodeDraft.file_label.trim() || null,
         download_link: episodeDraft.download_link.trim() || null,
       })
       setEditingEpisodeId(null)
-      setEpisodeDraft((p) => ({ ...p, download_link: '' }))
+      setEpisodeDraft((p) => ({ ...p, download_link: '', file_label: '' }))
       const eps = await supa.getEpisodesAdminByAnimeId(animeId)
       setEpisodes(eps)
     } catch (e) {
@@ -1939,10 +1987,10 @@ const AdminAnimeEdit = () => {
       await supa.insertEpisodeAdmin({
         anime_id: animeId,
         episode_number: episodeDraft.episode_number,
-        title: null,
+        title: episodeDraft.file_label.trim() || null,
         download_link: episodeDraft.download_link.trim() || null,
       })
-      setEpisodeDraft((p) => ({ ...p, download_link: '' }))
+      setEpisodeDraft((p) => ({ ...p, download_link: '', file_label: '' }))
       const eps = await supa.getEpisodesAdminByAnimeId(animeId)
       setEpisodes(eps)
       invalidateAnimeQueries()
@@ -2625,6 +2673,7 @@ const AdminAnimeEdit = () => {
                 />
 
                 {mediaSubTab === 'episodes' && (
+                  <div className="space-y-4">
                   <AdminSection
                     title={editingEpisodeId ? 'ویرایش قسمت' : 'افزودن قسمت'}
                     description={`${episodes.length} قسمت ثبت شده`}
@@ -2647,7 +2696,17 @@ const AdminAnimeEdit = () => {
                           fileExtension="mkv"
                           value={episodeDraft.download_link}
                           onChange={(download_link) =>
-                            setEpisodeDraft((p) => ({ ...p, download_link }))
+                            setEpisodeDraft((p) => ({
+                              ...p,
+                              download_link,
+                              file_label: download_link ? p.file_label : '',
+                            }))
+                          }
+                          onPickFile={(file) =>
+                            setEpisodeDraft((p) => ({
+                              ...p,
+                              file_label: file.file_name?.trim() || file.key,
+                            }))
                           }
                           disabled={saving}
                         />
@@ -2692,7 +2751,7 @@ const AdminAnimeEdit = () => {
                         <MediaListRow
                           key={String(e.id)}
                           title={`قسمت ${e.episode_number ?? 0}`}
-                          subtitle={e.download_link ?? ''}
+                          subtitle={getEpisodeListSubtitle(e)}
                           disabled={saving}
                           notifyLoading={notifyEpisodeNumber === (e.episode_number ?? 0)}
                           onNotify={() => onNotifyEpisodeRelease(e.episode_number ?? 0)}
@@ -2707,6 +2766,23 @@ const AdminAnimeEdit = () => {
                       )}
                     </div>
                   </AdminSection>
+
+                  {!editingEpisodeId && (
+                    <AdminBulkEpisodeImport
+                      animeId={(anime?.id ?? draft.id) ?? null}
+                      animeTitle={draft.title}
+                      titleRomaji={String(draft.title_romaji ?? '')}
+                      existingEpisodes={episodes}
+                      disabled={saving}
+                      onError={showError}
+                      onSuccess={showSuccess}
+                      onEpisodesUpdated={(eps) => {
+                        setEpisodes(eps)
+                        invalidateAnimeQueries()
+                      }}
+                    />
+                  )}
+                  </div>
                 )}
 
                 {mediaSubTab === 'subtitles' && (

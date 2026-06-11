@@ -170,7 +170,10 @@ export const fetchSimilarAnime = async (
 }
 
 // دریافت جزئیات یک انیمه + لیست قسمت‌ها از جدول episodes (با لینک دانلود هر قسمت)
-export const fetchAnimeById = async (id: number | string) => {
+export const fetchAnimeById = async (
+  id: number | string,
+  options?: { includeSeries?: boolean }
+) => {
   const allAnime = await getAllAnimeCached()
   const anime = allAnime.find((a) => String(a.id) === String(id))
 
@@ -202,10 +205,12 @@ export const fetchAnimeById = async (id: number | string) => {
   }
 
   let seriesLinks: supa.AnimeSeriesPublic | null = null
-  try {
-    seriesLinks = await supa.getAnimeSeriesByAnimeId(anime.id)
-  } catch {
-    seriesLinks = null
+  if (options?.includeSeries !== false) {
+    try {
+      seriesLinks = await supa.getAnimeSeriesByAnimeId(anime.id)
+    } catch {
+      seriesLinks = null
+    }
   }
 
   if (import.meta.env.DEV && subtitlesList.length === 0) {

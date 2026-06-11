@@ -117,26 +117,54 @@ export const useUserAnimeList = () => {
   type FavoriteCountSnapshot = {
     perAnime: number | undefined
     allCounts: AnimeFavoriteCountMap | undefined
+    patched: boolean
   }
 
-  const patchFavoriteCountCache = useCallback(
-    (animeId: number | string, delta: 1 | -1) => {
+  const getFavoriteCountBaseline = useCallback(
+    (animeId: number | string): number | null => {
+      const perAnime = queryClient.getQueryData<number>(queryKeys.animeFavoriteCount(animeId))
+      if (typeof perAnime === 'number' && Number.isFinite(perAnime)) return perAnime
+      const bulk = queryClient.getQueryData<AnimeFavoriteCountMap>(queryKeys.animeFavoriteCounts)
+      const fromBulk = bulk?.[String(animeId)]
+      if (typeof fromBulk === 'number' && Number.isFinite(fromBulk)) return fromBulk
+      return null
+    },
+    [queryClient]
+  )
+
+  const setFavoriteCountCache = useCallback(
+    (animeId: number | string, count: number) => {
       const key = String(animeId)
-      queryClient.setQueryData<number>(queryKeys.animeFavoriteCount(animeId), (old) =>
-        Math.max(0, (old ?? 0) + delta)
-      )
+      const next = Math.max(0, count)
+      queryClient.setQueryData<number>(queryKeys.animeFavoriteCount(animeId), next)
       queryClient.setQueryData<AnimeFavoriteCountMap>(queryKeys.animeFavoriteCounts, (old) => ({
         ...(old ?? {}),
-        [key]: Math.max(0, (old?.[key] ?? 0) + delta),
+        [key]: next,
       }))
     },
     [queryClient]
+  )
+
+  const patchFavoriteCountCache = useCallback(
+    (animeId: number | string, delta: 1 | -1) => {
+      const baseline = getFavoriteCountBaseline(animeId)
+      if (baseline === null) return false
+      setFavoriteCountCache(animeId, baseline + delta)
+      return true
+    },
+    [getFavoriteCountBaseline, setFavoriteCountCache]
+  )
+
+  const applyFavoriteCountDelta = useCallback(
+    (animeId: number | string, delta: 1 | -1): boolean => patchFavoriteCountCache(animeId, delta),
+    [patchFavoriteCountCache]
   )
 
   const snapshotFavoriteCounts = useCallback(
     (animeId: number | string): FavoriteCountSnapshot => ({
       perAnime: queryClient.getQueryData<number>(queryKeys.animeFavoriteCount(animeId)),
       allCounts: queryClient.getQueryData<AnimeFavoriteCountMap>(queryKeys.animeFavoriteCounts),
+      patched: false,
     }),
     [queryClient]
   )
@@ -189,20 +217,22 @@ export const useUserAnimeList = () => {
     },
     onMutate: (animeId) => {
       const snapshot = snapshotFavoriteCounts(animeId)
-      patchFavoriteCountCache(animeId, 1)
-      return snapshot
+      const patched = applyFavoriteCountDelta(animeId, 1)
+      return { ...snapshot, patched }
     },
     onError: (_error, animeId, snapshot) => {
       if (snapshot) restoreFavoriteCounts(animeId, snapshot)
     },
-    onSuccess: (_data, animeId) => {
+    onSuccess: (_data, animeId, snapshot) => {
       if (typeof telegramUserId === 'number') {
         void queryClient.invalidateQueries({
           queryKey: queryKeys.userAnimeList(telegramUserId),
         })
       }
-      void queryClient.invalidateQueries({ queryKey: queryKeys.animeFavoriteCounts })
-      void queryClient.invalidateQueries({ queryKey: queryKeys.animeFavoriteCount(animeId) })
+      if (!snapshot?.patched) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.animeFavoriteCounts })
+        void queryClient.invalidateQueries({ queryKey: queryKeys.animeFavoriteCount(animeId) })
+      }
     },
   })
 
@@ -215,20 +245,22 @@ export const useUserAnimeList = () => {
     },
     onMutate: (animeId) => {
       const snapshot = snapshotFavoriteCounts(animeId)
-      patchFavoriteCountCache(animeId, -1)
-      return snapshot
+      const patched = applyFavoriteCountDelta(animeId, -1)
+      return { ...snapshot, patched }
     },
     onError: (_error, animeId, snapshot) => {
       if (snapshot) restoreFavoriteCounts(animeId, snapshot)
     },
-    onSuccess: (_data, animeId) => {
+    onSuccess: (_data, animeId, snapshot) => {
       if (typeof telegramUserId === 'number') {
         void queryClient.invalidateQueries({
           queryKey: queryKeys.userAnimeList(telegramUserId),
         })
       }
-      void queryClient.invalidateQueries({ queryKey: queryKeys.animeFavoriteCounts })
-      void queryClient.invalidateQueries({ queryKey: queryKeys.animeFavoriteCount(animeId) })
+      if (!snapshot?.patched) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.animeFavoriteCounts })
+        void queryClient.invalidateQueries({ queryKey: queryKeys.animeFavoriteCount(animeId) })
+      }
       void queryClient.invalidateQueries({ queryKey: queryKeys.animeDetail(animeId) })
     },
   })

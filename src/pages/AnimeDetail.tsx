@@ -120,6 +120,16 @@ const toPersianNumber = (num: number | string): string => {
   return String(num).replace(/[0-9]/g, (w) => persianDigits[+w])
 }
 
+/** برچسب فصل از پنل ادمین (label_fa) — با اعداد فارسی */
+const formatSeriesMemberLabel = (member: {
+  sort_order: number
+  label_fa: string | null
+}) => {
+  const fromAdmin = String(member.label_fa ?? '').trim()
+  if (fromAdmin) return toPersianNumber(fromAdmin)
+  return `فصل ${toPersianNumber(member.sort_order)}`
+}
+
 const translateStatus = (status: string) => {
   const statusMap: Record<string, string> = {
     RELEASING: 'در حال پخش',
@@ -312,13 +322,32 @@ const FavoriteStatCard = ({
     type="button"
     onClick={onClick}
     className={cn(
-      'rounded-xl border py-3 px-2 text-center transition-colors',
+      'relative rounded-xl border py-3 px-2 text-center transition-colors',
       active
         ? 'border-red-500/35 bg-red-500/10 hover:bg-red-500/15'
         : 'border-border bg-card/60 hover:bg-muted/40'
     )}
     aria-label={active ? 'حذف از علاقه‌مندی‌ها' : 'افزودن به علاقه‌مندی‌ها'}
   >
+    {favoriteCountLoading ? (
+      <span
+        className="absolute top-1.5 start-1.5 h-4 w-7 rounded-md bg-muted animate-pulse"
+        aria-hidden
+      />
+    ) : typeof favoriteCount === 'number' && favoriteCount > 0 ? (
+      <span
+        className={cn(
+          'absolute top-1.5 start-1.5 inline-flex items-center gap-0.5 rounded-md border px-1 py-0.5 text-[9px] font-medium tabular-nums leading-none',
+          active
+            ? 'border-red-500/25 bg-red-500/15 text-red-400'
+            : 'border-border/70 bg-background/70 text-muted-foreground'
+        )}
+        aria-label={`${toPersianNumber(favoriteCount)} علاقه‌مند`}
+      >
+        <FavouriteIcon className="h-2.5 w-2.5 shrink-0" aria-hidden />
+        {toPersianNumber(favoriteCount)}
+      </span>
+    ) : null}
     <FavouriteIcon
       className={cn(
         'w-5 h-5 mx-auto',
@@ -328,13 +357,6 @@ const FavoriteStatCard = ({
     <p className="text-[11px] text-muted-foreground mt-1.5">
       {active ? 'در لیست من' : 'علاقه‌مندی'}
     </p>
-    {favoriteCountLoading ? (
-      <span className="mt-1 inline-block h-3 w-10 rounded bg-muted animate-pulse" aria-hidden />
-    ) : typeof favoriteCount === 'number' ? (
-      <p className="text-[10px] text-muted-foreground/80 mt-1 tabular-nums">
-        {toPersianNumber(favoriteCount)} علاقه‌مند
-      </p>
-    ) : null}
   </button>
 )
 
@@ -438,10 +460,10 @@ const SeriesSeasonSwitcher = ({
           ) : null}
         </div>
 
-        <div className="relative -mx-0.5 flex gap-3 overflow-x-auto px-0.5 pb-1 scrollbar-none snap-x snap-mandatory">
+        <div className="relative -mx-0.5 flex gap-2 overflow-x-auto px-0.5 pb-1 scrollbar-none snap-x snap-mandatory">
           {series.members.map((member) => {
             const isActive = String(member.id) === String(currentAnimeId)
-            const seasonNumber = toPersianNumber(member.sort_order)
+            const memberLabel = formatSeriesMemberLabel(member)
 
             return (
               <button
@@ -449,7 +471,7 @@ const SeriesSeasonSwitcher = ({
                 type="button"
                 onClick={() => !isActive && onSelect(member.id)}
                 aria-current={isActive ? 'true' : undefined}
-                aria-label={`فصل ${seasonNumber}: ${member.title}`}
+                aria-label={`${memberLabel}${member.title ? `: ${member.title}` : ''}`}
                 className={cn(
                   'group shrink-0 snap-start text-right transition-all duration-300',
                   isActive ? 'scale-100' : 'scale-[0.94] opacity-75 hover:scale-[0.97] hover:opacity-100'
@@ -480,8 +502,8 @@ const SeriesSeasonSwitcher = ({
                     <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-primary-400 shadow-[0_0_8px_rgba(129,140,248,0.9)]" />
                   ) : null}
                   <div className="absolute inset-x-0 bottom-0 p-2">
-                    <p className="truncate text-[10px] font-bold leading-none text-white tabular-nums">
-                      فصل {seasonNumber}
+                    <p className="truncate text-[10px] font-bold leading-tight text-white">
+                      {memberLabel}
                     </p>
                   </div>
                 </div>
@@ -689,7 +711,7 @@ const AnimeDetail = () => {
     refetch,
   } = useAnimeDetailQuery(id)
 
-  const { data: favoriteCount, isLoading: favoriteCountLoading } = useAnimeFavoriteCountQuery(id)
+  const { data: favoriteCount, isPending: favoriteCountPending } = useAnimeFavoriteCountQuery(id)
 
   const anime = (animeData ?? null) as Anime | null
 
@@ -1032,7 +1054,7 @@ const AnimeDetail = () => {
         <FavoriteStatCard
           active={favoriteActive}
           favoriteCount={favoriteCount}
-          favoriteCountLoading={favoriteCountLoading}
+          favoriteCountLoading={favoriteCountPending && favoriteCount === undefined}
           onClick={handleFavorite}
         />
       </div>

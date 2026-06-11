@@ -43,6 +43,7 @@ export const useAnimeFavoriteCountQuery = (animeId: string | number | undefined)
     queryFn: () => getAnimeFavoriteCount(animeId!),
     enabled: Boolean(animeId),
     staleTime: 60_000,
+    placeholderData: (previousData) => previousData,
   })
 
 export const useAnimeDetailQuery = (id: string | number | undefined) =>

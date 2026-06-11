@@ -242,7 +242,7 @@ const Search = () => {
           </div>
 
           {hasMore && (
-            <div className="px-4 pb-6 flex justify-center">
+            <div className="mt-6 px-4 pb-6 flex justify-center">
               <Button
                 type="button"
                 variant="secondary"

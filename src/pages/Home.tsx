@@ -8,6 +8,7 @@ import 'swiper/css/free-mode'
 import 'swiper/css/pagination'
 import {
   ArrowLeft01Icon,
+  FavouriteIcon,
   SparklesIcon,
 } from 'hugeicons-react'
 import type { GenreItem } from '../services/supabaseAnime'
@@ -62,7 +63,13 @@ const getFallbackSeason = (): 'WINTER' | 'SPRING' | 'SUMMER' | 'FALL' => {
 
 const genreLabel = (g: GenreItem) => g.name_fa || g.name_en || g.slug
 
-const PosterCardContent = ({ anime }: { anime: Anime }) => {
+const PosterCardContent = ({
+  anime,
+  favoriteCount,
+}: {
+  anime: Anime
+  favoriteCount?: number
+}) => {
   const genres = (anime.genres || []).slice(0, 3)
 
   return (
@@ -80,8 +87,17 @@ const PosterCardContent = ({ anime }: { anime: Anime }) => {
           loading="lazy"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-transparent" />
+        {typeof favoriteCount === 'number' && favoriteCount > 0 ? (
+          <span
+            className="absolute top-2 start-2 inline-flex items-center gap-0.5 rounded-md border border-white/20 bg-black/50 backdrop-blur-sm px-1 py-0.5 text-[9px] font-medium tabular-nums leading-none text-white/95"
+            aria-label={`${toPersianNumber(favoriteCount)} علاقه‌مند`}
+          >
+            <FavouriteIcon className="h-2.5 w-2.5 shrink-0 text-red-400 fill-red-400" aria-hidden />
+            {toPersianNumber(favoriteCount)}
+          </span>
+        ) : null}
         {anime.isNew && (
-          <span className="absolute top-2 right-2 text-[10px] font-semibold bg-primary-400 text-white px-1.5 py-0.5 rounded-md">
+          <span className="absolute top-2 end-2 text-[10px] font-semibold bg-primary-400 text-white px-1.5 py-0.5 rounded-md">
             جدید
           </span>
         )}
@@ -238,7 +254,12 @@ const Home = () => {
           >
             {list.map((anime) => (
               <SwiperSlide key={anime.id} className="home-section-slide">
-                <PosterCardContent anime={anime} />
+                <PosterCardContent
+                  anime={anime}
+                  favoriteCount={
+                    id === 'popular' ? favoriteCounts[String(anime.id)] : undefined
+                  }
+                />
               </SwiperSlide>
             ))}
           </Swiper>

@@ -61,6 +61,9 @@ const reorderList = <T,>(list: T[], fromIndex: number, toIndex: number): T[] => 
 
 const formatNumber = (n: number) => n.toLocaleString('fa-IR')
 
+const LIBRARY_SEARCH_INITIAL_LIMIT = 150
+const LIBRARY_SEARCH_MORE_STEP = 100
+
 const buildDeepLinkUrl = (slug: string): string => {
   const trimmed = slug.trim()
   if (!trimmed) return ''
@@ -116,6 +119,7 @@ const AdminFilePacks = () => {
   const [packItems, setPackItems] = useState<packs.FilePackItem[]>([])
   const [packFilesQuery, setPackFilesQuery] = useState('')
   const [filesQuery, setFilesQuery] = useState('')
+  const [librarySearchLimit, setLibrarySearchLimit] = useState(LIBRARY_SEARCH_INITIAL_LIMIT)
   const [filesLoading, setFilesLoading] = useState(false)
   const [fileResults, setFileResults] = useState<filesSvc.FilePickerItem[]>([])
   const [nextSortOrder, setNextSortOrder] = useState(1)
@@ -237,6 +241,7 @@ const AdminFilePacks = () => {
     setPackItems([])
     setPackFilesQuery('')
     setFilesQuery('')
+    setLibrarySearchLimit(LIBRARY_SEARCH_INITIAL_LIMIT)
     setFileResults([])
     setNextSortOrder(1)
     setWorkspaceTab('settings')
@@ -258,6 +263,7 @@ const AdminFilePacks = () => {
     })
     setPackFilesQuery('')
     setFilesQuery('')
+    setLibrarySearchLimit(LIBRARY_SEARCH_INITIAL_LIMIT)
     setFileResults([])
     setSheetOpen(true)
     await reloadPackItems(p.id)
@@ -332,6 +338,10 @@ const AdminFilePacks = () => {
   }
 
   useEffect(() => {
+    setLibrarySearchLimit(LIBRARY_SEARCH_INITIAL_LIMIT)
+  }, [filesQuery])
+
+  useEffect(() => {
     if (!draft.id) {
       setFileResults([])
       setFilesLoading(false)
@@ -352,7 +362,7 @@ const AdminFilePacks = () => {
         const list = await filesSvc.searchFilesForPicker({
           query: term,
           matchAnyTerms: fileSearchExtraTerms,
-          limit: 40,
+          limit: librarySearchLimit,
           activeOnly: false,
         })
         if (!cancelled) setFileResults(list)
@@ -365,7 +375,7 @@ const AdminFilePacks = () => {
       cancelled = true
       window.clearTimeout(timer)
     }
-  }, [filesQuery, fileSearchExtraTerms, draft.id])
+  }, [filesQuery, fileSearchExtraTerms, draft.id, librarySearchLimit])
 
   const onAddFile = async (fileKey: string) => {
     const packId = draft.id
@@ -759,7 +769,7 @@ const AdminFilePacks = () => {
                     <div>
                       <h3 className="text-sm font-semibold">افزودن از کتابخانه</h3>
                       <p className="text-muted-foreground text-xs">
-                        نام فایل را جستجو کنید؛ هر کلمه جداگانه اعمال می‌شود.
+                        نام فایل را جستجو کنید؛ برای انیمه‌های چندفصلی «بارگذاری بیشتر» را بزنید.
                       </p>
                     </div>
                     <div className="relative">
@@ -784,7 +794,14 @@ const AdminFilePacks = () => {
                     ) : fileResults.length === 0 ? (
                       <p className="text-muted-foreground px-4 py-8 text-center text-sm">فایلی پیدا نشد.</p>
                     ) : (
-                      <ul className="space-y-1.5">
+                      <>
+                        <p className="text-muted-foreground px-2 pb-2 text-xs">
+                          {formatNumber(fileResults.length)} نتیجه
+                          {fileResults.length >= librarySearchLimit
+                            ? ' · ممکن است فایل بیشتری وجود داشته باشد'
+                            : ''}
+                        </p>
+                        <ul className="space-y-1.5">
                         {fileResults.map((f) => {
                           const inPack = packFileKeySet.has(f.key)
                           return (
@@ -823,7 +840,26 @@ const AdminFilePacks = () => {
                             </li>
                           )
                         })}
-                      </ul>
+                        </ul>
+                        {fileResults.length >= librarySearchLimit && (
+                          <div className="px-2 pt-3 pb-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="w-full"
+                              disabled={filesLoading || saving}
+                              onClick={() =>
+                                setLibrarySearchLimit((n) => n + LIBRARY_SEARCH_MORE_STEP)
+                              }
+                            >
+                              {filesLoading
+                                ? 'در حال بارگذاری…'
+                                : `بارگذاری بیشتر (${formatNumber(librarySearchLimit + LIBRARY_SEARCH_MORE_STEP)} نتیجه)`}
+                            </Button>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </section>

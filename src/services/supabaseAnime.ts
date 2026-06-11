@@ -16,6 +16,40 @@ const isMissingColumnError = (message: string, column: string): boolean => {
   return m.includes(`'${c}'`) || m.includes(`"${c}"`) || m.includes(` ${c} `) || m.includes(c)
 }
 
+const isPostgrestMissingSchemaError = (error: { code?: string; message?: string } | null): boolean => {
+  if (!error) return false
+  const code = String(error.code ?? '')
+  const msg = String(error.message ?? '').toLowerCase()
+  return (
+    code === '42703' ||
+    code === 'PGRST204' ||
+    code === '42P01' ||
+    msg.includes('does not exist')
+  )
+}
+
+const isPrevNextLinkColumnError = (error: { code?: string; message?: string } | null): boolean => {
+  if (!isPostgrestMissingSchemaError(error)) return false
+  const msg = String(error?.message ?? '')
+  return (
+    isMissingColumnError(msg, 'prev_anime_id') ||
+    isMissingColumnError(msg, 'next_anime_id')
+  )
+}
+
+/** Cached after first failed SELECT — avoids repeated 42703 on prefetch/hover. */
+let animePrevNextLinkColumnsAvailable: boolean | null = null
+
+const markPrevNextLinkColumnsAvailable = () => {
+  animePrevNextLinkColumnsAvailable = true
+}
+
+const markPrevNextLinkColumnsMissing = () => {
+  animePrevNextLinkColumnsAvailable = false
+}
+
+const canQueryPrevNextLinkColumns = (): boolean => animePrevNextLinkColumnsAvailable !== false
+
 export type GenreItem = {
   slug: string
   name_en?: string
@@ -1470,18 +1504,21 @@ export const getAnimeAdminById = async (animeId: string | number): Promise<Anime
 
   let prevAnimeId: string | number | null = null
   let nextAnimeId: string | number | null = null
-  try {
+  if (canQueryPrevNextLinkColumns()) {
     const linkRes = await supabase
       .from('anime')
       .select('prev_anime_id, next_anime_id')
       .eq('id', animeId)
       .maybeSingle()
-    if (!linkRes.error && linkRes.data) {
+    if (linkRes.error) {
+      if (isPrevNextLinkColumnError(linkRes.error)) {
+        markPrevNextLinkColumnsMissing()
+      }
+    } else if (linkRes.data) {
+      markPrevNextLinkColumnsAvailable()
       prevAnimeId = parseOptionalAnimeId(linkRes.data.prev_anime_id)
       nextAnimeId = parseOptionalAnimeId(linkRes.data.next_anime_id)
     }
-  } catch {
-    // series link columns not migrated yet
   }
 
   return {
@@ -1586,7 +1623,7 @@ const enrichSeriesMembersWithImages = async (
 const buildSeriesFromPrevNextLinks = async (
   animeId: string | number
 ): Promise<AnimeSeriesPublic | null> => {
-  if (!hasSupabaseConfig) return null
+  if (!hasSupabaseConfig || !canQueryPrevNextLinkColumns()) return null
 
   const fetchNode = async (id: string | number) => {
     const { data, error } = await supabase
@@ -1594,7 +1631,11 @@ const buildSeriesFromPrevNextLinks = async (
       .select('id, title, prev_anime_id, next_anime_id')
       .eq('id', id)
       .maybeSingle()
-    if (error || !data) return null
+    if (error) {
+      if (isPrevNextLinkColumnError(error)) markPrevNextLinkColumnsMissing()
+      return null
+    }
+    if (data) markPrevNextLinkColumnsAvailable()
     return data
   }
 
@@ -1652,12 +1693,18 @@ export const getAnimeSeriesByAnimeId = async (
     .maybeSingle()
 
   if (membershipRes.error) {
-    if (import.meta.env.DEV) console.warn('getAnimeSeriesByAnimeId membership:', membershipRes.error.message)
+    if (import.meta.env.DEV) {
+      console.warn('getAnimeSeriesByAnimeId membership:', membershipRes.error.message)
+    }
+    if (!canQueryPrevNextLinkColumns()) return null
     return buildSeriesFromPrevNextLinks(animeId)
   }
 
   const seriesId = membershipRes.data?.series_id
-  if (!seriesId) return buildSeriesFromPrevNextLinks(animeId)
+  if (!seriesId) {
+    if (!canQueryPrevNextLinkColumns()) return null
+    return buildSeriesFromPrevNextLinks(animeId)
+  }
 
   const [seriesRes, membersRes] = await Promise.all([
     supabase.from('anime_series').select('id, title').eq('id', seriesId).maybeSingle(),
@@ -1673,6 +1720,7 @@ export const getAnimeSeriesByAnimeId = async (
       if (seriesRes.error) console.warn('getAnimeSeriesByAnimeId series:', seriesRes.error.message)
       if (membersRes.error) console.warn('getAnimeSeriesByAnimeId members:', membersRes.error.message)
     }
+    if (!canQueryPrevNextLinkColumns()) return null
     return buildSeriesFromPrevNextLinks(animeId)
   }
 
@@ -2182,6 +2230,37 @@ export const insertEpisodeAdmin = async (payload: {
     download_link: payload.download_link,
   })
   if (error) throw error
+}
+
+export const insertEpisodesAdminBatch = async (
+  anime_id: string | number,
+  rows: Array<{ episode_number: number; download_link: string; title?: string | null }>
+): Promise<{ inserted: number; skipped: number; errors: string[] }> => {
+  let inserted = 0
+  let skipped = 0
+  const errors: string[] = []
+
+  for (const row of rows) {
+    try {
+      await insertEpisodeAdmin({
+        anime_id,
+        episode_number: row.episode_number,
+        title: row.title ?? null,
+        download_link: row.download_link,
+      })
+      inserted += 1
+    } catch (e) {
+      const code = typeof (e as { code?: string })?.code === 'string' ? (e as { code: string }).code : null
+      if (code === '23505') {
+        skipped += 1
+      } else {
+        const msg = e instanceof Error ? e.message : 'خطا در افزودن قسمت'
+        errors.push(`قسمت ${row.episode_number}: ${msg}`)
+      }
+    }
+  }
+
+  return { inserted, skipped, errors }
 }
 
 export const updateEpisodeAdmin = async (payload: {
