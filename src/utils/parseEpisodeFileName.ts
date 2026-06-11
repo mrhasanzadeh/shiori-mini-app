@@ -43,7 +43,7 @@ export const parseFileEpisodeNumber = (fileName: string): number | null => {
   }
 
   // آخرین « - 01 » — Jujutsu Kaisen S3 - 01 → ۱ (نه ۳ از S3)
-  const dashMatches = [...name.matchAll(/-[\s._-]*(\d{1,3})(?=[\s._\[-]|$)/gi)]
+  const dashMatches = [...name.matchAll(/-[\s._-]*(\d{1,3})(?=(?:[\s._-]|\[|$))/gi)]
   const lastDash = dashMatches[dashMatches.length - 1]
   if (lastDash) {
     const n = Number(lastDash[1])
