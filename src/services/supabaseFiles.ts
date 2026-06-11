@@ -259,6 +259,10 @@ export const searchFilesForPicker = async (payload: {
   matchAnyTerms?: string[]
   limit: number
   activeOnly?: boolean
+  /** فیلتر پسوند file_name — مثلاً mkv یا zip */
+  fileExtension?: string
+  /** @deprecated از fileExtension استفاده کن */
+  mkvOnly?: boolean
 }): Promise<FilePickerItem[]> => {
   if (!hasSupabaseConfig) return []
 
@@ -272,11 +276,22 @@ export const searchFilesForPicker = async (payload: {
 
   if (!query && extraTerms.length === 0) return []
 
+  const fileExtension = String(
+    payload.fileExtension ?? (payload.mkvOnly ? 'mkv' : '')
+  )
+    .trim()
+    .replace(/^\./, '')
+    .toLowerCase()
+
   const fetchMatches = async (searchText: string, fileNameOnly: boolean) => {
     let q = supabase.from('files').select('key, file_name, caption, is_active').limit(limit)
 
     if (payload.activeOnly) {
       q = q.eq('is_active', true)
+    }
+
+    if (fileExtension) {
+      q = q.ilike('file_name', `%.${fileExtension}`)
     }
 
     q = applyFileSearchFilters(q, searchText, { fileNameOnly })
@@ -311,3 +326,69 @@ export const searchFilesForPicker = async (payload: {
 
   return [...byKey.values()].slice(0, limit)
 }
+
+export const getFilePickerItemByKey = async (key: string): Promise<FilePickerItem | null> => {
+  if (!hasSupabaseConfig) return null
+
+  const fileKey = String(key ?? '').trim()
+  if (!fileKey) return null
+
+  const { data, error } = await supabase
+    .from('files')
+    .select('key, file_name, caption, is_active')
+    .eq('key', fileKey)
+    .maybeSingle()
+
+  if (error) {
+    if (import.meta.env.DEV) console.warn('getFilePickerItemByKey:', error.message)
+    return null
+  }
+
+  const rows = mapFilePickerRows(data ? [data] : [])
+  return rows[0] ?? null
+}
+
+export const getRecentFilesForPicker = async (payload: {
+  fileExtension: string
+  limit?: number
+  activeOnly?: boolean
+}): Promise<FilePickerItem[]> => {
+  if (!hasSupabaseConfig) return []
+
+  const limit = Number.isFinite(payload.limit) && (payload.limit ?? 0) > 0 ? payload.limit! : 30
+  const fileExtension = String(payload.fileExtension ?? '')
+    .trim()
+    .replace(/^\./, '')
+    .toLowerCase()
+  if (!fileExtension) return []
+
+  let q = supabase
+    .from('files')
+    .select('key, file_name, caption, is_active')
+    .ilike('file_name', `%.${fileExtension}`)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  if (payload.activeOnly !== false) {
+    q = q.eq('is_active', true)
+  }
+
+  const { data, error } = await q
+  if (error) {
+    if (import.meta.env.DEV) console.warn('getRecentFilesForPicker:', error.message)
+    return []
+  }
+
+  return mapFilePickerRows(data)
+}
+
+/** @deprecated از getRecentFilesForPicker با fileExtension: 'mkv' استفاده کن */
+export const getRecentMkvFilesForPicker = async (payload?: {
+  limit?: number
+  activeOnly?: boolean
+}): Promise<FilePickerItem[]> =>
+  getRecentFilesForPicker({
+    fileExtension: 'mkv',
+    limit: payload?.limit,
+    activeOnly: payload?.activeOnly,
+  })

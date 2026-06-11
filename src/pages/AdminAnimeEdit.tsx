@@ -10,12 +10,28 @@ import {
 } from 'hugeicons-react'
 import { ExternalLink, Pencil, Search, Bell, ChevronDown } from 'lucide-react'
 import * as supa from '../services/supabaseAnime'
+import * as filesSvc from '../services/supabaseFiles'
+import * as packsSvc from '../services/supabasePacks'
 import { syncAnimeExternalScores } from '../services/syncAnimeExternalScores'
 import { notifyEpisodeReleaseAdmin } from '../services/supabaseNotificationsAdmin'
+import {
+  buildTelegramFileDownloadLink,
+  buildTelegramFilePackLink,
+  parseTelegramFileDownloadLink,
+  parseTelegramFilePackLink,
+} from '../utils/externalLinks'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Calendar } from '@/components/ui/calendar'
 import {
   Select,
@@ -184,6 +200,27 @@ const Field = ({
   </div>
 )
 
+/** دکمه‌های هم‌ردیف فیلد — ارتفاع و تراز با Input/Select */
+const FieldActions = ({
+  children,
+  className,
+}: {
+  children: ReactNode
+  className?: string
+}) => (
+  <div className={className}>
+    <span
+      className="text-xs text-transparent mb-1.5 block select-none pointer-events-none"
+      aria-hidden="true"
+    >
+      .
+    </span>
+    <div className="flex flex-wrap gap-2">{children}</div>
+  </div>
+)
+
+const formActionButtonClass = 'h-10 px-4'
+
 const AnimeSearchSelect = ({
   value,
   onChange,
@@ -272,6 +309,339 @@ const AnimeSearchSelect = ({
                   }}
                 >
                   {item.title}
+                </button>
+              )
+            })
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+const TelegramFileSearchSelect = ({
+  value,
+  onChange,
+  disabled,
+  fileExtension,
+  placeholder,
+}: {
+  value: string
+  onChange: (value: string) => void
+  disabled?: boolean
+  fileExtension: string
+  placeholder?: string
+}) => {
+  const ext = String(fileExtension ?? '')
+    .trim()
+    .replace(/^\./, '')
+    .toLowerCase()
+  const selectPlaceholder = placeholder ?? `انتخاب فایل ${ext.toUpperCase()}...`
+
+  const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [results, setResults] = useState<filesSvc.FilePickerItem[]>([])
+  const [selectedFile, setSelectedFile] = useState<filesSvc.FilePickerItem | null>(null)
+
+  const selectedKey = useMemo(() => parseTelegramFileDownloadLink(value), [value])
+
+  useEffect(() => {
+    if (!selectedKey) {
+      setSelectedFile(null)
+      return
+    }
+    if (selectedFile?.key === selectedKey) return
+
+    let cancelled = false
+    void filesSvc.getFilePickerItemByKey(selectedKey).then((file) => {
+      if (!cancelled) setSelectedFile(file)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [selectedKey, selectedFile?.key])
+
+  useEffect(() => {
+    if (!open || !ext) {
+      setResults([])
+      setLoading(false)
+      return
+    }
+
+    let cancelled = false
+    const timer = window.setTimeout(async () => {
+      setLoading(true)
+      try {
+        const term = search.trim()
+        const list = term
+          ? await filesSvc.searchFilesForPicker({
+              query: term,
+              limit: 30,
+              activeOnly: true,
+              fileExtension: ext,
+            })
+          : await filesSvc.getRecentFilesForPicker({
+              fileExtension: ext,
+              limit: 30,
+              activeOnly: true,
+            })
+        if (!cancelled) setResults(list)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }, search.trim() ? 300 : 0)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
+  }, [open, search, ext])
+
+  const pickFile = (file: filesSvc.FilePickerItem | null) => {
+    if (!file) {
+      onChange('')
+      setSelectedFile(null)
+      setOpen(false)
+      setSearch('')
+      return
+    }
+
+    const link = buildTelegramFileDownloadLink(file.key)
+    if (!link) return
+    onChange(link)
+    setSelectedFile(file)
+    setOpen(false)
+    setSearch('')
+  }
+
+  const displayLabel = selectedFile
+    ? selectedFile.file_name || selectedFile.key
+    : selectedKey
+      ? selectedKey
+      : null
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next)
+        if (!next) setSearch('')
+      }}
+    >
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          disabled={disabled}
+          className={cn(
+            'h-10 w-full justify-between gap-2 font-normal',
+            !displayLabel && 'text-muted-foreground'
+          )}
+        >
+          <span className="truncate text-right flex-1">
+            {displayLabel || selectPlaceholder}
+          </span>
+          <ChevronDown className="w-4 h-4 shrink-0 opacity-60" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+        <div className="border-b p-2">
+          <div className="relative">
+            <Search className="text-muted-foreground pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={`جستجو فایل ${ext.toUpperCase()}...`}
+              className="pe-9"
+            />
+          </div>
+        </div>
+        <div className="max-h-56 overflow-y-auto p-1">
+          <button
+            type="button"
+            className="w-full text-right px-2 py-2 rounded-lg text-sm text-muted-foreground hover:bg-muted/60"
+            onClick={() => pickFile(null)}
+          >
+            —
+          </button>
+          {loading ? (
+            <p className="text-muted-foreground px-3 py-6 text-center text-sm">در حال جستجو…</p>
+          ) : results.length === 0 ? (
+            <p className="text-muted-foreground px-3 py-6 text-center text-sm">نتیجه‌ای پیدا نشد</p>
+          ) : (
+            results.map((file) => {
+              const isSelected = file.key === selectedKey
+              return (
+                <button
+                  key={file.key}
+                  type="button"
+                  className={cn(
+                    'hover:bg-muted/60 w-full rounded-md px-2 py-2 text-start text-sm transition-colors',
+                    isSelected && 'bg-primary-600/15'
+                  )}
+                  onClick={() => pickFile(file)}
+                >
+                  <p
+                    className={cn(
+                      'font-medium line-clamp-2',
+                      isSelected ? 'text-primary-200' : 'text-foreground'
+                    )}
+                  >
+                    {file.file_name || file.key}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground font-mono truncate mt-0.5" dir="ltr">
+                    {file.key}
+                  </p>
+                </button>
+              )
+            })
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+const FilePackSearchSelect = ({
+  packs,
+  value,
+  onChange,
+  disabled,
+  onPickPack,
+}: {
+  packs: packsSvc.FilePack[]
+  value: string
+  onChange: (value: string) => void
+  disabled?: boolean
+  onPickPack?: (pack: packsSvc.FilePack) => void
+}) => {
+  const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState('')
+
+  const selectedSlug = useMemo(() => parseTelegramFilePackLink(value), [value])
+  const selected = useMemo(
+    () => packs.find((pack) => pack.slug === selectedSlug) ?? null,
+    [packs, selectedSlug]
+  )
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    const list = q
+      ? packs.filter(
+          (pack) =>
+            pack.title.toLowerCase().includes(q) ||
+            pack.slug.toLowerCase().includes(q) ||
+            String(pack.description ?? '')
+              .toLowerCase()
+              .includes(q)
+        )
+      : packs
+    return list.slice().sort((a, b) => {
+      if (a.is_active !== b.is_active) return a.is_active ? -1 : 1
+      return a.title.localeCompare(b.title, 'fa')
+    })
+  }, [packs, search])
+
+  const pickPack = (pack: packsSvc.FilePack | null) => {
+    if (!pack) {
+      onChange('')
+      setOpen(false)
+      setSearch('')
+      return
+    }
+
+    const link = buildTelegramFilePackLink(pack.slug)
+    if (!link) return
+    onChange(link)
+    onPickPack?.(pack)
+    setOpen(false)
+    setSearch('')
+  }
+
+  const displayLabel = selected
+    ? selected.title || selected.slug
+    : selectedSlug
+      ? selectedSlug
+      : null
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next)
+        if (!next) setSearch('')
+      }}
+    >
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          disabled={disabled}
+          className={cn(
+            'h-10 w-full justify-between gap-2 font-normal',
+            !displayLabel && 'text-muted-foreground'
+          )}
+        >
+          <span className="truncate text-right flex-1">
+            {displayLabel || 'انتخاب پک فایل...'}
+          </span>
+          <ChevronDown className="w-4 h-4 shrink-0 opacity-60" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+        <div className="border-b p-2">
+          <div className="relative">
+            <Search className="text-muted-foreground pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="جستجو عنوان یا slug..."
+              className="pe-9"
+            />
+          </div>
+        </div>
+        <div className="max-h-56 overflow-y-auto p-1">
+          <button
+            type="button"
+            className="w-full text-right px-2 py-2 rounded-lg text-sm text-muted-foreground hover:bg-muted/60"
+            onClick={() => pickPack(null)}
+          >
+            —
+          </button>
+          {filtered.length === 0 ? (
+            <p className="text-muted-foreground px-3 py-6 text-center text-sm">پکی پیدا نشد</p>
+          ) : (
+            filtered.map((pack) => {
+              const isSelected = pack.slug === selectedSlug
+              return (
+                <button
+                  key={pack.id || pack.slug}
+                  type="button"
+                  className={cn(
+                    'hover:bg-muted/60 w-full rounded-md px-2 py-2 text-start text-sm transition-colors',
+                    isSelected && 'bg-primary-600/15',
+                    !pack.is_active && 'opacity-70'
+                  )}
+                  onClick={() => pickPack(pack)}
+                >
+                  <p
+                    className={cn(
+                      'font-medium line-clamp-2',
+                      isSelected ? 'text-primary-200' : 'text-foreground'
+                    )}
+                  >
+                    {pack.title || pack.slug}
+                    {!pack.is_active ? ' (غیرفعال)' : ''}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground font-mono truncate mt-0.5" dir="ltr">
+                    {pack.slug} · {pack.file_count} فایل
+                  </p>
                 </button>
               )
             })
@@ -551,6 +921,11 @@ const AdminAnimeEdit = () => {
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [toastKind, setToastKind] = useState<'error' | 'success'>('error')
+  const [mediaDeleteConfirm, setMediaDeleteConfirm] = useState<
+    | { type: 'episode'; row: supa.EpisodeAdminRow }
+    | { type: 'subtitle'; row: supa.SubtitleAdminRow }
+    | null
+  >(null)
   const [activeTab, setActiveTab] = useState<AdminTab>('info')
   const [mediaSubTab, setMediaSubTab] = useState<MediaSubTab>('episodes')
   const [syncScoresLoading, setSyncScoresLoading] = useState(false)
@@ -560,6 +935,7 @@ const AdminAnimeEdit = () => {
   const [selectedGenreSlugs, setSelectedGenreSlugs] = useState<Set<string>>(new Set())
 
   const [allStudios, setAllStudios] = useState<supa.StudioAdminItem[]>([])
+  const [allFilePacks, setAllFilePacks] = useState<packsSvc.FilePack[]>([])
   const [selectedStudioSlugs, setSelectedStudioSlugs] = useState<Set<string>>(new Set())
   const [allAnimeOptions, setAllAnimeOptions] = useState<supa.AnimeCard[]>([])
 
@@ -612,6 +988,7 @@ const AdminAnimeEdit = () => {
   const [editingEpisodeId, setEditingEpisodeId] = useState<string | number | null>(null)
   const [editingSubtitleId, setEditingSubtitleId] = useState<string | number | null>(null)
   const [editingSubtitlePackId, setEditingSubtitlePackId] = useState<string | number | null>(null)
+  const [editingEpisodePack, setEditingEpisodePack] = useState(false)
 
   const [episodeDraft, setEpisodeDraft] = useState<EpisodeDraft>({
     episode_number: 1,
@@ -846,6 +1223,10 @@ const AdminAnimeEdit = () => {
       showError('اول انیمه را ذخیره کن')
       return
     }
+    if (!episodeDraft.download_link.trim()) {
+      showError('فایلی انتخاب نشده')
+      return
+    }
 
     const animeId = (anime?.id ?? draft.id) as string | number
 
@@ -892,6 +1273,10 @@ const AdminAnimeEdit = () => {
     if (!editingSubtitlePackId) return
     if (!draft.id && !anime?.id && isNew) {
       showError('اول انیمه را ذخیره کن')
+      return
+    }
+    if (!subtitlePackDraft.subtitle_link.trim()) {
+      showError('فایلی انتخاب نشده')
       return
     }
 
@@ -958,6 +1343,10 @@ const AdminAnimeEdit = () => {
       showError('اول انیمه را ذخیره کن')
       return
     }
+    if (!subtitleDraft.subtitle_link.trim()) {
+      showError('فایلی انتخاب نشده')
+      return
+    }
 
     const animeId = (anime?.id ?? draft.id) as string | number
 
@@ -981,22 +1370,48 @@ const AdminAnimeEdit = () => {
     }
   }
 
-  const onDeleteSubtitle = async (row: supa.SubtitleAdminRow) => {
+  const onRequestDeleteSubtitle = (row: supa.SubtitleAdminRow) => {
     if (!draft.id && !anime?.id && isNew) {
       showError('اول انیمه را ذخیره کن')
       return
     }
-    if (!confirm('این زیرنویس حذف شود؟')) return
+    setMediaDeleteConfirm({ type: 'subtitle', row })
+  }
+
+  const onConfirmMediaDelete = async () => {
+    if (!mediaDeleteConfirm) return
+    if (!draft.id && !anime?.id && isNew) {
+      showError('اول انیمه را ذخیره کن')
+      setMediaDeleteConfirm(null)
+      return
+    }
+
     const animeId = (anime?.id ?? draft.id) as string | number
+    const target = mediaDeleteConfirm
+    setMediaDeleteConfirm(null)
+
     try {
       setSaving(true)
       setToast(null)
-      await supa.deleteSubtitleAdmin(row.id)
-      if (editingSubtitleId === row.id) onCancelEditSubtitle()
-      const subs = await supa.getSubtitlesAdminByAnimeId(animeId)
-      setSubtitles(subs)
+      if (target.type === 'episode') {
+        await supa.deleteEpisodeAdmin(target.row.id)
+        if (editingEpisodeId === target.row.id) onCancelEditEpisode()
+        const eps = await supa.getEpisodesAdminByAnimeId(animeId)
+        setEpisodes(eps)
+        invalidateAnimeQueries()
+      } else {
+        await supa.deleteSubtitleAdmin(target.row.id)
+        if (editingSubtitleId === target.row.id) onCancelEditSubtitle()
+        const subs = await supa.getSubtitlesAdminByAnimeId(animeId)
+        setSubtitles(subs)
+      }
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'خطا در حذف زیرنویس'
+      const msg =
+        e instanceof Error
+          ? e.message
+          : target.type === 'episode'
+            ? 'خطا در حذف قسمت'
+            : 'خطا در حذف زیرنویس'
       showError(msg)
     } finally {
       setSaving(false)
@@ -1039,27 +1454,12 @@ const AdminAnimeEdit = () => {
     }
   }
 
-  const onDeleteEpisode = async (row: supa.EpisodeAdminRow) => {
+  const onRequestDeleteEpisode = (row: supa.EpisodeAdminRow) => {
     if (!draft.id && !anime?.id && isNew) {
       showError('اول انیمه را ذخیره کن')
       return
     }
-    if (!confirm('این قسمت حذف شود؟')) return
-    const animeId = (anime?.id ?? draft.id) as string | number
-    try {
-      setSaving(true)
-      setToast(null)
-      await supa.deleteEpisodeAdmin(row.id)
-      if (editingEpisodeId === row.id) onCancelEditEpisode()
-      const eps = await supa.getEpisodesAdminByAnimeId(animeId)
-      setEpisodes(eps)
-      invalidateAnimeQueries()
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'خطا در حذف قسمت'
-      showError(msg)
-    } finally {
-      setSaving(false)
-    }
+    setMediaDeleteConfirm({ type: 'episode', row })
   }
 
   const showError = (msg: string) => {
@@ -1106,31 +1506,37 @@ const AdminAnimeEdit = () => {
     }
   }
 
-  const onSaveEpisodePack = async () => {
+  const onSaveEpisodePackFromDraft = async () => {
     if (!draft.id && !anime?.id && isNew) {
       showError('اول انیمه را ذخیره کن')
       return
     }
+    if (!episodePackDraft.download_link.trim()) {
+      showError('پکی انتخاب نشده')
+      return
+    }
 
     const animeId = (anime?.id ?? draft.id) as string | number
+    const title = episodePackDraft.title.trim() || null
+    const download_link = episodePackDraft.download_link.trim() || null
+    const wasEditing = editingEpisodePack
 
     try {
       setSaving(true)
       setToast(null)
-      await supa.updateEpisodePackAdmin(animeId, {
-        title: episodePackDraft.title.trim() || null,
-        download_link: episodePackDraft.download_link.trim() || null,
-      })
+      await supa.updateEpisodePackAdmin(animeId, { title, download_link })
       setAnime((prev) =>
         prev
           ? {
               ...prev,
-              episode_pack_title: episodePackDraft.title.trim() || null,
-              episode_pack_link: episodePackDraft.download_link.trim() || null,
+              episode_pack_title: title,
+              episode_pack_link: download_link,
             }
           : prev
       )
-      showSuccess('پک تمام قسمت‌ها ذخیره شد')
+      setEditingEpisodePack(false)
+      setEpisodePackDraft({ title: '', download_link: '' })
+      showSuccess(wasEditing ? 'پک قسمت‌ها ذخیره شد' : 'پک قسمت‌ها اضافه شد')
       invalidateAnimeQueries()
       invalidateAnimeDetailQuery(animeId)
     } catch (e) {
@@ -1138,6 +1544,29 @@ const AdminAnimeEdit = () => {
     } finally {
       setSaving(false)
     }
+  }
+
+  const onAddEpisodePack = async () => {
+    if (hasEpisodePack) return
+    await onSaveEpisodePackFromDraft()
+  }
+
+  const onEditEpisodePack = () => {
+    setEditingEpisodePack(true)
+    setEpisodePackDraft({
+      title: anime?.episode_pack_title ?? '',
+      download_link: anime?.episode_pack_link ?? '',
+    })
+  }
+
+  const onCancelEditEpisodePack = () => {
+    setEditingEpisodePack(false)
+    setEpisodePackDraft({ title: '', download_link: '' })
+  }
+
+  const onSaveEpisodePackEdit = async () => {
+    if (!editingEpisodePack) return
+    await onSaveEpisodePackFromDraft()
   }
 
   const onClearEpisodePack = async () => {
@@ -1152,6 +1581,7 @@ const AdminAnimeEdit = () => {
       setSaving(true)
       setToast(null)
       await supa.updateEpisodePackAdmin(animeId, { title: null, download_link: null })
+      setEditingEpisodePack(false)
       setEpisodePackDraft({ title: '', download_link: '' })
       setAnime((prev) =>
         prev ? { ...prev, episode_pack_title: null, episode_pack_link: null } : prev
@@ -1169,6 +1599,11 @@ const AdminAnimeEdit = () => {
   const onAddSubtitlePack = async () => {
     if (!draft.id && !anime?.id && isNew) {
       showError('اول انیمه را ذخیره کن')
+      return
+    }
+    if (hasSubtitlePack) return
+    if (!subtitlePackDraft.subtitle_link.trim()) {
+      showError('فایلی انتخاب نشده')
       return
     }
 
@@ -1228,10 +1663,8 @@ const AdminAnimeEdit = () => {
     setEpisodes(eps)
     setSubtitles(subs)
     setSubtitlePacks(packs)
-    setEpisodePackDraft({
-      title: a.episode_pack_title ?? '',
-      download_link: a.episode_pack_link ?? '',
-    })
+    setEditingEpisodePack(false)
+    setEpisodePackDraft({ title: '', download_link: '' })
     setSelectedGenreSlugs(new Set(aGenres))
     setSelectedStudioSlugs(new Set(aStudios))
 
@@ -1315,6 +1748,9 @@ const AdminAnimeEdit = () => {
         const translators = await supa.getAllTranslatorsAdmin()
         setAllTranslators(translators)
 
+        const filePacks = await packsSvc.getAllFilePacks()
+        setAllFilePacks(filePacks)
+
         if (!isNew && id) {
           await reload(id)
         }
@@ -1342,6 +1778,13 @@ const AdminAnimeEdit = () => {
   const animeLinkOptions = useMemo(() => {
     return allAnimeOptions.slice().sort((a, b) => a.title.localeCompare(b.title, 'fa'))
   }, [allAnimeOptions])
+
+  const hasEpisodePack = useMemo(
+    () => Boolean(String(anime?.episode_pack_link ?? '').trim()),
+    [anime?.episode_pack_link]
+  )
+
+  const hasSubtitlePack = useMemo(() => subtitlePacks.length > 0, [subtitlePacks])
 
   const addSeriesMember = () => {
     const nextOrder =
@@ -1471,6 +1914,10 @@ const AdminAnimeEdit = () => {
       showError('اول انیمه را ذخیره کن')
       return
     }
+    if (!episodeDraft.download_link.trim()) {
+      showError('فایلی انتخاب نشده')
+      return
+    }
 
     const animeId = (anime?.id ?? draft.id) as string | number
 
@@ -1515,6 +1962,10 @@ const AdminAnimeEdit = () => {
   const onAddSubtitle = async () => {
     if (!draft.id && !anime?.id && isNew) {
       showError('اول انیمه را ذخیره کن')
+      return
+    }
+    if (!subtitleDraft.subtitle_link.trim()) {
+      showError('فایلی انتخاب نشده')
       return
     }
 
@@ -1569,6 +2020,58 @@ const AdminAnimeEdit = () => {
           </div>
         </div>
       )}
+
+      <Dialog
+        open={mediaDeleteConfirm !== null}
+        onOpenChange={(open) => {
+          if (!open) setMediaDeleteConfirm(null)
+        }}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>
+              {mediaDeleteConfirm?.type === 'episode' ? 'حذف قسمت' : 'حذف زیرنویس'}
+            </DialogTitle>
+            <DialogDescription>
+              {mediaDeleteConfirm?.type === 'episode' ? (
+                <>
+                  قسمت{' '}
+                  <span className="text-foreground">
+                    {mediaDeleteConfirm.row.episode_number ?? 0}
+                  </span>{' '}
+                  حذف شود؟ این کار قابل بازگشت نیست.
+                </>
+              ) : (
+                <>
+                  زیرنویس قسمت{' '}
+                  <span className="text-foreground">
+                    {mediaDeleteConfirm?.row.episode_number ?? 0}
+                  </span>{' '}
+                  حذف شود؟ این کار قابل بازگشت نیست.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setMediaDeleteConfirm(null)}
+              disabled={saving}
+            >
+              انصراف
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => void onConfirmMediaDelete()}
+              disabled={saving}
+            >
+              {saving ? 'در حال حذف…' : 'بله، حذف شود'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="relative mx-4 mt-3 rounded-2xl overflow-hidden">
         <div className="absolute inset-0 pointer-events-none">
@@ -1689,22 +2192,24 @@ const AdminAnimeEdit = () => {
             {activeTab === 'info' && (
               <>
                 <AdminSection title="اطلاعات اصلی" description="عنوان، خلاصه و متادیتای پخش">
-                  <Field label="عنوان Romaji">
-                    <Input
-                      value={draft.title_romaji}
-                      onChange={(e) => setDraft((p) => ({ ...p, title_romaji: e.target.value }))}
-                      placeholder="مثلاً Shingeki no Kyojin"
-                      dir="ltr"
-                      className="text-left"
-                    />
-                  </Field>
-                  <Field label="عنوان">
-                    <Input
-                      value={draft.title}
-                      onChange={(e) => setDraft((p) => ({ ...p, title: e.target.value }))}
-                      placeholder="عنوان انیمه"
-                    />
-                  </Field>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Field label="عنوان">
+                      <Input
+                        value={draft.title}
+                        onChange={(e) => setDraft((p) => ({ ...p, title: e.target.value }))}
+                        placeholder="عنوان انیمه"
+                      />
+                    </Field>
+                    <Field label="عنوان Romaji">
+                      <Input
+                        value={draft.title_romaji}
+                        onChange={(e) => setDraft((p) => ({ ...p, title_romaji: e.target.value }))}
+                        placeholder="مثلاً Shingeki no Kyojin"
+                        dir="ltr"
+                        className="text-left"
+                      />
+                    </Field>
+                  </div>
                   <Field label="خلاصه داستان">
                     <Textarea
                       className="min-h-28 leading-6"
@@ -1757,26 +2262,17 @@ const AdminAnimeEdit = () => {
                       </Select>
                     </Field>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <Field label="تعداد قسمت‌ها">
                       <Input
                         value={draft.episodes_count}
                         onChange={(e) =>
                           setDraft((p) => ({ ...p, episodes_count: e.target.value }))
                         }
-                        placeholder="مثلاً: 12"
+                        placeholder="12"
                         inputMode="numeric"
                       />
                     </Field>
-                    <Field label="استودیو (متن legacy)">
-                      <Input
-                        value={draft.studio}
-                        onChange={(e) => setDraft((p) => ({ ...p, studio: e.target.value }))}
-                        placeholder="نام استودیو"
-                      />
-                    </Field>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <Field label="سال">
                       <Input
                         value={draft.year}
@@ -1952,24 +2448,26 @@ const AdminAnimeEdit = () => {
                 </AdminSection>
 
                 <AdminSection title="تصاویر" description="URL پoster و تصویر hero">
-                  <Field label="کاور (poster)">
-                    <Input
-                      value={draft.cover_image}
-                      onChange={(e) => setDraft((p) => ({ ...p, cover_image: e.target.value }))}
-                      placeholder="https://..."
-                      className="font-mono text-xs"
-                    />
-                  </Field>
-                  <Field label="تصویر ویژه (hero)">
-                    <Input
-                      value={draft.featured_image}
-                      onChange={(e) =>
-                        setDraft((p) => ({ ...p, featured_image: e.target.value }))
-                      }
-                      placeholder="https://..."
-                      className="font-mono text-xs"
-                    />
-                  </Field>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Field label="کاور (poster)">
+                      <Input
+                        value={draft.cover_image}
+                        onChange={(e) => setDraft((p) => ({ ...p, cover_image: e.target.value }))}
+                        placeholder="https://..."
+                        className="font-mono text-xs"
+                      />
+                    </Field>
+                    <Field label="تصویر ویژه (hero)">
+                      <Input
+                        value={draft.featured_image}
+                        onChange={(e) =>
+                          setDraft((p) => ({ ...p, featured_image: e.target.value }))
+                        }
+                        placeholder="https://..."
+                        className="font-mono text-xs"
+                      />
+                    </Field>
+                  </div>
                 </AdminSection>
               </>
             )}
@@ -2071,47 +2569,49 @@ const AdminAnimeEdit = () => {
                   title="استودیوها و ژانرها"
                   description="روابط many-to-many — بعد از ذخیره انیمه اعمال می‌شوند"
                 >
-                <div>
-                  <p className="text-xs font-medium text-foreground mb-2">استودیوها</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {allStudios.map((s) => {
-                      const slug = String(s.slug)
-                      return (
-                        <ChipToggle
-                          key={slug}
-                          active={selectedStudioSlugs.has(slug)}
-                          onClick={() => toggleStudio(slug)}
-                        >
-                          {s.name || s.slug}
-                        </ChipToggle>
-                      )
-                    })}
-                    {allStudios.length === 0 && (
-                      <p className="text-sm text-muted-foreground">استودیویی ثبت نشده</p>
-                    )}
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-xs font-medium text-foreground mb-2">استودیوها</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {allStudios.map((s) => {
+                          const slug = String(s.slug)
+                          return (
+                            <ChipToggle
+                              key={slug}
+                              active={selectedStudioSlugs.has(slug)}
+                              onClick={() => toggleStudio(slug)}
+                            >
+                              {s.name || s.slug}
+                            </ChipToggle>
+                          )
+                        })}
+                        {allStudios.length === 0 && (
+                          <p className="text-sm text-muted-foreground">استودیویی ثبت نشده</p>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-foreground mb-2">ژانرها</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {genreList.map((g) => {
+                          const slug = String(g.slug)
+                          return (
+                            <ChipToggle
+                              key={slug}
+                              active={selectedGenreSlugs.has(slug)}
+                              onClick={() => toggleGenre(slug)}
+                            >
+                              {g.name_fa || g.name_en || g.slug}
+                            </ChipToggle>
+                          )
+                        })}
+                        {genreList.length === 0 && (
+                          <p className="text-sm text-muted-foreground">ژانری ثبت نشده</p>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-foreground mb-2">ژانرها</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {genreList.map((g) => {
-                      const slug = String(g.slug)
-                      return (
-                        <ChipToggle
-                          key={slug}
-                          active={selectedGenreSlugs.has(slug)}
-                          onClick={() => toggleGenre(slug)}
-                        >
-                          {g.name_fa || g.name_en || g.slug}
-                        </ChipToggle>
-                      )
-                    })}
-                    {genreList.length === 0 && (
-                      <p className="text-sm text-muted-foreground">ژانری ثبت نشده</p>
-                    )}
-                  </div>
-                </div>
-              </AdminSection>
+                </AdminSection>
               </>
             )}
 
@@ -2128,8 +2628,8 @@ const AdminAnimeEdit = () => {
                     title={editingEpisodeId ? 'ویرایش قسمت' : 'افزودن قسمت'}
                     description={`${episodes.length} قسمت ثبت شده`}
                   >
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <Field label="شماره قسمت">
+                    <div className="grid grid-cols-1 sm:grid-cols-[7rem_minmax(0,1fr)_auto] gap-3 items-end">
+                      <Field label="شماره">
                         <Input
                           value={String(episodeDraft.episode_number)}
                           onChange={(e) =>
@@ -2141,44 +2641,50 @@ const AdminAnimeEdit = () => {
                           inputMode="numeric"
                         />
                       </Field>
-                      <Field label="لینک دانلود">
-                        <Input
+                      <Field label="فایل MKV">
+                        <TelegramFileSearchSelect
+                          fileExtension="mkv"
                           value={episodeDraft.download_link}
-                          onChange={(e) =>
-                            setEpisodeDraft((p) => ({ ...p, download_link: e.target.value }))
+                          onChange={(download_link) =>
+                            setEpisodeDraft((p) => ({ ...p, download_link }))
                           }
-                          placeholder="https://..."
-                          className="font-mono text-xs"
+                          disabled={saving}
                         />
                       </Field>
-                    </div>
-                    <div className="flex gap-2">
-                      {editingEpisodeId ? (
-                        <>
+                      <FieldActions>
+                        {editingEpisodeId ? (
+                          <>
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              disabled={saving}
+                              className={formActionButtonClass}
+                              onClick={onCancelEditEpisode}
+                            >
+                              انصراف
+                            </Button>
+                            <Button
+                              type="button"
+                              disabled={saving}
+                              className={formActionButtonClass}
+                              onClick={onSaveEpisodeEdit}
+                            >
+                              ذخیره
+                            </Button>
+                          </>
+                        ) : (
                           <Button
                             type="button"
                             variant="secondary"
                             disabled={saving}
-                            onClick={onCancelEditEpisode}
+                            className={cn('gap-1.5', formActionButtonClass)}
+                            onClick={onAddEpisode}
                           >
-                            انصراف
+                            <Download01Icon className="w-4 h-4" />
+                            افزودن
                           </Button>
-                          <Button type="button" disabled={saving} onClick={onSaveEpisodeEdit}>
-                            ذخیره تغییرات
-                          </Button>
-                        </>
-                      ) : (
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          disabled={saving}
-                          className="gap-1.5"
-                          onClick={onAddEpisode}
-                        >
-                          <Download01Icon className="w-4 h-4" />
-                          افزودن قسمت
-                        </Button>
-                      )}
+                        )}
+                      </FieldActions>
                     </div>
                     <div className="space-y-2 pt-2 border-t border-border/60">
                       {episodesForList.map((e) => (
@@ -2190,7 +2696,7 @@ const AdminAnimeEdit = () => {
                           notifyLoading={notifyEpisodeNumber === (e.episode_number ?? 0)}
                           onNotify={() => onNotifyEpisodeRelease(e.episode_number ?? 0)}
                           onEdit={() => onEditEpisode(e)}
-                          onDelete={() => onDeleteEpisode(e)}
+                          onDelete={() => onRequestDeleteEpisode(e)}
                         />
                       ))}
                       {episodes.length === 0 && (
@@ -2207,8 +2713,8 @@ const AdminAnimeEdit = () => {
                     title={editingSubtitleId ? 'ویرایش زیرنویس' : 'افزودن زیرنویس'}
                     description={`${subtitles.length} زیرنویس ثبت شده`}
                   >
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <Field label="شماره قسمت">
+                    <div className="grid grid-cols-1 sm:grid-cols-[7rem_minmax(0,1fr)_auto] gap-3 items-end">
+                      <Field label="شماره">
                         <Input
                           value={String(subtitleDraft.episode_number)}
                           onChange={(e) =>
@@ -2220,44 +2726,50 @@ const AdminAnimeEdit = () => {
                           inputMode="numeric"
                         />
                       </Field>
-                      <Field label="لینک زیرنویس">
-                        <Input
+                      <Field label="فایل ZIP">
+                        <TelegramFileSearchSelect
+                          fileExtension="zip"
                           value={subtitleDraft.subtitle_link}
-                          onChange={(e) =>
-                            setSubtitleDraft((p) => ({ ...p, subtitle_link: e.target.value }))
+                          onChange={(subtitle_link) =>
+                            setSubtitleDraft((p) => ({ ...p, subtitle_link }))
                           }
-                          placeholder="https://..."
-                          className="font-mono text-xs"
+                          disabled={saving}
                         />
                       </Field>
-                    </div>
-                    <div className="flex gap-2">
-                      {editingSubtitleId ? (
-                        <>
+                      <FieldActions>
+                        {editingSubtitleId ? (
+                          <>
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              disabled={saving}
+                              className={formActionButtonClass}
+                              onClick={onCancelEditSubtitle}
+                            >
+                              انصراف
+                            </Button>
+                            <Button
+                              type="button"
+                              disabled={saving}
+                              className={formActionButtonClass}
+                              onClick={onSaveSubtitleEdit}
+                            >
+                              ذخیره
+                            </Button>
+                          </>
+                        ) : (
                           <Button
                             type="button"
                             variant="secondary"
                             disabled={saving}
-                            onClick={onCancelEditSubtitle}
+                            className={cn('gap-1.5', formActionButtonClass)}
+                            onClick={onAddSubtitle}
                           >
-                            انصراف
+                            <Link01Icon className="w-4 h-4" />
+                            افزودن
                           </Button>
-                          <Button type="button" disabled={saving} onClick={onSaveSubtitleEdit}>
-                            ذخیره تغییرات
-                          </Button>
-                        </>
-                      ) : (
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          disabled={saving}
-                          className="gap-1.5"
-                          onClick={onAddSubtitle}
-                        >
-                          <Link01Icon className="w-4 h-4" />
-                          افزودن زیرنویس
-                        </Button>
-                      )}
+                        )}
+                      </FieldActions>
                     </div>
                     <div className="space-y-2 pt-2 border-t border-border/60">
                       {subtitlesForList.map((s) => (
@@ -2267,7 +2779,7 @@ const AdminAnimeEdit = () => {
                           subtitle={s.subtitle_link ?? ''}
                           disabled={saving}
                           onEdit={() => onEditSubtitle(s)}
-                          onDelete={() => onDeleteSubtitle(s)}
+                          onDelete={() => onRequestDeleteSubtitle(s)}
                         />
                       ))}
                       {subtitles.length === 0 && (
@@ -2281,104 +2793,145 @@ const AdminAnimeEdit = () => {
 
                 {mediaSubTab === 'packs' && (
                   <div className="space-y-4">
-                  <AdminSection
-                    title="پک تمام قسمت‌ها"
-                    description="لینک دانلود یک‌جای همه قسمت‌های این انیمه"
-                  >
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <Field label="عنوان (اختیاری)">
-                        <Input
-                          value={episodePackDraft.title}
-                          onChange={(e) =>
-                            setEpisodePackDraft((p) => ({ ...p, title: e.target.value }))
-                          }
-                          placeholder="پک کامل فصل ۱"
-                        />
-                      </Field>
-                      <Field label="لینک پک">
-                        <Input
-                          value={episodePackDraft.download_link}
-                          onChange={(e) =>
-                            setEpisodePackDraft((p) => ({ ...p, download_link: e.target.value }))
-                          }
-                          placeholder="https://..."
-                          className="font-mono text-xs"
-                        />
-                      </Field>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Button type="button" disabled={saving} onClick={onSaveEpisodePack}>
-                        ذخیره پک قسمت‌ها
-                      </Button>
-                      {(episodePackDraft.download_link.trim() ||
-                        anime?.episode_pack_link) && (
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          disabled={saving}
-                          onClick={onClearEpisodePack}
-                        >
-                          حذف پک
-                        </Button>
-                      )}
-                    </div>
-                  </AdminSection>
+                    <AdminSection
+                      title={editingEpisodePack ? 'ویرایش پک' : 'افزودن پک قسمت‌ها'}
+                      description={`${hasEpisodePack ? 1 : 0} پک ثبت شده`}
+                    >
+                      <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,11rem)_minmax(0,1fr)_auto] gap-3 items-end">
+                        <Field label="عنوان">
+                          <Input
+                            value={episodePackDraft.title}
+                            onChange={(e) =>
+                              setEpisodePackDraft((p) => ({ ...p, title: e.target.value }))
+                            }
+                            placeholder="پک کامل فصل ۱"
+                          />
+                        </Field>
+                        <Field label="پک فایل">
+                          <FilePackSearchSelect
+                            packs={allFilePacks}
+                            value={episodePackDraft.download_link}
+                            onChange={(download_link) =>
+                              setEpisodePackDraft((p) => ({ ...p, download_link }))
+                            }
+                            onPickPack={(pack) => {
+                              setEpisodePackDraft((p) => ({
+                                ...p,
+                                title: p.title.trim() ? p.title : pack.title,
+                              }))
+                            }}
+                            disabled={saving}
+                          />
+                        </Field>
+                        <FieldActions>
+                          {editingEpisodePack ? (
+                            <>
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                disabled={saving}
+                                className={formActionButtonClass}
+                                onClick={onCancelEditEpisodePack}
+                              >
+                                انصراف
+                              </Button>
+                              <Button
+                                type="button"
+                                disabled={saving}
+                                className={formActionButtonClass}
+                                onClick={onSaveEpisodePackEdit}
+                              >
+                                ذخیره
+                              </Button>
+                            </>
+                          ) : (
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              disabled={saving || hasEpisodePack}
+                              className={formActionButtonClass}
+                              onClick={onAddEpisodePack}
+                            >
+                              افزودن
+                            </Button>
+                          )}
+                        </FieldActions>
+                      </div>
+                      <div className="space-y-2 pt-2 border-t border-border/60">
+                        {hasEpisodePack ? (
+                          <MediaListRow
+                            title={anime?.episode_pack_title?.trim() || 'پک قسمت‌ها'}
+                            subtitle={anime?.episode_pack_link ?? ''}
+                            disabled={saving}
+                            onEdit={onEditEpisodePack}
+                            onDelete={onClearEpisodePack}
+                          />
+                        ) : (
+                          <p className="text-sm text-muted-foreground py-4 text-center">
+                            پکی ثبت نشده
+                          </p>
+                        )}
+                      </div>
+                    </AdminSection>
 
-                  <AdminSection
-                    title={editingSubtitlePackId ? 'ویرایش پک' : 'افزودن پک زیرنویس'}
-                    description={`${subtitlePacks.length} پک ثبت شده`}
-                  >
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <Field label="عنوان">
-                        <Input
-                          value={subtitlePackDraft.title}
-                          onChange={(e) =>
-                            setSubtitlePackDraft((p) => ({ ...p, title: e.target.value }))
-                          }
-                          placeholder="پک فصل ۱"
-                        />
-                      </Field>
-                      <Field label="لینک پک">
-                        <Input
-                          value={subtitlePackDraft.subtitle_link}
-                          onChange={(e) =>
-                            setSubtitlePackDraft((p) => ({ ...p, subtitle_link: e.target.value }))
-                          }
-                          placeholder="https://..."
-                          className="font-mono text-xs"
-                        />
-                      </Field>
-                    </div>
-                    <div className="flex gap-2">
-                      {editingSubtitlePackId ? (
-                        <>
-                          <Button
-                            type="button"
-                            variant="secondary"
+                    <AdminSection
+                      title={editingSubtitlePackId ? 'ویرایش پک' : 'افزودن پک زیرنویس'}
+                      description={`${subtitlePacks.length} پک ثبت شده`}
+                    >
+                      <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,11rem)_minmax(0,1fr)_auto] gap-3 items-end">
+                        <Field label="عنوان">
+                          <Input
+                            value={subtitlePackDraft.title}
+                            onChange={(e) =>
+                              setSubtitlePackDraft((p) => ({ ...p, title: e.target.value }))
+                            }
+                            placeholder="پک فصل ۱"
+                          />
+                        </Field>
+                        <Field label="فایل ZIP">
+                          <TelegramFileSearchSelect
+                            fileExtension="zip"
+                            value={subtitlePackDraft.subtitle_link}
+                            onChange={(subtitle_link) =>
+                              setSubtitlePackDraft((p) => ({ ...p, subtitle_link }))
+                            }
                             disabled={saving}
-                            onClick={onCancelEditSubtitlePack}
-                          >
-                            انصراف
-                          </Button>
-                          <Button
-                            type="button"
-                            disabled={saving}
-                            onClick={onSaveSubtitlePackEdit}
-                          >
-                            ذخیره تغییرات
-                          </Button>
-                        </>
-                      ) : (
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          disabled={saving}
-                          onClick={onAddSubtitlePack}
-                        >
-                          افزودن پک
-                        </Button>
-                      )}
-                    </div>
+                          />
+                        </Field>
+                        <FieldActions>
+                          {editingSubtitlePackId ? (
+                            <>
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                disabled={saving}
+                                className={formActionButtonClass}
+                                onClick={onCancelEditSubtitlePack}
+                              >
+                                انصراف
+                              </Button>
+                              <Button
+                                type="button"
+                                disabled={saving}
+                                className={formActionButtonClass}
+                                onClick={onSaveSubtitlePackEdit}
+                              >
+                                ذخیره
+                              </Button>
+                            </>
+                          ) : (
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              disabled={saving || hasSubtitlePack}
+                              className={formActionButtonClass}
+                              onClick={onAddSubtitlePack}
+                            >
+                              افزودن
+                            </Button>
+                          )}
+                        </FieldActions>
+                      </div>
                     <div className="space-y-2 pt-2 border-t border-border/60">
                       {subtitlePacks.map((p) => (
                         <MediaListRow
@@ -2404,7 +2957,7 @@ const AdminAnimeEdit = () => {
 
             {activeTab === 'translators' && (
               <AdminSection title="مترجم‌های این اثر" description="اتصال مترجم به انیمه">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_8rem_auto] gap-3 items-end">
                   <Field label="مترجم">
                     <TranslatorSearchSelect
                       translators={allTranslators}
@@ -2435,17 +2988,19 @@ const AdminAnimeEdit = () => {
                       </SelectContent>
                     </Select>
                   </Field>
+                  <FieldActions>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={saving}
+                      className={cn('gap-1.5', formActionButtonClass)}
+                      onClick={onAddTranslatorLink}
+                    >
+                      <UserIcon className="w-4 h-4" />
+                      افزودن
+                    </Button>
+                  </FieldActions>
                 </div>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={saving}
-                  className="gap-1.5"
-                  onClick={onAddTranslatorLink}
-                >
-                  <UserIcon className="w-4 h-4" />
-                  افزودن مترجم
-                </Button>
                 <div className="space-y-2 pt-2 border-t border-border/60">
                   {translatorLinks.map((l) => {
                     const isEditing = editingTranslatorLinkId === l.id
@@ -2455,64 +3010,60 @@ const AdminAnimeEdit = () => {
                         className="rounded-xl border border-border bg-card/40 p-3 space-y-3"
                       >
                         {isEditing ? (
-                          <>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                              <Field label="مترجم">
-                                <TranslatorSearchSelect
-                                  translators={allTranslators}
-                                  value={editingTranslatorLinkDraft.translator_id}
-                                  onChange={(translator_id) =>
-                                    setEditingTranslatorLinkDraft((p) => ({
-                                      ...p,
-                                      translator_id,
-                                    }))
-                                  }
-                                  disabled={saving}
-                                />
-                              </Field>
-                              <Field label="نقش">
-                                <Select
-                                  value={normalizeTranslatorLinkRole(
-                                    editingTranslatorLinkDraft.role
-                                  )}
-                                  onValueChange={(role) =>
-                                    setEditingTranslatorLinkDraft((p) => ({ ...p, role }))
-                                  }
-                                  disabled={saving}
-                                >
-                                  <SelectTrigger className="h-10">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {TRANSLATOR_LINK_ROLES.map((role) => (
-                                      <SelectItem key={role} value={role}>
-                                        {role}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </Field>
-                            </div>
-                            <div className="flex flex-wrap items-center justify-end gap-1.5">
+                          <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_8rem_auto] gap-3 items-end">
+                            <Field label="مترجم">
+                              <TranslatorSearchSelect
+                                translators={allTranslators}
+                                value={editingTranslatorLinkDraft.translator_id}
+                                onChange={(translator_id) =>
+                                  setEditingTranslatorLinkDraft((p) => ({
+                                    ...p,
+                                    translator_id,
+                                  }))
+                                }
+                                disabled={saving}
+                              />
+                            </Field>
+                            <Field label="نقش">
+                              <Select
+                                value={normalizeTranslatorLinkRole(editingTranslatorLinkDraft.role)}
+                                onValueChange={(role) =>
+                                  setEditingTranslatorLinkDraft((p) => ({ ...p, role }))
+                                }
+                                disabled={saving}
+                              >
+                                <SelectTrigger className="h-10">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {TRANSLATOR_LINK_ROLES.map((role) => (
+                                    <SelectItem key={role} value={role}>
+                                      {role}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </Field>
+                            <FieldActions>
                               <Button
                                 type="button"
-                                size="sm"
                                 disabled={saving}
+                                className={formActionButtonClass}
                                 onClick={onSaveTranslatorLinkEdit}
                               >
                                 ذخیره
                               </Button>
                               <Button
                                 type="button"
-                                size="sm"
                                 variant="secondary"
                                 disabled={saving}
+                                className={formActionButtonClass}
                                 onClick={onCancelEditTranslatorLink}
                               >
                                 انصراف
                               </Button>
-                            </div>
-                          </>
+                            </FieldActions>
+                          </div>
                         ) : (
                           <div className="flex items-center justify-between gap-3">
                             <div className="min-w-0 space-y-1">
