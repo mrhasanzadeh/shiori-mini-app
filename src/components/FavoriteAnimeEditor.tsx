@@ -11,6 +11,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
+import { BidiText } from '@/components/BidiText'
 
 const DISMISS_DRAG_PX = 80
 const MAX_UPWARD_DRAG_PX = 24
@@ -168,7 +169,9 @@ const FavoriteAnimeEditor = ({
           </div>
 
           <SheetHeader className="space-y-1 border-b-0 px-4 pb-0 pt-0 text-right">
-            <SheetTitle className="line-clamp-2 text-base leading-7">{title}</SheetTitle>
+            <SheetTitle className="line-clamp-2 text-base leading-7">
+              <BidiText>{title}</BidiText>
+            </SheetTitle>
             <SheetDescription>پیشرفت تماشا و امتیاز شخصی</SheetDescription>
           </SheetHeader>
         </div>

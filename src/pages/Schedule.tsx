@@ -1,6 +1,7 @@
 import { useMemo, useState, type MouseEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AnimePrefetchLink from '../components/AnimePrefetchLink'
+import { BidiText } from '../components/BidiText'
 import { Calendar01Icon, Alert02Icon } from 'hugeicons-react'
 import type { GenreItem } from '../services/supabaseAnime'
 import { Button } from '@/components/ui/button'
@@ -284,9 +285,12 @@ const Schedule = () => {
                 ) : null}
 
                 <div className="absolute left-0 bottom-0 p-2 pt-10">
-                  <h3 className="text-xs text-left font-semibold text-white line-clamp-2 drop-shadow-sm">
+                  <BidiText
+                    as="h3"
+                    className="text-xs text-left font-semibold text-white line-clamp-2 drop-shadow-sm"
+                  >
                     {anime.title}
-                  </h3>
+                  </BidiText>
                   <p className="text-[11px] text-white/75 mt-0.5 text-left">
                     {anime.time ? (
                       <>

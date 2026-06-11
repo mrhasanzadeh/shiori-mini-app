@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { AlarmClockIcon } from 'hugeicons-react'
+import { BidiText } from '../components/BidiText'
 import { useNotifications } from '../hooks/useNotifications'
 import { formatNotificationTime } from '../services/supabaseNotifications'
 
@@ -43,14 +44,18 @@ const Notifications = () => {
               <>
                 <div className="flex-1 min-w-0 mt-1">
                   <div className="flex items-center gap-2">
-                    <h3 className="font-medium text-foreground">{notification.title}</h3>
+                    <BidiText as="h3" mode="auto" className="font-medium text-foreground">
+                      {notification.title}
+                    </BidiText>
                     {!notification.is_read && (
                       <span className="px-2 py-0.5 bg-primary text-primary-foreground text-xs rounded-full">
                         جدید
                       </span>
                     )}
                   </div>
-                  <p className="text-muted-foreground text-sm mt-1">{notification.message}</p>
+                  <BidiText as="p" mode="auto" className="text-muted-foreground text-sm mt-1">
+                    {notification.message}
+                  </BidiText>
                   <span className="text-muted-foreground text-xs mt-2 block">
                     {formatNotificationTime(notification.created_at)}
                   </span>

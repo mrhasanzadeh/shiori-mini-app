@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { listNotificationCampaignsAdmin } from '../services/supabaseNotificationsAdmin'
 import type { NotificationCampaignRow } from '../services/supabaseNotifications'
+import { BidiText } from '@/components/BidiText'
 
 const formatDateTime = (iso: string) => {
   const d = new Date(iso)
@@ -95,8 +96,12 @@ const AdminNotifications = () => {
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
-                  <p className="font-semibold text-foreground">{row.title}</p>
-                  <p className="text-sm text-muted-foreground mt-0.5">{row.message}</p>
+                  <BidiText mode="auto" className="font-semibold text-foreground">
+                    {row.title}
+                  </BidiText>
+                  <BidiText mode="auto" className="text-sm text-muted-foreground mt-0.5">
+                    {row.message}
+                  </BidiText>
                 </div>
                 <Badge variant="secondary">قسمت {row.episode_number ?? '—'}</Badge>
               </div>
@@ -107,7 +112,7 @@ const AdminNotifications = () => {
                     className="inline-flex items-center gap-1 text-primary hover:underline"
                   >
                     <Film className="w-3.5 h-3.5" />
-                    {row.anime_title}
+                    <BidiText>{row.anime_title}</BidiText>
                   </Link>
                 )}
                 <span>inbox: {row.recipient_count.toLocaleString('fa-IR')} نفر</span>

@@ -6,6 +6,7 @@ import * as supa from '../services/supabaseAnime'
 import type { GenreItem } from '../services/supabaseAnime'
 import { Button } from '@/components/ui/button'
 import AnimePrefetchLink from '../components/AnimePrefetchLink'
+import { BidiText } from '../components/BidiText'
 import { useInfiniteAnimeSearchQuery } from '../hooks/queries/useAnimeQueries'
 import frieren from '../assets/images/frieren-03.webp'
 
@@ -64,7 +65,9 @@ const AnimeGridCard = ({ anime }: { anime: UiAnimeCard }) => {
           </span>
         )}
         <div className="absolute inset-x-0 bottom-0 p-2.5 pt-10">
-          <h3 className="text-xs text-left font-semibold text-white line-clamp-2 leading-2">{anime.title}</h3>
+          <BidiText as="h3" className="text-xs text-left font-semibold text-white line-clamp-2 leading-2">
+            {anime.title}
+          </BidiText>
           {genres.length > 0 ? (
             <div className="flex flex-wrap gap-1 mt-1 justify-end">
               {genres.map((g) => (

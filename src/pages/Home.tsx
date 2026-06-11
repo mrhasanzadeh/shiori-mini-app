@@ -11,6 +11,7 @@ import {
   SparklesIcon,
 } from 'hugeicons-react'
 import type { GenreItem } from '../services/supabaseAnime'
+import { BidiText } from '@/components/BidiText'
 import { Button } from '@/components/ui/button'
 import {
   filterAnimeCardsBySection,
@@ -85,7 +86,9 @@ const PosterCardContent = ({ anime }: { anime: Anime }) => {
           </span>
         )}
         <div className="absolute left-0 bottom-0 p-2.5 pt-10">
-          <h3 className="text-xs text-left font-semibold text-white line-clamp-2 leading-2">{anime.title}</h3>
+          <BidiText as="h3" className="text-xs text-left font-semibold text-white line-clamp-2 leading-2">
+            {anime.title}
+          </BidiText>
           {genres.length > 0 ? (
             <div className="flex flex-wrap gap-1 mt-1 justify-end">
               {genres.map((g) => (
@@ -320,9 +323,12 @@ const Home = () => {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
                     <div className="absolute left-0 bottom-0 p-4">
-                      <h3 className="text-base font-bold text-white text-left line-clamp-2 leading-6">
+                      <BidiText
+                        as="h3"
+                        className="text-base font-bold text-white text-center line-clamp-2 leading-6"
+                      >
                         {anime.title}
-                      </h3>
+                      </BidiText>
                       {(anime.genres || []).length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-1 justify-end">
                           {(anime.genres || []).slice(0, 3).map((g) => (

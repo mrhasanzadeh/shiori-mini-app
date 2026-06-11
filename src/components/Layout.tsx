@@ -128,6 +128,10 @@ const Layout = ({ children }: LayoutProps) => {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
+  useEffect(() => {
+    setIsScrolled(false)
+  }, [location.pathname])
+
   const isActive = (path: string) => {
     return location.pathname === path
   }

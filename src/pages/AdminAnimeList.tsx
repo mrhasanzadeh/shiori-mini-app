@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
+import { BidiText } from '@/components/BidiText'
 
 type FilterKey = 'all' | 'has-episodes' | 'no-episodes' | 'featured'
 type ViewMode = 'list' | 'grid'
@@ -79,7 +80,9 @@ const AnimeListRow = ({
 
       <div className="min-w-0 flex-1 space-y-1">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-foreground line-clamp-1 text-sm font-semibold">{anime.title}</span>
+          <BidiText className="text-foreground line-clamp-1 text-sm font-semibold">
+            {anime.title}
+          </BidiText>
           {anime.isFeatured ? (
             <Badge variant="default" className="gap-1 border-primary-400/30 bg-primary-600/25">
               <Star className="h-3 w-3" />
@@ -95,9 +98,9 @@ const AnimeListRow = ({
         </div>
         <div className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
           {anime.title_romaji ? (
-            <span className="line-clamp-1 font-mono text-[11px]" dir="ltr">
+            <BidiText className="line-clamp-1 font-mono text-[11px] text-muted-foreground">
               {anime.title_romaji}
-            </span>
+            </BidiText>
           ) : null}
           <span className="font-mono">{formatLabel(anime.format)}</span>
           {anime.year ? <span>{anime.year}</span> : null}
@@ -165,7 +168,9 @@ const AnimeGridCard = ({
         </div>
 
         <div className="absolute left-0 bottom-0 p-2.5 pt-10">
-          <h3 className="text-xs font-semibold text-white text-left line-clamp-2 leading-5">{anime.title}</h3>
+          <BidiText as="h3" className="text-xs font-semibold text-white text-left line-clamp-2 leading-5">
+            {anime.title}
+          </BidiText>
           {genres.length > 0 ? (
             <div className="mt-1 flex flex-wrap justify-end gap-1">
               {genres.map((g) => (

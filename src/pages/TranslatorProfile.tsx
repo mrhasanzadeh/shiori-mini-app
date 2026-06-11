@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import AnimePrefetchLink from '../components/AnimePrefetchLink'
+import { BidiText } from '../components/BidiText'
 import { UserIcon } from 'hugeicons-react'
 import * as supa from '../services/supabaseAnime'
 import type { GenreItem } from '../services/supabaseAnime'
@@ -51,7 +52,9 @@ const AnimeGridCard = ({ anime }: { anime: supa.AnimeCard }) => {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
         <div className="absolute left-0 bottom-0 p-2.5 pt-10">
-          <h3 className="text-xs font-semibold text-white text-left line-clamp-2">{anime.title}</h3>
+          <BidiText as="h3" className="text-xs font-semibold text-white text-left line-clamp-2">
+            {anime.title}
+          </BidiText>
           {genres.length > 0 && (
             <div className="flex flex-wrap gap-0.5 mt-1 justify-end">
               {genres.map((g) => (

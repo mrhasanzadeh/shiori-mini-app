@@ -47,6 +47,7 @@ import { format as formatDate } from 'date-fns'
 import { invalidateAnimeQueries, invalidateAnimeDetailQuery } from '../hooks/queries/invalidate'
 import { formatSupabaseError } from '../services/supabaseAnime'
 import { cn } from '@/lib/utils'
+import { BidiText } from '@/components/BidiText'
 
 type DraftAnime = {
   id?: number | string
@@ -308,7 +309,7 @@ const AnimeSearchSelect = ({
                     setOpen(false)
                   }}
                 >
-                  {item.title}
+                  <BidiText className="block">{item.title}</BidiText>
                 </button>
               )
             })

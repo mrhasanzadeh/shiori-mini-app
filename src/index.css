@@ -279,4 +279,10 @@
   .scrollbar-none::-webkit-scrollbar {
     display: none;
   }
+
+  /** Latin / English strings in RTL UI — keeps trailing ? ! . at the visual end */
+  .bidi-latin {
+    direction: ltr;
+    unicode-bidi: isolate;
+  }
 }

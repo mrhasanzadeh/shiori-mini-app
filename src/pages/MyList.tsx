@@ -7,6 +7,7 @@ import { useUserAnimeList } from '../hooks/useUserAnimeList'
 import { useTelegramApp } from '../hooks/useTelegramApp'
 import { Button } from '@/components/ui/button'
 import AnimePrefetchLink from '../components/AnimePrefetchLink'
+import { BidiText } from '../components/BidiText'
 import { useFavoriteAnimeDetailsQueries } from '../hooks/queries/useAnimeQueries'
 import emptyListImage from '../assets/images/frieren-03.webp'
 import type { GenreItem } from '../services/supabaseAnime'
@@ -152,7 +153,9 @@ const FavoriteGridCard = ({
           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-transparent" />
 
           <div className="absolute inset-x-0 bottom-0 p-2.5 pt-10">
-            <h3 className="text-xs font-semibold text-left text-white line-clamp-1 leading-2">{anime.title}</h3>
+            <BidiText as="h3" className="text-xs font-semibold text-left text-white line-clamp-1 leading-2">
+              {anime.title}
+            </BidiText>
             {genres.length > 0 ? (
               <div className="mt-1 flex flex-wrap gap-1 justify-end">
                 {genres.map((g) => (
@@ -205,7 +208,9 @@ const FavoriteListRow = ({
           className="block active:scale-[0.99] transition-transform"
           aria-label={`مشاهده ${anime.title}`}
         >
-          <p className="text-sm font-semibold text-foreground line-clamp-1 leading-6">{anime.title}</p>
+          <BidiText as="p" className="text-sm font-semibold text-foreground line-clamp-1 leading-6">
+            {anime.title}
+          </BidiText>
         </AnimePrefetchLink>
 
         <div className="flex items-center justify-between gap-2">

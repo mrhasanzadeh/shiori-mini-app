@@ -2,6 +2,7 @@ import { Routes, Route } from 'react-router-dom'
 import { useEffect, lazy, Suspense } from 'react'
 import WebApp from '@twa-dev/sdk'
 import Layout from './components/Layout'
+import ScrollToTop from './components/ScrollToTop'
 import AdminGate from './components/AdminGate'
 import { useTheme } from './utils/theme'
 import { useTelegramApp } from './hooks/useTelegramApp'
@@ -54,6 +55,7 @@ function App() {
 
   return (
     <Layout>
+      <ScrollToTop />
       <Suspense
         fallback={
           <div className="flex items-center justify-center h-screen">

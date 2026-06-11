@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import AnimePrefetchLink from '../components/AnimePrefetchLink'
+import { BidiText } from '../components/BidiText'
 import FavoriteAnimeEditor from '../components/FavoriteAnimeEditor'
 import {
   FavouriteIcon,
@@ -560,7 +561,9 @@ const SimilarPosterCard = ({
       />
       <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
       <div className="absolute inset-x-0 bottom-0 p-2 pt-10">
-        <h3 className="text-xs font-semibold text-white line-clamp-2 leading-5">{title}</h3>
+        <BidiText as="h3" className="text-xs font-semibold text-white line-clamp-2 leading-5">
+          {title}
+        </BidiText>
       </div>
     </div>
   </AnimePrefetchLink>
@@ -949,16 +952,16 @@ const AnimeDetail = () => {
           </div>
 
           <div className="relative w-full mt-3 px-10">
-            <h1 className="text-lg font-bold text-foreground text-center line-clamp-3 leading-7">
+            <BidiText as="h1" className="text-lg font-bold text-foreground text-center line-clamp-3 leading-7">
               {anime.title}
-            </h1>
+            </BidiText>
             {anime.title_romaji ? (
-              <p
+              <BidiText
+                as="p"
                 className="text-muted-foreground text-center text-sm leading-5 line-clamp-2"
-                dir="ltr"
               >
                 {anime.title_romaji}
-              </p>
+              </BidiText>
             ) : null}
             <button
               type="button"

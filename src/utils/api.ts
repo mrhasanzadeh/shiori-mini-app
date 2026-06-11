@@ -122,6 +122,10 @@ export const filterAnimeCardsBySection = (
     const allowed = new Set(['TV', 'ONA', 'SPECIAL', 'MOVIE'])
     return mapped.filter((a) => allowed.has(normalizeAnimeFormat(a.format)))
   }
+  if (section === 'latest') {
+    const allowed = new Set(['TV', 'ONA', 'OVA', 'SPECIAL'])
+    return mapped.filter((a) => allowed.has(normalizeAnimeFormat(a.format)))
+  }
   return mapped
 }
 

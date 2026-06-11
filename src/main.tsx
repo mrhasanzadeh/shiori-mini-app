@@ -6,6 +6,10 @@ import App from './App'
 import { queryClient } from './lib/queryClient'
 import './index.css'
 
+if ('scrollRestoration' in history) {
+  history.scrollRestoration = 'manual'
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
