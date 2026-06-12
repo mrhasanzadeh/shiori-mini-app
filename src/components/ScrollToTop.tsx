@@ -1,12 +1,6 @@
 import { useLayoutEffect } from 'react'
 import { useLocation } from 'react-router-dom'
-
-/** Reset window scroll — Telegram WebView sometimes keeps body/html scroll separately. */
-export const resetWindowScroll = () => {
-  window.scrollTo(0, 0)
-  document.documentElement.scrollTop = 0
-  document.body.scrollTop = 0
-}
+import { resetWindowScroll } from '../utils/resetWindowScroll'
 
 /**
  * Scroll to top on route change. Without this, SPA navigation keeps the previous

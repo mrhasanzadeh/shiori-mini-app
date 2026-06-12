@@ -197,8 +197,11 @@ const AdminAnimeList = () => {
   const [view, setView] = useState<ViewMode>(() => readStoredView())
 
   const { data, isLoading, isError, error, refetch } = useAdminAnimeListQuery()
-  const list = data?.list ?? []
-  const animeIdsWithEpisodes = data?.animeIdsWithEpisodes ?? new Set<string>()
+  const list = useMemo(() => data?.list ?? [], [data?.list])
+  const animeIdsWithEpisodes = useMemo(
+    () => data?.animeIdsWithEpisodes ?? new Set<string>(),
+    [data?.animeIdsWithEpisodes]
+  )
   const loading = isLoading
   const errorMessage = isError
     ? error instanceof Error
