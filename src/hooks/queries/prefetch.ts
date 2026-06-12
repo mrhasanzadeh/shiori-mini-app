@@ -6,7 +6,7 @@ import { queryKeys } from './keys'
 export const prefetchAnimeDetail = (id: string | number) => {
   void queryClient.prefetchQuery({
     queryKey: queryKeys.animeDetail(id),
-    queryFn: () => fetchAnimeById(id, { includeSeries: false }),
+    queryFn: () => fetchAnimeById(id),
   })
 }
 
