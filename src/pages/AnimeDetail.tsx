@@ -25,7 +25,7 @@ import {
   useSimilarAnimeQuery,
   useTranslatorLinksQuery,
 } from '../hooks/queries/useAnimeQueries'
-import { prefetchAnimeDetail, prefetchSimilarAnime } from '../hooks/queries/prefetch'
+import { prefetchSimilarAnime } from '../hooks/queries/prefetch'
 import { formatAnilistPercent } from '../services/externalScores'
 import { formatUserListSaveError } from '../services/userListErrors'
 import type { GenreItem } from '../services/supabaseAnime'
@@ -36,6 +36,7 @@ import {
   buildMalUrl,
   parseAnimeDetailTab,
 } from '../utils/externalLinks'
+import { isAnimeDetailShell } from '../utils/api'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -216,6 +217,10 @@ const toJalaliDate = (value?: string) => {
   return toPersianNumber(`${jy}/${pad2(jm)}/${pad2(jd)}`)
 }
 
+const PulseBlock = ({ className }: { className?: string }) => (
+  <div className={cn('animate-pulse rounded-md bg-muted', className)} aria-hidden />
+)
+
 const DetailSkeleton = () => (
   <div className="pb-24 animate-pulse">
     <div className="relative">
@@ -242,6 +247,103 @@ const DetailSkeleton = () => (
         <div key={i} className="h-14 rounded-xl bg-muted" />
       ))}
     </div>
+  </div>
+)
+
+const StatsRowSkeleton = () => (
+  <div className="mx-4 mt-5 grid grid-cols-3 gap-2">
+    {Array.from({ length: 3 }).map((_, i) => (
+      <div
+        key={i}
+        className="rounded-xl border border-border bg-card/60 py-3 px-2 text-center space-y-2"
+      >
+        <PulseBlock className="h-5 w-10 mx-auto" />
+        <PulseBlock className="h-3 w-14 mx-auto" />
+      </div>
+    ))}
+  </div>
+)
+
+const ScoreChipsSkeleton = () => (
+  <div className="flex items-center justify-center gap-2 mt-3 flex-wrap">
+    {Array.from({ length: 3 }).map((_, i) => (
+      <div
+        key={i}
+        className="flex items-center gap-1.5 rounded-xl border border-border bg-card/60 px-2 py-1.5"
+      >
+        <PulseBlock className="w-5 h-5 rounded shrink-0" />
+        <PulseBlock className="h-4 w-9" />
+      </div>
+    ))}
+  </div>
+)
+
+const SeriesSwitcherSkeleton = () => (
+  <div className="mx-4 mt-4">
+    <PulseBlock className="h-4 w-24 mb-3 mx-auto" />
+    <div className="flex gap-2 overflow-hidden px-1">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <PulseBlock key={i} className="h-[4.5rem] w-[7rem] shrink-0 rounded-xl" />
+      ))}
+    </div>
+  </div>
+)
+
+const InfoTabSkeleton = () => (
+  <div className="rounded-xl border border-border bg-card/60 divide-y divide-border overflow-hidden">
+    {Array.from({ length: 6 }).map((_, i) => (
+      <div key={i} className="flex items-center justify-between gap-3 px-4 py-3.5">
+        <PulseBlock className="h-4 w-24" />
+        <PulseBlock className="h-4 w-28" />
+      </div>
+    ))}
+  </div>
+)
+
+const EpisodesTabSkeleton = () => (
+  <div className="space-y-4">
+    <PulseBlock className="h-10 w-full rounded-xl" />
+    <div className="space-y-2">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <PulseBlock key={i} className="h-16 w-full rounded-xl" />
+      ))}
+    </div>
+  </div>
+)
+
+const SynopsisSkeleton = () => (
+  <div className="mx-4 mt-4 rounded-xl border border-border bg-card/60 p-4 space-y-3">
+    <PulseBlock className="h-4 w-24" />
+    <div className="space-y-2">
+      <PulseBlock className="h-3 w-full" />
+      <PulseBlock className="h-3 w-full" />
+      <PulseBlock className="h-3 w-11/12" />
+      <PulseBlock className="h-3 w-4/5" />
+    </div>
+  </div>
+)
+
+const HeroTitleSkeleton = () => (
+  <div className="relative w-full mt-3 px-10 space-y-2 flex flex-col items-center">
+    <PulseBlock className="h-6 w-56" />
+    <PulseBlock className="h-4 w-40" />
+  </div>
+)
+
+const TranslatorsTabSkeleton = () => (
+  <div className="space-y-2">
+    {Array.from({ length: 3 }).map((_, i) => (
+      <div
+        key={i}
+        className="flex items-center gap-3 rounded-xl border border-border bg-card/60 p-3"
+      >
+        <PulseBlock className="w-10 h-10 rounded-xl shrink-0" />
+        <div className="flex-1 space-y-2">
+          <PulseBlock className="h-4 w-32" />
+          <PulseBlock className="h-3 w-20" />
+        </div>
+      </div>
+    ))}
   </div>
 )
 
@@ -709,13 +811,12 @@ const AnimeDetail = () => {
     isLoading,
     isError,
     refetch,
+    isPlaceholderData,
   } = useAnimeDetailQuery(id)
 
   const { data: favoriteCount, isPending: favoriteCountPending } = useAnimeFavoriteCountQuery(id)
 
   const anime = (animeData ?? null) as Anime | null
-
-  const { data: translatorLinks = [] } = useTranslatorLinksQuery(anime?.id)
 
   const externalIds = useMemo(
     () => ({
@@ -752,6 +853,14 @@ const AnimeDetail = () => {
   const [showFullDescription, setShowFullDescription] = useState(false)
   const [progressEditorOpen, setProgressEditorOpen] = useState(false)
 
+  const {
+    data: translatorLinks = [],
+    isPending: translatorLinksPending,
+  } = useTranslatorLinksQuery(
+    anime?.id,
+    activeTab === 'episodes' && downloadTab === 'translators'
+  )
+
   const genreSlugs = useMemo(
     () => (anime?.genres || []).map((g) => g.slug).filter(Boolean),
     [anime?.genres]
@@ -769,6 +878,11 @@ const AnimeDetail = () => {
   )
 
   const loading = isLoading && !anime
+  const detailPending =
+    isPlaceholderData ||
+    (Boolean(anime) && Boolean(id) && String(anime?.id) !== String(id))
+  const isCardShell = isAnimeDetailShell(animeData)
+  const heroPending = detailPending && !isCardShell
   const error = isError ? 'خطا در بارگذاری اطلاعات انیمه' : null
 
   const handleMainTabChange = (tab: TabType) => {
@@ -798,10 +912,6 @@ const AnimeDetail = () => {
       prefetchSimilarAnime(anime.id, genreSlugs)
     }
   }, [activeTab, anime?.id, genreSlugs])
-
-  useEffect(() => {
-    similarCards.slice(0, 3).forEach((card) => prefetchAnimeDetail(card.id))
-  }, [similarCards])
 
   const isFinished =
     String(anime?.airing_status ?? anime?.status ?? '')
@@ -948,7 +1058,9 @@ const AnimeDetail = () => {
       {/* Hero — هم‌سبک TranslatorProfile */}
       <div className="relative">
         <div className="absolute inset-x-0 top-0 h-52 overflow-hidden">
-          {coverImage ? (
+          {heroPending ? (
+            <PulseBlock className="w-full h-full rounded-none" />
+          ) : coverImage ? (
             <img src={coverImage} alt="" className="w-full h-full object-cover opacity-45" />
           ) : (
             <div className="w-full h-full bg-muted" />
@@ -959,9 +1071,15 @@ const AnimeDetail = () => {
         <div className="relative z-10 pt-24 px-4 pb-2 flex flex-col items-center">
           <div className="relative">
             <div className="w-32 aspect-[2/3] rounded-2xl overflow-hidden border-4 border-background bg-muted shadow-lg ring-2 ring-primary-400/25">
-              <img src={anime.image} alt={anime.title} className="w-full h-full object-cover" />
+              {heroPending ? (
+                <PulseBlock className="w-full h-full rounded-none" />
+              ) : (
+                <img src={anime.image} alt={anime.title} className="w-full h-full object-cover" />
+              )}
             </div>
-            {statusKey && (
+            {detailPending ? (
+              <PulseBlock className="absolute top-2 right-2 h-5 w-14 rounded-md" />
+            ) : statusKey ? (
               <span
                 className={cn(
                   'absolute top-2 right-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-md backdrop-blur-sm',
@@ -970,102 +1088,118 @@ const AnimeDetail = () => {
               >
                 {translateStatus(statusKey)}
               </span>
-            )}
-          </div>
-
-          <div className="relative w-full mt-3 px-10">
-            <BidiText as="h1" className="text-lg font-bold text-foreground text-center line-clamp-3 leading-7">
-              {anime.title}
-            </BidiText>
-            {anime.title_romaji ? (
-              <BidiText
-                as="p"
-                className="text-muted-foreground text-center text-sm leading-5 line-clamp-2"
-              >
-                {anime.title_romaji}
-              </BidiText>
             ) : null}
-            <button
-              type="button"
-              onClick={handleShare}
-              className="absolute left-0 top-0 p-2 rounded-xl border border-border bg-card/60 text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
-              aria-label="اشتراک‌گذاری در تلگرام"
-            >
-              <Share08Icon className="w-4 h-4" />
-            </button>
           </div>
 
-          <div className="flex flex-wrap justify-center gap-1.5 mt-2">
-            <span className="text-[10px] px-2 py-0.5 rounded-md bg-muted/80 border border-border text-muted-foreground">
-              {translateFormat(anime.format)}
-            </span>
-            {anime.genres.slice(0, 4).map((genre) => (
+          {heroPending ? (
+            <HeroTitleSkeleton />
+          ) : (
+            <div className="relative w-full mt-3 px-10">
+              <BidiText as="h1" className="text-lg font-bold text-foreground text-center line-clamp-3 leading-7">
+                {anime.title}
+              </BidiText>
+              {anime.title_romaji ? (
+                <BidiText
+                  as="p"
+                  className="text-muted-foreground text-center text-sm leading-5 line-clamp-2"
+                >
+                  {anime.title_romaji}
+                </BidiText>
+              ) : null}
               <button
-                key={genre.slug}
                 type="button"
-                className="text-[10px] px-2 py-0.5 rounded-md bg-primary-500/15 border border-primary-400/25 text-primary-300 hover:bg-primary-500/25 transition-colors"
-                onClick={() =>
-                  navigate(
-                    `/search?genre=${encodeURIComponent(genre.slug)}&label=${encodeURIComponent(genreLabel(genre))}`
-                  )
-                }
+                onClick={handleShare}
+                className="absolute left-0 top-0 p-2 rounded-xl border border-border bg-card/60 text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+                aria-label="اشتراک‌گذاری در تلگرام"
               >
-                {genreLabel(genre)}
+                <Share08Icon className="w-4 h-4" />
               </button>
-            ))}
-          </div>
+            </div>
+          )}
 
-          <div className="flex items-center justify-center gap-2 mt-3 flex-wrap">
-            <ScoreChip
-              logo={malLogo}
-              logoAlt="MyAnimeList"
-              value={malScoreLabel}
-              loading={malChipLoading}
-              href={anime.mal_id ? buildMalUrl(anime.mal_id) : undefined}
-              onOpenLink={openLink}
-            />
-            <ScoreChip
-              logo={alLogo}
-              logoAlt="AniList"
-              value={anilistScoreLabel}
-              loading={anilistChipLoading}
-              href={anime.anilist_id ? buildAnilistUrl(anime.anilist_id) : undefined}
-              onOpenLink={openLink}
-            />
-            <ScoreChip
-              logo={imdbLogo}
-              logoAlt="IMDb"
-              value={imdbScoreLabel}
-              loading={imdbChipLoading}
-              href={anime.imdb_id ? buildImdbUrl(anime.imdb_id) : undefined}
-              onOpenLink={openLink}
-            />
-          </div>
+          {!heroPending && (
+            <div className="flex flex-wrap justify-center gap-1.5 mt-2">
+              <span className="text-[10px] px-2 py-0.5 rounded-md bg-muted/80 border border-border text-muted-foreground">
+                {translateFormat(anime.format)}
+              </span>
+              {anime.genres.slice(0, 4).map((genre) => (
+                <button
+                  key={genre.slug}
+                  type="button"
+                  className="text-[10px] px-2 py-0.5 rounded-md bg-primary-500/15 border border-primary-400/25 text-primary-300 hover:bg-primary-500/25 transition-colors"
+                  onClick={() =>
+                    navigate(
+                      `/search?genre=${encodeURIComponent(genre.slug)}&label=${encodeURIComponent(genreLabel(genre))}`
+                    )
+                  }
+                >
+                  {genreLabel(genre)}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {detailPending ? (
+            <ScoreChipsSkeleton />
+          ) : (
+            <div className="flex items-center justify-center gap-2 mt-3 flex-wrap">
+              <ScoreChip
+                logo={malLogo}
+                logoAlt="MyAnimeList"
+                value={malScoreLabel}
+                loading={malChipLoading}
+                href={anime.mal_id ? buildMalUrl(anime.mal_id) : undefined}
+                onOpenLink={openLink}
+              />
+              <ScoreChip
+                logo={alLogo}
+                logoAlt="AniList"
+                value={anilistScoreLabel}
+                loading={anilistChipLoading}
+                href={anime.anilist_id ? buildAnilistUrl(anime.anilist_id) : undefined}
+                onOpenLink={openLink}
+              />
+              <ScoreChip
+                logo={imdbLogo}
+                logoAlt="IMDb"
+                value={imdbScoreLabel}
+                loading={imdbChipLoading}
+                href={anime.imdb_id ? buildImdbUrl(anime.imdb_id) : undefined}
+                onOpenLink={openLink}
+              />
+            </div>
+          )}
         </div>
       </div>
 
       {/* Quick stats */}
-      <div className="mx-4 mt-5 grid grid-cols-3 gap-2">
-        <StatCard value={shioriScoreLabel} label="امتیاز شیوری" />
-        <StatCard
-          value={toPersianNumber(anime.episodes_count || episodesForList.length)}
-          label="قسمت"
-        />
-        <FavoriteStatCard
-          active={favoriteActive}
-          favoriteCount={favoriteCount}
-          favoriteCountLoading={favoriteCountPending && favoriteCount === undefined}
-          onClick={handleFavorite}
-        />
-      </div>
+      {detailPending ? (
+        <StatsRowSkeleton />
+      ) : (
+        <div className="mx-4 mt-5 grid grid-cols-3 gap-2">
+          <StatCard value={shioriScoreLabel} label="امتیاز شیوری" />
+          <StatCard
+            value={toPersianNumber(anime.episodes_count || episodesForList.length)}
+            label="قسمت"
+          />
+          <FavoriteStatCard
+            active={favoriteActive}
+            favoriteCount={favoriteCount}
+            favoriteCountLoading={favoriteCountPending && favoriteCount === undefined}
+            onClick={handleFavorite}
+          />
+        </div>
+      )}
 
-      {(anime.series?.members?.length ?? 0) > 1 && (
+      {detailPending ? (
+        <SeriesSwitcherSkeleton />
+      ) : (anime.series?.members?.length ?? 0) > 1 ? (
         <SeriesSeasonSwitcher
           series={anime.series!}
           currentAnimeId={anime.id}
           onSelect={(memberId) => navigate(`/anime/${encodeURIComponent(String(memberId))}`)}
         />
-      )}
+      ) : null}
 
       {favoriteActive && (
         <div className="mx-4 mt-2 text-center">
@@ -1096,21 +1230,25 @@ const AnimeDetail = () => {
       />
 
       {/* Synopsis */}
-      <div className="mx-4 mt-4 rounded-xl border border-border bg-card/60 p-4">
-        <h2 className="text-sm font-semibold text-foreground mb-2">خلاصه داستان</h2>
-        <p className="text-sm text-muted-foreground leading-6 whitespace-pre-wrap">
-          {truncatedDescription}
-        </p>
-        {shouldTruncate && (
-          <button
-            type="button"
-            onClick={() => setShowFullDescription(!showFullDescription)}
-            className="mt-2 text-primary-400 text-xs font-medium"
-          >
-            {showFullDescription ? 'نمایش کمتر' : 'نمایش بیشتر'}
-          </button>
-        )}
-      </div>
+      {heroPending ? (
+        <SynopsisSkeleton />
+      ) : (
+        <div className="mx-4 mt-4 rounded-xl border border-border bg-card/60 p-4">
+          <h2 className="text-sm font-semibold text-foreground mb-2">خلاصه داستان</h2>
+          <p className="text-sm text-muted-foreground leading-6 whitespace-pre-wrap">
+            {truncatedDescription}
+          </p>
+          {shouldTruncate && (
+            <button
+              type="button"
+              onClick={() => setShowFullDescription(!showFullDescription)}
+              className="mt-2 text-primary-400 text-xs font-medium"
+            >
+              {showFullDescription ? 'نمایش کمتر' : 'نمایش بیشتر'}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Main tabs — sticky زیر هدر، استایل مثل Home */}
       <div className="sticky top-14 z-30 px-4 pt-5 pb-2 bg-background/90 backdrop-blur-md border-b border-border/50">
@@ -1119,7 +1257,10 @@ const AnimeDetail = () => {
 
       {/* Tab content */}
       <div className="px-4 pt-4">
-        {activeTab === 'info' && (
+        {activeTab === 'info' &&
+          (detailPending ? (
+            <InfoTabSkeleton />
+          ) : (
           <div className="rounded-xl border border-border bg-card/60 divide-y divide-border overflow-hidden">
             <InfoRow
               icon={<Video01Icon className="w-4 h-4 text-primary-400 shrink-0" />}
@@ -1212,9 +1353,12 @@ const AnimeDetail = () => {
               </InfoRow>
             )}
           </div>
-        )}
+          ))}
 
-        {activeTab === 'episodes' && (
+        {activeTab === 'episodes' &&
+          (detailPending ? (
+            <EpisodesTabSkeleton />
+          ) : (
           <div className="space-y-4">
             <SegmentedTabs tabs={downloadTabs} active={downloadTab} onChange={setDownloadTab} />
 
@@ -1321,7 +1465,9 @@ const AnimeDetail = () => {
               ))}
 
             {downloadTab === 'translators' &&
-              (translatorLinks.length === 0 ? (
+              (translatorLinksPending ? (
+                <TranslatorsTabSkeleton />
+              ) : translatorLinks.length === 0 ? (
                 <EmptyBlock message="مترجمی ثبت نشده" />
               ) : (
                 <div className="space-y-2">
@@ -1362,7 +1508,7 @@ const AnimeDetail = () => {
                 </div>
               ))}
           </div>
-        )}
+          ))}
 
         {activeTab === 'similar' && (
           <div className="space-y-3 pb-2">

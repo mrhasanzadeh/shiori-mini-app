@@ -1,5 +1,6 @@
 import { useInfiniteQuery, useQueries, useQuery } from '@tanstack/react-query'
 import {
+  buildAnimeDetailPlaceholder,
   fetchAllAnimeCards,
   fetchAnimeById,
   fetchAnimeList,
@@ -12,6 +13,7 @@ import {
 import * as supa from '../../services/supabaseAnime'
 import { fetchExternalScores } from '../../services/externalScores'
 import { getAnimeFavoriteCount, getAnimeFavoriteCounts } from '../../services/supabaseUserList'
+import { queryClient } from '../../lib/queryClient'
 import { queryKeys } from './keys'
 
 export type AnimeSearchBaseFilters = Omit<AnimeSearchFilters, 'limit' | 'offset'>
@@ -46,11 +48,33 @@ export const useAnimeFavoriteCountQuery = (animeId: string | number | undefined)
     placeholderData: (previousData) => previousData,
   })
 
+const findAnimeCardPlaceholder = (id: string | number): UiAnimeCard | undefined => {
+  const cards = queryClient.getQueryData<UiAnimeCard[]>(queryKeys.animeCards)
+  const fromCards = cards?.find((c) => String(c.id) === String(id))
+  if (fromCards) return fromCards
+
+  const searchQueries = queryClient.getQueriesData<{ items: UiAnimeCard[] }>({
+    queryKey: ['anime', 'search'],
+  })
+  for (const [, data] of searchQueries) {
+    const hit = data?.items?.find((c) => String(c.id) === String(id))
+    if (hit) return hit
+  }
+
+  return undefined
+}
+
 export const useAnimeDetailQuery = (id: string | number | undefined) =>
   useQuery({
     queryKey: queryKeys.animeDetail(id ?? ''),
     queryFn: () => fetchAnimeById(id!),
     enabled: Boolean(id),
+    placeholderData: (previousData) => {
+      if (previousData && String(previousData.id) === String(id)) return previousData
+      if (!id) return undefined
+      const card = findAnimeCardPlaceholder(id)
+      return card ? buildAnimeDetailPlaceholder(card) : undefined
+    },
   })
 
 export const useAnimeListQuery = () =>
@@ -113,11 +137,14 @@ export const useSimilarAnimeQuery = (
     enabled: enabled && Boolean(animeId) && genreSlugs.length > 0,
   })
 
-export const useTranslatorLinksQuery = (animeId: string | number | undefined) =>
+export const useTranslatorLinksQuery = (
+  animeId: string | number | undefined,
+  enabled = true
+) =>
   useQuery({
     queryKey: queryKeys.translatorLinks(animeId ?? ''),
     queryFn: () => supa.getTranslatorLinksByAnimeId(animeId!),
-    enabled: Boolean(animeId),
+    enabled: enabled && Boolean(animeId),
   })
 
 export const useAdminAnimeListQuery = () =>

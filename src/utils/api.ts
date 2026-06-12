@@ -170,48 +170,50 @@ export const fetchSimilarAnime = async (
 }
 
 // دریافت جزئیات یک انیمه + لیست قسمت‌ها از جدول episodes (با لینک دانلود هر قسمت)
+const resolveAnimeBaseForDetail = async (id: number | string) => {
+  const cached = allAnimeRawCache?.data
+  const fromCache = cached?.find((a) => String(a.id) === String(id))
+  if (fromCache) return fromCache
+
+  const card = await supa.getAnimeCardById(id)
+  if (!card) throw new Error(`Anime with id ${id} not found`)
+  return card
+}
+
 export const fetchAnimeById = async (
   id: number | string,
   options?: { includeSeries?: boolean }
 ) => {
-  const allAnime = await getAllAnimeCached()
-  const anime = allAnime.find((a) => String(a.id) === String(id))
+  const includeSeries = options?.includeSeries !== false
 
-  if (!anime) {
-    throw new Error(`Anime with id ${id} not found`)
-  }
+  const [
+    anime,
+    externalMeta,
+    episodesList,
+    subtitlesList,
+    subtitlePacksList,
+    episodePack,
+    studioNames,
+    studioLinksRaw,
+    seriesLinks,
+  ] = await Promise.all([
+    resolveAnimeBaseForDetail(id),
+    supa.getAnimeExternalMetaById(id),
+    supa.getEpisodesByAnimeId(id),
+    supa.getSubtitlesByAnimeId(id),
+    supa.getSubtitlePacksByAnimeId(id),
+    supa.getEpisodePackByAnimeId(id),
+    supa.getAnimeStudioNames(id).catch(() => [] as string[]),
+    supa.getAnimeStudiosPublic(id).catch(() => [] as Awaited<ReturnType<typeof supa.getAnimeStudiosPublic>>),
+    includeSeries
+      ? supa.getAnimeSeriesByAnimeId(id).catch(() => null)
+      : Promise.resolve(null),
+  ])
 
-  const externalMeta = await supa.getAnimeExternalMetaById(anime.id)
-
-  // لیست قسمت‌ها فقط از جدول episodes خوانده می‌شود
-  const episodesList = await supa.getEpisodesByAnimeId(anime.id)
-  const subtitlesList = await supa.getSubtitlesByAnimeId(anime.id)
-  const subtitlePacksList = await supa.getSubtitlePacksByAnimeId(anime.id)
-  const episodePack = await supa.getEpisodePackByAnimeId(anime.id)
-
-  let studioNames: string[] = []
-  try {
-    studioNames = await supa.getAnimeStudioNames(anime.id)
-  } catch {
-    studioNames = []
-  }
-
-  let studioLinks: UiStudioLink[] = []
-  try {
-    const links = await supa.getAnimeStudiosPublic(anime.id)
-    studioLinks = (links || []).map((s) => ({ slug: s.slug, name: s.name }))
-  } catch {
-    studioLinks = []
-  }
-
-  let seriesLinks: supa.AnimeSeriesPublic | null = null
-  if (options?.includeSeries !== false) {
-    try {
-      seriesLinks = await supa.getAnimeSeriesByAnimeId(anime.id)
-    } catch {
-      seriesLinks = null
-    }
-  }
+  const studioLinks: UiStudioLink[] = (studioLinksRaw || []).map((s) => ({
+    slug: s.slug,
+    name: s.name,
+  }))
 
   if (import.meta.env.DEV && subtitlesList.length === 0) {
     console.warn(
@@ -278,6 +280,52 @@ export const fetchAnimeById = async (
     series: seriesLinks,
   }
 }
+
+export type AnimeDetail = Awaited<ReturnType<typeof fetchAnimeById>>
+
+export type AnimeDetailShell = AnimeDetail & { __shell: true }
+
+export const isAnimeDetailShell = (data: unknown): data is AnimeDetailShell =>
+  Boolean(
+    data &&
+      typeof data === 'object' &&
+      '__shell' in data &&
+      (data as { __shell?: boolean }).__shell === true
+  )
+
+/** اسکلت فوری از کش کارت‌ها — قبل از fetch کامل جزئیات */
+export const buildAnimeDetailPlaceholder = (card: UiAnimeCard): AnimeDetailShell => ({
+  id: card.id,
+  title: card.title,
+  title_romaji: null,
+  image: card.image,
+  featured_image: card.featuredImage ?? card.image,
+  format: card.format,
+  description: card.description ?? '',
+  status: 'RELEASING',
+  airing_status: undefined,
+  genres: card.genres ?? [],
+  episodes: [],
+  subtitle_packs: [],
+  episode_pack: null,
+  episodes_count: 0,
+  averageScore: undefined,
+  malScore: undefined,
+  imdbScore: undefined,
+  shioriScore: undefined,
+  anilist_id: undefined,
+  mal_id: undefined,
+  imdb_id: undefined,
+  studios: [],
+  studio_links: [],
+  producers: [],
+  season: card.season ?? '',
+  year: typeof card.year === 'number' ? card.year : undefined,
+  startDate: '',
+  endDate: '',
+  series: null,
+  __shell: true,
+})
 
 export const fetchAnimeByStudioSlug = async (slug: string): Promise<UiAnimeCard[]> => {
   const list = await supa.getAnimeCardsByStudioSlug(slug)

@@ -376,6 +376,65 @@ export const getAllAnime = async (): Promise<AnimeCard[]> => {
   return list
 }
 
+/** یک انیمه — بدون بارگذاری کل کاتالوگ (برای صفحه جزئیات) */
+export const getAnimeCardById = async (animeId: string | number): Promise<AnimeCard | null> => {
+  if (!hasSupabaseConfig) return null
+
+  const selectWithGenresWithoutAiringStatus = `
+      id,
+      title,
+      title_romaji,
+      ${IMAGE_COLUMN},
+      featured_image,
+      synopsis,
+      format,
+      average_score,
+      episodes_count,
+      studio,
+      season,
+      year,
+      start_date,
+      end_date,
+      is_featured,
+      anime_genres(genres(slug,name_en,name_fa)),
+      created_at
+    `
+
+  const selectWithoutGenres = `
+      id,
+      title,
+      title_romaji,
+      ${IMAGE_COLUMN},
+      featured_image,
+      synopsis,
+      format,
+      airing_status,
+      average_score,
+      episodes_count,
+      studio,
+      season,
+      year,
+      start_date,
+      end_date,
+      is_featured,
+      created_at
+    `
+
+  const attempts = [ANIME_CARD_SELECT_WITH_GENRES, selectWithGenresWithoutAiringStatus, selectWithoutGenres]
+
+  for (const select of attempts) {
+    const { data, error } = await supabase
+      .from('anime')
+      .select(select)
+      .eq('id', animeId)
+      .maybeSingle()
+
+    if (!error && data) return toAnimeCard(data)
+  }
+
+  return null
+}
+
 export type AnimeSearchParams = {
   query?: string
   year?: number | null

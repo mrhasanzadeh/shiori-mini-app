@@ -3,9 +3,15 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "vite",
+    "dev:website": "npm run dev --workspace=@shiori/website",
     "build": "tsc && vite build",
+    "build:website": "npm run build --workspace=@shiori/website",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
