@@ -1,6 +1,5 @@
 import { isShioriApiEnabled } from '../lib/shioriApi'
 import * as shiori from './shioriCatalog'
-import * as supa from './supabaseAnime'
 
 export type {
   AnimeCard,
@@ -13,49 +12,63 @@ export type {
   TranslatorItem,
 } from './supabaseAnime'
 
-export const getAllAnime = () =>
-  isShioriApiEnabled() ? shiori.getAllAnime() : supa.getAllAnime()
+const loadSupabaseCatalog = () => import('./supabaseAnime')
 
-export const searchAnimeCards = (params: supa.AnimeSearchParams) =>
-  isShioriApiEnabled() ? shiori.searchAnimeCards(params) : supa.searchAnimeCards(params)
+export const getAllAnime = async () =>
+  isShioriApiEnabled() ? shiori.getAllAnime() : (await loadSupabaseCatalog()).getAllAnime()
 
-export const getSimilarAnimeCards = (
+export const searchAnimeCards = async (params: import('./supabaseAnime').AnimeSearchParams) =>
+  isShioriApiEnabled()
+    ? shiori.searchAnimeCards(params)
+    : (await loadSupabaseCatalog()).searchAnimeCards(params)
+
+export const getSimilarAnimeCards = async (
   animeId: string | number,
   genreSlugs: string[],
   limit?: number
 ) =>
   isShioriApiEnabled()
     ? shiori.getSimilarAnimeCards(animeId, genreSlugs, limit)
-    : supa.getSimilarAnimeCards(animeId, genreSlugs, limit)
+    : (await loadSupabaseCatalog()).getSimilarAnimeCards(animeId, genreSlugs, limit)
 
-export const getAnimeCardById = (animeId: string | number) =>
-  isShioriApiEnabled() ? shiori.getAnimeCardById(animeId) : supa.getAnimeCardById(animeId)
+export const getAnimeCardById = async (animeId: string | number) =>
+  isShioriApiEnabled()
+    ? shiori.getAnimeCardById(animeId)
+    : (await loadSupabaseCatalog()).getAnimeCardById(animeId)
 
-export const getLocalAnimeIdsByAniListIds = (anilistIds: number[]) =>
+export const getLocalAnimeIdsByAniListIds = async (anilistIds: number[]) =>
   isShioriApiEnabled()
     ? shiori.getLocalAnimeIdsByAniListIds(anilistIds)
-    : supa.getLocalAnimeIdsByAniListIds(anilistIds)
+    : (await loadSupabaseCatalog()).getLocalAnimeIdsByAniListIds(anilistIds)
 
-export const getAnimeCardsByStudioSlug = (slug: string) =>
-  isShioriApiEnabled() ? shiori.getAnimeCardsByStudioSlug(slug) : supa.getAnimeCardsByStudioSlug(slug)
+export const getAnimeCardsByStudioSlug = async (slug: string) =>
+  isShioriApiEnabled()
+    ? shiori.getAnimeCardsByStudioSlug(slug)
+    : (await loadSupabaseCatalog()).getAnimeCardsByStudioSlug(slug)
 
-export const getGenreBySlug = (slug: string) =>
-  isShioriApiEnabled() ? shiori.getGenreBySlug(slug) : supa.getGenreBySlug(slug)
+export const getGenreBySlug = async (slug: string) =>
+  isShioriApiEnabled()
+    ? shiori.getGenreBySlug(slug)
+    : (await loadSupabaseCatalog()).getGenreBySlug(slug)
 
-export const getStudioBySlug = (slug: string) =>
-  isShioriApiEnabled() ? shiori.getStudioBySlug(slug) : supa.getStudioBySlug(slug)
+export const getStudioBySlug = async (slug: string) =>
+  isShioriApiEnabled()
+    ? shiori.getStudioBySlug(slug)
+    : (await loadSupabaseCatalog()).getStudioBySlug(slug)
 
-export const getTranslatorBySlug = (slug: string) =>
-  isShioriApiEnabled() ? shiori.getTranslatorBySlug(slug) : supa.getTranslatorBySlug(slug)
+export const getTranslatorBySlug = async (slug: string) =>
+  isShioriApiEnabled()
+    ? shiori.getTranslatorBySlug(slug)
+    : (await loadSupabaseCatalog()).getTranslatorBySlug(slug)
 
-export const getAnimeCardsByTranslatorSlug = (slug: string) =>
+export const getAnimeCardsByTranslatorSlug = async (slug: string) =>
   isShioriApiEnabled()
     ? shiori.getAnimeCardsByTranslatorSlug(slug)
-    : supa.getAnimeCardsByTranslatorSlug(slug)
+    : (await loadSupabaseCatalog()).getAnimeCardsByTranslatorSlug(slug)
 
-export const getTranslatorLinksByAnimeId = (animeId: string | number) =>
+export const getTranslatorLinksByAnimeId = async (animeId: string | number) =>
   isShioriApiEnabled()
     ? shiori.getTranslatorLinksByAnimeId(animeId)
-    : supa.getTranslatorLinksByAnimeId(animeId)
+    : (await loadSupabaseCatalog()).getTranslatorLinksByAnimeId(animeId)
 
 export { isShioriApiEnabled }

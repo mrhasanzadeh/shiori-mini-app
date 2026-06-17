@@ -1,101 +1,69 @@
 # Shiori Mini App
 
-Telegram Mini App for browsing and managing an anime catalog (Persian UI, RTL).
+Telegram Mini App for browsing and managing an anime catalog (Persian UI, RTL). Also works as a **web profile** (email login) outside Telegram.
 
 ## Features
 
 - Catalog: home, search, anime detail, studios, translators
-- Weekly schedule (AniList API, mapped to local catalog when possible)
-- Favorites (persisted locally + Supabase-backed detail)
-- User list, notifications, weekly schedule
+- Weekly schedule (AniList API, mapped to local catalog)
+- User list (favorites + watch progress)
+- Notifications inbox + Telegram DM preferences
+- Link web account → Telegram (merge lists)
 
 ## Tech stack
 
 | Layer | Stack |
 |-------|--------|
 | UI | React 18, TypeScript, Vite, Tailwind CSS |
-| Components | Radix / shadcn-style (`src/components/ui/`) |
 | Platform | `@twa-dev/sdk` (Telegram Web App) |
-| State | Zustand (`persist` for favorites, lists, theme) |
-| Backend | Supabase (Postgres + client SDK) |
+| State | TanStack Query + Zustand |
+| Backend | **shiori-api** (NestJS + Postgres) |
 | Schedule | AniList GraphQL (`src/utils/api.ts`) |
+
+Admin panel: **`shiori-admin`** (separate repo).
 
 ## Getting started
 
 ```bash
 npm install
-cp .env.example .env   # fill Supabase + optional admin vars
+cp .env.example .env   # set VITE_SHIORI_API_URL
 npm run dev
 ```
 
-Build:
+Also run **shiori-api** locally (`http://localhost:4001`) and point `VITE_SHIORI_API_URL` at it.
 
 ```bash
-npm run build
+npm run build        # production (API-only when VITE_SHIORI_API_URL is in .env)
+npm run build:api    # same — explicit production mode
 npm run preview
 ```
 
-Lint / format:
-
-```bash
-npm run lint
-npm run format
-```
-
-## Environment variables
-
-See `.env.example`. Typed in `src/vite-env.d.ts`.
+## Environment
 
 | Variable | Required | Purpose |
 |----------|----------|---------|
-| `VITE_SUPABASE_URL` | Yes | Supabase project URL |
-| `VITE_SUPABASE_ANON_KEY` | Yes | Supabase anon key |
-| `VITE_ANIME_IMAGE_COLUMN` | No | Image column on `anime` (default: `cover_image`) |
-| `VITE_TELEGRAM_BOT_USERNAME` | No | Bot username for pack deep-links |
+| `VITE_SHIORI_API_URL` | **Yes** | REST API base (no trailing slash) |
+| `VITE_TELEGRAM_BOT_USERNAME` | No | Bot username for deep-links / link-telegram |
+| `VITE_SUPABASE_URL` | No | Legacy fallback only |
+| `VITE_SUPABASE_ANON_KEY` | No | Legacy fallback only |
 
-Admin panel lives in **`shiori-admin`** (separate repo).
-
-## Project structure
+## Architecture
 
 ```
-src/
-├── App.tsx                 # User routes
-├── components/
-│   ├── Layout.tsx          # Shell + bottom nav
-│   └── ui/                 # shadcn-style primitives
-├── pages/                  # Route pages
-├── services/               # Supabase data layer
-├── store/                  # Zustand stores
-├── hooks/
-├── utils/
-└── lib/supabase.ts
+src/services/
+├── catalogSource.ts      # → shioriCatalog (API) or supabaseAnime
+├── userDataSource.ts     # → shiori* (API) or supabase*
+└── shioriAppAuth.ts      # web login + link-telegram
 ```
 
-## Database
+When `VITE_SHIORI_API_URL` is set at build time, `@supabase/supabase-js` is excluded from the bundle (~200KB saved). Legacy Supabase modules load only if the API URL is unset at runtime.
 
-Schema used by the app is documented in **`docs/schema.md`**.
+## Related
 
-**SQL migration order:** [`docs/SQL_MIGRATIONS.md`](docs/SQL_MIGRATIONS.md)
-
-**Deploy:** [`docs/DEPLOY.md`](docs/DEPLOY.md)
-
-Security (before production):
-
-- **`docs/rls.md`** — Supabase RLS policies and test checklist
-- **`docs/admin-auth.md`** — admin gate (Telegram ID / web password)
-
-Setup notes: **`SUPABASE_SETUP.md`**. The older **`docs/database-simple-schema.md`** describes an obsolete single-table design.
-
-## Scripts
-
-| Script | Description |
-|--------|-------------|
-| `dev` | Vite dev server |
-| `build` | `tsc` + production bundle |
-| `lint` / `lint:fix` | ESLint |
-| `format` | Prettier on `src/**/*.{ts,tsx,css}` |
-| `preview` | Serve production build locally |
+- `shiori-api` — backend + cron
+- `shiori-admin` — staff panel
+- Legacy SQL docs in `docs/` (schema migrated to Postgres, not Supabase-specific)
 
 ## License
 
-MIT — see [LICENSE](LICENSE) if present.
+MIT

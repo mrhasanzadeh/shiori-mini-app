@@ -15,12 +15,13 @@ type AuthResponse = {
   expires_at: string
 }
 
-const toSession = (payload: AuthResponse): AppSession => ({
+const toSession = (payload: AuthResponse & { can_link_telegram?: boolean }): AppSession => ({
   token: payload.token,
   userId: payload.user_id,
   displayName: payload.display_name,
   email: payload.email,
   expiresAt: payload.expires_at,
+  canLinkTelegram: payload.can_link_telegram,
 })
 
 export const loginAppUser = async (email: string, password: string): Promise<AppSession> => {
@@ -66,6 +67,7 @@ export const verifyAppSession = async (): Promise<AppSession | null> => {
       display_name: string
       email: string | null
       expires_at: string
+      can_link_telegram?: boolean
     }>('/app-auth/session')
 
     const session: AppSession = {
@@ -74,6 +76,7 @@ export const verifyAppSession = async (): Promise<AppSession | null> => {
       displayName: payload.display_name,
       email: payload.email,
       expiresAt: payload.expires_at,
+      canLinkTelegram: payload.can_link_telegram,
     }
     writeStoredAppSession(session)
     return session
@@ -94,3 +97,57 @@ export const logoutAppUser = async (): Promise<void> => {
   }
   clearStoredAppSession()
 }
+
+export type TelegramLinkStartResponse = {
+  ok: boolean
+  token: string
+  telegram_url: string
+  expires_at: string
+}
+
+export type TelegramLinkStatus = 'pending' | 'completed' | 'expired' | 'invalid'
+
+export const startTelegramAccountLink = async (payload?: {
+  botUsername?: string
+}): Promise<TelegramLinkStartResponse> =>
+  shioriFetch<TelegramLinkStartResponse>('/app-auth/link-telegram/start', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      bot_username: payload?.botUsername?.trim() || undefined,
+    }),
+  })
+
+export const getTelegramLinkStatus = async (
+  token: string
+): Promise<{ status: TelegramLinkStatus }> => {
+  const qs = new URLSearchParams()
+  qs.set('token', token)
+  return shioriFetch<{ status: TelegramLinkStatus }>(
+    `/app-auth/link-telegram/status?${qs.toString()}`
+  )
+}
+
+export const completeTelegramAccountLink = async (token: string): Promise<{
+  ok: boolean
+  merged?: boolean
+  already_completed?: boolean
+}> =>
+  shioriFetch('/app-auth/link-telegram/complete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token }),
+  })
+
+export const linkTelegramWithCredentials = async (payload: {
+  email: string
+  password: string
+}): Promise<{ ok: boolean; merged?: boolean }> =>
+  shioriFetch('/app-auth/link-telegram', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: payload.email.trim(),
+      password: payload.password,
+    }),
+  })

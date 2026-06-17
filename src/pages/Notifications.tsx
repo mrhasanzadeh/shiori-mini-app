@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { AlarmClockIcon } from 'hugeicons-react'
 import { BidiText } from '../components/BidiText'
 import { useNotifications } from '../hooks/useNotifications'
-import { formatNotificationTime } from '../services/supabaseNotifications'
+import { formatNotificationTime } from '../utils/notificationTime'
 
 const Notifications = () => {
   const { notifications, unreadCount, isLoading, markRead, markAllRead } = useNotifications()

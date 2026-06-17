@@ -1,7 +1,6 @@
 // App-level API wrapper
 import * as catalog from '../services/catalogSource'
 import * as shiori from '../services/shioriCatalog'
-import * as supa from '../services/supabaseAnime'
 import { isShioriApiEnabled } from '../services/catalogSource'
 
 // Lightweight card shape used across Home/Search UIs
@@ -252,6 +251,7 @@ export const fetchAnimeById = async (
     return fetchAnimeByIdFromShiori(id, options)
   }
 
+  const supa = await import('../services/supabaseAnime')
   const includeSeries = options?.includeSeries !== false
 
   const [

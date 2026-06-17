@@ -85,7 +85,7 @@ export const useAppAuth = () => {
         displayName: webSession.displayName,
         email: webSession.email,
         source: 'web',
-        canLinkTelegram: webSession.userId < 0,
+        canLinkTelegram: webSession.canLinkTelegram ?? webSession.userId < 0,
       }
     }
 

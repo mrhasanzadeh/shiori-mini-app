@@ -6,6 +6,7 @@ export type AppSession = {
   displayName: string
   email: string | null
   expiresAt: string
+  canLinkTelegram?: boolean
 }
 
 export const readStoredAppSession = (): AppSession | null => {

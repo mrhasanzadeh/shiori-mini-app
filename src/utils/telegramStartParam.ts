@@ -14,10 +14,27 @@ const parseTab = (value?: string | null): AnimeDetailTab => {
 export const buildTelegramStartParam = (id: string | number, tab?: AnimeDetailTab) =>
   tab && tab !== 'info' ? `anime_${id}_${tab}` : `anime_${id}`
 
+export const buildTelegramLinkStartParam = (token: string) => `link_${token}`
+
+export const parseTelegramLinkToken = (raw: string): string | null => {
+  const param = decodeURIComponent(String(raw ?? '').trim())
+  if (!param.startsWith('link_')) return null
+  const token = param.slice(5).trim()
+  return token || null
+}
+
 /** تبدیل start_param تلگرام به مسیر React Router */
 export const parseTelegramStartParam = (raw: string): TelegramStartRoute | null => {
   const param = decodeURIComponent(String(raw ?? '').trim())
   if (!param) return null
+
+  const linkToken = parseTelegramLinkToken(param)
+  if (linkToken) {
+    return {
+      path: '/profile',
+      search: `?linkToken=${encodeURIComponent(linkToken)}`,
+    }
+  }
 
   const match = param.match(/^anime_([^_]+)(?:_(info|episodes|similar))?$/)
   if (!match) return null

@@ -1,7 +1,7 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { AlarmClockIcon, FavouriteIcon, UserIcon } from 'hugeicons-react'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, ExternalLink, Link2 } from 'lucide-react'
 import { useAppAuth } from '../hooks/useAppAuth'
 import { useUserAnimeList } from '../hooks/useUserAnimeList'
 import { useNotifications } from '../hooks/useNotifications'
@@ -9,6 +9,14 @@ import { ProfileAuthPanel } from '../components/ProfileAuthPanel'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import { isShioriApiEnabled } from '../lib/shioriApi'
+import { clearStoredAppSession } from '../lib/appSessionStorage'
+import {
+  getTelegramLinkStatus,
+  linkTelegramWithCredentials,
+  startTelegramAccountLink,
+} from '../services/shioriAppAuth'
 import logo from '../assets/images/shiori-logo.svg'
 
 const APP_VERSION = '۱.۰.۰'
@@ -93,6 +101,84 @@ const Profile = () => {
     updatingPreferences,
   } = useNotifications()
   const [avatarFailed, setAvatarFailed] = useState(false)
+  const [linkLoading, setLinkLoading] = useState(false)
+  const [linkError, setLinkError] = useState<string | null>(null)
+  const [linkTelegramUrl, setLinkTelegramUrl] = useState<string | null>(null)
+  const [linkStatus, setLinkStatus] = useState<string | null>(null)
+  const [linkEmail, setLinkEmail] = useState('')
+  const [linkPassword, setLinkPassword] = useState('')
+  const [credentialsLinkLoading, setCredentialsLinkLoading] = useState(false)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const stopLinkPolling = useCallback(() => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current)
+      pollRef.current = null
+    }
+  }, [])
+
+  useEffect(() => () => stopLinkPolling(), [stopLinkPolling])
+
+  const startWebTelegramLink = async () => {
+    if (!isShioriApiEnabled()) {
+      setLinkError('API فعال نیست')
+      return
+    }
+
+    setLinkLoading(true)
+    setLinkError(null)
+    setLinkStatus(null)
+
+    try {
+      const result = await startTelegramAccountLink()
+      setLinkTelegramUrl(result.telegram_url)
+      setLinkStatus('pending')
+      window.open(result.telegram_url, '_blank', 'noopener,noreferrer')
+      stopLinkPolling()
+      pollRef.current = setInterval(() => {
+        void getTelegramLinkStatus(result.token)
+          .then(({ status }) => {
+            setLinkStatus(status)
+            if (status === 'completed') {
+              stopLinkPolling()
+              clearStoredAppSession()
+              window.location.reload()
+            }
+            if (status === 'expired' || status === 'invalid') {
+              stopLinkPolling()
+            }
+          })
+          .catch(() => {
+            // ignore transient poll errors
+          })
+      }, 3000)
+    } catch (e) {
+      setLinkError(e instanceof Error ? e.message.replace(/^API \d+: /, '') : 'خطا در ساخت لینک')
+    } finally {
+      setLinkLoading(false)
+    }
+  }
+
+  const submitTelegramCredentialsLink = async (event: React.FormEvent) => {
+    event.preventDefault()
+    setCredentialsLinkLoading(true)
+    setLinkError(null)
+    try {
+      await linkTelegramWithCredentials({
+        email: linkEmail.trim(),
+        password: linkPassword,
+      })
+      setLinkEmail('')
+      setLinkPassword('')
+      window.location.reload()
+    } catch (e) {
+      setLinkError(
+        e instanceof Error ? e.message.replace(/^API \d+: /, '').replace(/^"|"$/g, '') : 'خطا'
+      )
+    } finally {
+      setCredentialsLinkLoading(false)
+    }
+  }
 
   const displayName = user?.displayName ?? 'کاربر'
 
@@ -272,11 +358,72 @@ const Profile = () => {
       </div>
 
       {!inTelegram && user?.canLinkTelegram && (
-        <div className="mx-4 mt-5 rounded-2xl border border-dashed border-border bg-muted/20 px-4 py-4">
-          <p className="text-sm font-medium text-foreground">ادغام با Telegram</p>
-          <p className="text-xs text-muted-foreground mt-1 leading-6">
-            به‌زودی می‌توانید حساب وب را به Telegram وصل کنید تا لیست و اعلان‌ها یکی شوند.
+        <div className="mx-4 mt-5 rounded-2xl border border-border bg-card/60 px-4 py-4 space-y-3">
+          <div className="flex items-start gap-2">
+            <Link2 className="w-5 h-5 text-primary-400 shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-foreground">اتصال به Telegram</p>
+              <p className="text-xs text-muted-foreground mt-1 leading-6">
+                لیست انیمه و اعلان‌های حساب وب را به مینی‌اپ Telegram منتقل کنید.
+              </p>
+            </div>
+          </div>
+
+          {linkError && (
+            <p className="text-xs text-destructive leading-6 rounded-lg bg-destructive/10 px-3 py-2">
+              {linkError}
+            </p>
+          )}
+
+          <Button
+            type="button"
+            className="w-full"
+            disabled={linkLoading || !isShioriApiEnabled()}
+            onClick={() => void startWebTelegramLink()}
+          >
+            {linkLoading ? 'در حال ساخت لینک…' : 'باز کردن مینی‌اپ در Telegram'}
+            <ExternalLink className="w-4 h-4 mr-2" />
+          </Button>
+
+          {linkTelegramUrl && linkStatus === 'pending' && (
+            <p className="text-xs text-muted-foreground leading-6">
+              لینک باز شد. در Telegram تأیید کنید — این صفحه پس از ادغام به‌روز می‌شود.
+            </p>
+          )}
+          {linkStatus === 'expired' && (
+            <p className="text-xs text-amber-500">لینک منقضی شد — دوباره تلاش کنید.</p>
+          )}
+        </div>
+      )}
+
+      {inTelegram && isShioriApiEnabled() && (
+        <div className="mx-4 mt-5 rounded-2xl border border-border bg-card/60 px-4 py-4 space-y-3">
+          <p className="text-sm font-medium text-foreground">ادغام با حساب وب</p>
+          <p className="text-xs text-muted-foreground leading-6">
+            اگر قبلاً در مرورگر ثبت‌نام کرده‌اید، ایمیل و رمز همان حساب را وارد کنید.
           </p>
+          <form onSubmit={submitTelegramCredentialsLink} className="space-y-3">
+            <Input
+              type="email"
+              value={linkEmail}
+              onChange={(e) => setLinkEmail(e.target.value)}
+              placeholder="ایمیل حساب وب"
+              autoComplete="email"
+              required
+            />
+            <Input
+              type="password"
+              value={linkPassword}
+              onChange={(e) => setLinkPassword(e.target.value)}
+              placeholder="رمز عبور"
+              autoComplete="current-password"
+              minLength={8}
+              required
+            />
+            <Button type="submit" variant="secondary" className="w-full" disabled={credentialsLinkLoading}>
+              {credentialsLinkLoading ? 'در حال ادغام…' : 'ادغام حساب'}
+            </Button>
+          </form>
         </div>
       )}
 

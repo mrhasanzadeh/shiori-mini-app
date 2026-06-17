@@ -2,15 +2,12 @@ import { isShioriApiEnabled } from '../lib/shioriApi'
 import * as shiori from './shioriNotifications'
 import * as shioriUsers from './shioriUsers'
 import * as shioriList from './shioriUserList'
-import * as supaList from './supabaseUserList'
-import * as supaNotif from './supabaseNotifications'
-import * as supaUsers from './supabaseUsers'
 
 export type {
   AnimeFavoriteCountMap,
   UserAnimeListRow,
   UserAnimeListStats,
-} from './supabaseUserList'
+} from '../utils/userListStats'
 
 export type {
   NotificationPreferences,
@@ -19,64 +16,86 @@ export type {
 
 export type { TelegramUserPayload } from './supabaseUsers'
 
-export { computeUserListStats, userAnimeListEntryKey } from './supabaseUserList'
+export {
+  computeUserListStats,
+  userAnimeListEntryKey,
+} from '../utils/userListStats'
 
-export const getUserAnimeList = (telegramUserId: number) =>
+const loadSupabaseUserList = () => import('./supabaseUserList')
+const loadSupabaseNotifications = () => import('./supabaseNotifications')
+const loadSupabaseUsers = () => import('./supabaseUsers')
+
+export const getUserAnimeList = async (telegramUserId: number) =>
   isShioriApiEnabled()
     ? shioriList.getUserAnimeList(telegramUserId)
-    : supaList.getUserAnimeList(telegramUserId)
+    : (await loadSupabaseUserList()).getUserAnimeList(telegramUserId)
 
-export const upsertUserAnimeListEntry = (
+export const upsertUserAnimeListEntry = async (
   telegramUserId: number,
   animeId: number | string,
-  payload: Parameters<typeof supaList.upsertUserAnimeListEntry>[2]
+  payload: Parameters<
+    Awaited<ReturnType<typeof loadSupabaseUserList>>['upsertUserAnimeListEntry']
+  >[2]
 ) =>
   isShioriApiEnabled()
     ? shioriList.upsertUserAnimeListEntry(telegramUserId, animeId, payload)
-    : supaList.upsertUserAnimeListEntry(telegramUserId, animeId, payload)
+    : (await loadSupabaseUserList()).upsertUserAnimeListEntry(
+        telegramUserId,
+        animeId,
+        payload
+      )
 
-export const removeUserAnimeListEntry = (
+export const removeUserAnimeListEntry = async (
   telegramUserId: number,
   animeId: number | string
 ) =>
   isShioriApiEnabled()
     ? shioriList.removeUserAnimeListEntry(telegramUserId, animeId)
-    : supaList.removeUserAnimeListEntry(telegramUserId, animeId)
+    : (await loadSupabaseUserList()).removeUserAnimeListEntry(telegramUserId, animeId)
 
-export const getAnimeFavoriteCounts = () =>
-  isShioriApiEnabled() ? shioriList.getAnimeFavoriteCounts() : supaList.getAnimeFavoriteCounts()
+export const getAnimeFavoriteCounts = async () =>
+  isShioriApiEnabled()
+    ? shioriList.getAnimeFavoriteCounts()
+    : (await loadSupabaseUserList()).getAnimeFavoriteCounts()
 
-export const getAnimeFavoriteCount = (animeId: number | string) =>
+export const getAnimeFavoriteCount = async (animeId: number | string) =>
   isShioriApiEnabled()
     ? shioriList.getAnimeFavoriteCount(animeId)
-    : supaList.getAnimeFavoriteCount(animeId)
+    : (await loadSupabaseUserList()).getAnimeFavoriteCount(animeId)
 
-export const registerTelegramUserVisit = (user: supaUsers.TelegramUserPayload) =>
+export const registerTelegramUserVisit = async (
+  user: import('./supabaseUsers').TelegramUserPayload
+) =>
   isShioriApiEnabled()
     ? shioriUsers.registerTelegramUserVisit(user)
-    : supaUsers.registerTelegramUserVisit(user)
+    : (await loadSupabaseUsers()).registerTelegramUserVisit(user)
 
-export const getMyNotifications = () =>
-  isShioriApiEnabled() ? shiori.getMyNotifications() : supaNotif.getMyNotifications()
+export const getMyNotifications = async () =>
+  isShioriApiEnabled()
+    ? shiori.getMyNotifications()
+    : (await loadSupabaseNotifications()).getMyNotifications()
 
-export const markMyNotificationRead = (id: string) =>
-  isShioriApiEnabled() ? shiori.markMyNotificationRead(id) : supaNotif.markMyNotificationRead(id)
+export const markMyNotificationRead = async (id: string) =>
+  isShioriApiEnabled()
+    ? shiori.markMyNotificationRead(id)
+    : (await loadSupabaseNotifications()).markMyNotificationRead(id)
 
-export const markAllMyNotificationsRead = () =>
+export const markAllMyNotificationsRead = async () =>
   isShioriApiEnabled()
     ? shiori.markAllMyNotificationsRead()
-    : supaNotif.markAllMyNotificationsRead()
+    : (await loadSupabaseNotifications()).markAllMyNotificationsRead()
 
-export const getMyNotificationPreferences = () =>
+export const getMyNotificationPreferences = async () =>
   isShioriApiEnabled()
     ? shiori.getMyNotificationPreferences()
-    : supaNotif.getMyNotificationPreferences()
+    : (await loadSupabaseNotifications()).getMyNotificationPreferences()
 
-export const updateMyNotificationPreferences = (
-  prefs: Partial<supaNotif.NotificationPreferences>
+export const updateMyNotificationPreferences = async (
+  prefs: Partial<import('./supabaseNotifications').NotificationPreferences>
 ) =>
   isShioriApiEnabled()
     ? shiori.updateMyNotificationPreferences(prefs)
-    : supaNotif.updateMyNotificationPreferences(prefs)
+    : (await loadSupabaseNotifications()).updateMyNotificationPreferences(prefs)
 
-export const debugTelegramInitStatus = supaList.debugTelegramInitStatus
+export const debugTelegramInitStatus = async () =>
+  (await loadSupabaseUserList()).debugTelegramInitStatus()

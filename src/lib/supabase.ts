@@ -1,5 +1,6 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { getTelegramRequestHeaders } from '@/lib/telegramRequestHeaders'
+import { isShioriApiEnabled } from '@/lib/shioriApi'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
@@ -8,9 +9,11 @@ export const hasSupabaseConfig = Boolean(
   supabaseUrl && supabaseAnonKey && supabaseUrl !== 'your_supabase_project_url'
 )
 
-if (!hasSupabaseConfig) {
+if (!hasSupabaseConfig && !isShioriApiEnabled()) {
   // eslint-disable-next-line no-console
-  console.error('Supabase: VITE_SUPABASE_URL و VITE_SUPABASE_ANON_KEY را در فایل .env تنظیم کنید.')
+  console.error(
+    'Backend: VITE_SHIORI_API_URL یا VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY را در .env تنظیم کنید.'
+  )
 }
 
 const mergeRequestHeaders = (
@@ -24,7 +27,6 @@ const mergeRequestHeaders = (
         ? input.href
         : input.url
 
-  // Edge Functions receive initData in JSON body — skip custom headers to avoid CORS preflight blocks
   if (url.includes('/functions/v1/')) {
     return init
   }
@@ -40,14 +42,31 @@ const mergeRequestHeaders = (
   return { ...init, headers }
 }
 
-export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true,
-  },
-  global: {
-    fetch: (input, init) => fetch(input, mergeRequestHeaders(input, init)),
+const createSupabaseClient = (): SupabaseClient =>
+  createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true,
+    },
+    global: {
+      fetch: (input, init) => fetch(input, mergeRequestHeaders(input, init)),
+    },
+  })
+
+let supabaseClient: SupabaseClient | null = null
+
+/** Supabase client — lazy; only used when API URL is unset. */
+export const supabase: SupabaseClient = new Proxy({} as SupabaseClient, {
+  get(_target, prop) {
+    if (!hasSupabaseConfig) {
+      throw new Error(
+        'Supabase پیکربندی نشده. VITE_SHIORI_API_URL را تنظیم کنید یا کلیدهای Supabase را در .env بگذارید.'
+      )
+    }
+    if (!supabaseClient) supabaseClient = createSupabaseClient()
+    const value = supabaseClient[prop as keyof SupabaseClient]
+    return typeof value === 'function' ? value.bind(supabaseClient) : value
   },
 })
 
