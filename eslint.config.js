@@ -9,8 +9,6 @@ export default tseslint.config(
     ignores: [
       'dist',
       '**/dist/**',
-      '**/.next/**',
-      '**/next-env.d.ts',
       'node_modules/**',
     ],
   },
@@ -36,12 +34,6 @@ export default tseslint.config(
       ],
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
-    },
-  },
-  {
-    files: ['apps/website/**/*.{ts,tsx}'],
-    rules: {
-      'react-refresh/only-export-components': 'off',
     },
   },
 )

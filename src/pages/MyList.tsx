@@ -4,7 +4,7 @@ import { LayoutGrid, List } from 'lucide-react'
 import { Edit02Icon, FavouriteIcon, Search01Icon, StarIcon } from 'hugeicons-react'
 import FavoriteAnimeEditor from '../components/FavoriteAnimeEditor'
 import { useUserAnimeList } from '../hooks/useUserAnimeList'
-import { useTelegramApp } from '../hooks/useTelegramApp'
+import { useAppAuth } from '../hooks/useAppAuth'
 import { Button } from '@/components/ui/button'
 import AnimePrefetchLink from '../components/AnimePrefetchLink'
 import { BidiText } from '../components/BidiText'
@@ -289,7 +289,7 @@ const FavoriteListRow = ({
 }
 
 const MyList = () => {
-  const { showAlert } = useTelegramApp()
+  const { showAlert, isReady, inTelegram, isAuthenticated } = useAppAuth()
   const {
     favoriteAnime,
     getProgress,
@@ -357,6 +357,49 @@ const MyList = () => {
     toggleFavorite(editingAnime.id)
     setEditingAnime(null)
     showAlert('از علاقه‌مندی‌ها حذف شد')
+  }
+
+  const needsWebLogin = !inTelegram && !isAuthenticated
+
+  if (!isReady) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center pb-24">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary-400/30 border-t-primary-400" />
+      </div>
+    )
+  }
+
+  if (needsWebLogin) {
+    return (
+      <div className="pb-24">
+        <div className="px-4 pt-4 pb-2">
+          <h1 className="text-lg font-semibold text-foreground flex items-center gap-2">
+            <FavouriteIcon className="w-5 h-5 text-red-500 shrink-0" />
+            علاقه‌مندی‌ها
+          </h1>
+        </div>
+
+        <div className="flex flex-col items-center justify-center min-h-[65vh] px-6 text-center">
+          <img src={emptyListImage} alt="" className="w-44 mb-5 opacity-90" />
+          <h2 className="text-base font-semibold text-foreground mb-2">
+            اول وارد حساب کاربری‌ات شو <small className="text-xs">＞﹏＜</small>
+          </h2>
+          <p className="text-sm text-muted-foreground leading-7 max-w-xs mb-6">
+            انیمه‌های موردعلاقه‌ات را این‌جا جمع کن،
+            <br />
+            پیشرفت تماشا را ثبت کن و هر بار از همان‌جا ادامه بده.
+          </p>
+          <Button
+            asChild
+            type="button"
+            size="lg"
+            className="bg-primary-500 text-white font-bold rounded-lg px-8 py-3 hover:bg-primary-500/90"
+          >
+            <Link to="/profile">ورود به حساب کاربری</Link>
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   return (

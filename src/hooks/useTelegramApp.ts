@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import WebApp from "@twa-dev/sdk";
 import { buildTelegramUserPayload } from "@/utils/telegramUser";
 import type { TelegramUserPayload } from "@/services/supabaseUsers";
+import { isTelegramMiniApp } from "@/lib/platform";
 
 interface PopupButton {
   type: "default" | "destructive";
@@ -14,6 +15,12 @@ export const useTelegramApp = () => {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
+    if (!isTelegramMiniApp()) {
+      setIsReady(true);
+      setUser(null);
+      return;
+    }
+
     const init = async () => {
       try {
         await WebApp.ready();

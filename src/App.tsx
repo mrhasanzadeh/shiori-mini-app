@@ -3,13 +3,13 @@ import { useEffect, lazy, Suspense } from 'react'
 import WebApp from '@twa-dev/sdk'
 import Layout from './components/Layout'
 import ScrollToTop from './components/ScrollToTop'
-import AdminGate from './components/AdminGate'
+import { RequireAppAuth } from './components/RequireAppAuth'
 import { useTheme } from './utils/theme'
-import { useTelegramApp } from './hooks/useTelegramApp'
+import { useAppAuth } from './hooks/useAppAuth'
+import { isTelegramMiniApp } from './lib/platform'
 import { useTelegramStartNavigation } from './hooks/useTelegramStartNavigation'
 import { useTelegramUserSync } from './hooks/useTelegramUserSync'
 
-// Lazy load pages for better performance
 const Home = lazy(() => import('./pages/Home'))
 const AnimeDetail = lazy(() => import('./pages/AnimeDetail'))
 const Schedule = lazy(() => import('./pages/Schedule'))
@@ -20,29 +20,18 @@ const Notifications = lazy(() => import('./pages/Notifications'))
 const TranslatorProfile = lazy(() => import('./pages/TranslatorProfile'))
 const StudioDetail = lazy(() => import('./pages/StudioDetail'))
 
-const AdminLogin = lazy(() => import('./pages/AdminLogin'))
-const AdminDashboard = lazy(() => import('./pages/AdminDashboard'))
-const AdminAnimeList = lazy(() => import('./pages/AdminAnimeList'))
-const AdminAnimeEdit = lazy(() => import('./pages/AdminAnimeEdit'))
-const AdminGenres = lazy(() => import('./pages/AdminGenres'))
-const AdminStudios = lazy(() => import('./pages/AdminStudios'))
-const AdminTranslators = lazy(() => import('./pages/AdminTranslators'))
-const AdminFilesDownloads = lazy(() => import('./pages/AdminFilesDownloads'))
-const AdminFilePacks = lazy(() => import('./pages/AdminFilePacks'))
-const AdminUsers = lazy(() => import('./pages/AdminUsers'))
-const AdminNotifications = lazy(() => import('./pages/AdminNotifications'))
-
 function App() {
-  const { isReady } = useTelegramApp()
+  const { isReady } = useAppAuth()
   const { applyTheme } = useTheme()
   useTelegramStartNavigation(isReady)
   useTelegramUserSync(isReady)
 
   useEffect(() => {
-    if (isReady) {
+    if (!isReady) return
+    if (isTelegramMiniApp()) {
       WebApp.expand()
-      applyTheme()
     }
+    applyTheme()
   }, [isReady, applyTheme])
 
   if (!isReady) {
@@ -72,95 +61,7 @@ function App() {
           <Route path="/search" element={<Search />} />
           <Route path="/my-list" element={<MyList />} />
           <Route path="/profile" element={<Profile />} />
-          <Route path="/notifications" element={<Notifications />} />
-
-          <Route path="/admin/login" element={<AdminLogin />} />
-
-          <Route
-            path="/admin"
-            element={
-              <AdminGate>
-                <AdminDashboard />
-              </AdminGate>
-            }
-          />
-          <Route
-            path="/admin/anime"
-            element={
-              <AdminGate>
-                <AdminAnimeList />
-              </AdminGate>
-            }
-          />
-          <Route
-            path="/admin/anime/:id"
-            element={
-              <AdminGate>
-                <AdminAnimeEdit />
-              </AdminGate>
-            }
-          />
-          <Route
-            path="/admin/genres"
-            element={
-              <AdminGate>
-                <AdminGenres />
-              </AdminGate>
-            }
-          />
-          <Route
-            path="/admin/studios"
-            element={
-              <AdminGate>
-                <AdminStudios />
-              </AdminGate>
-            }
-          />
-
-          <Route
-            path="/admin/translators"
-            element={
-              <AdminGate>
-                <AdminTranslators />
-              </AdminGate>
-            }
-          />
-
-          <Route
-            path="/admin/files-downloads"
-            element={
-              <AdminGate>
-                <AdminFilesDownloads />
-              </AdminGate>
-            }
-          />
-
-          <Route
-            path="/admin/file-packs"
-            element={
-              <AdminGate>
-                <AdminFilePacks />
-              </AdminGate>
-            }
-          />
-
-          <Route
-            path="/admin/users"
-            element={
-              <AdminGate requireFullAdmin>
-                <AdminUsers />
-              </AdminGate>
-            }
-          />
-
-          <Route
-            path="/admin/notifications"
-            element={
-              <AdminGate>
-                <AdminNotifications />
-              </AdminGate>
-            }
-          />
+          <Route path="/notifications" element={<RequireAppAuth><Notifications /></RequireAppAuth>} />
         </Routes>
       </Suspense>
     </Layout>

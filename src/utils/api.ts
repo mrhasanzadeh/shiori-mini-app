@@ -1,5 +1,8 @@
 // App-level API wrapper
+import * as catalog from '../services/catalogSource'
+import * as shiori from '../services/shioriCatalog'
 import * as supa from '../services/supabaseAnime'
+import { isShioriApiEnabled } from '../services/catalogSource'
 
 // Lightweight card shape used across Home/Search UIs
 export type UiAnimeCard = {
@@ -14,7 +17,7 @@ export type UiAnimeCard = {
   isNew?: boolean
   isFeatured?: boolean
   description?: string
-  genres?: supa.GenreItem[]
+  genres?: catalog.GenreItem[]
 }
 
 export type UiStudioLink = {
@@ -24,7 +27,7 @@ export type UiStudioLink = {
 
 import type { AnimeListItem } from '../store/animeStore'
 
-const toGenreItem = (g: any): supa.GenreItem | null => {
+const toGenreItem = (g: any): catalog.GenreItem | null => {
   if (!g) return null
   if (typeof g === 'string') {
     const slug = g.trim().toLowerCase()
@@ -85,7 +88,7 @@ export const normalizeAnimeFormat = (f: unknown) =>
     .trim()
     .toUpperCase()
 
-let allAnimeRawCache: { data: Awaited<ReturnType<typeof supa.getAllAnime>>; ts: number } | null =
+let allAnimeRawCache: { data: Awaited<ReturnType<typeof catalog.getAllAnime>>; ts: number } | null =
   null
 const ALL_ANIME_CACHE_TTL_MS = 5 * 60 * 1000
 
@@ -93,7 +96,7 @@ const getAllAnimeCached = async () => {
   if (allAnimeRawCache && Date.now() - allAnimeRawCache.ts < ALL_ANIME_CACHE_TTL_MS) {
     return allAnimeRawCache.data
   }
-  const data = await supa.getAllAnime()
+  const data = await catalog.getAllAnime()
   allAnimeRawCache = { data, ts: Date.now() }
   return data
 }
@@ -152,7 +155,7 @@ export type AnimeSearchFilters = {
 export const fetchAnimeSearch = async (
   filters: AnimeSearchFilters = {}
 ): Promise<{ items: UiAnimeCard[]; total: number; hasMore: boolean }> => {
-  const result = await supa.searchAnimeCards(filters)
+  const result = await catalog.searchAnimeCards(filters)
   return {
     items: result.items.map(toCacheAnime),
     total: result.total,
@@ -165,25 +168,90 @@ export const fetchSimilarAnime = async (
   genreSlugs: string[],
   limit = 12
 ): Promise<UiAnimeCard[]> => {
-  const list = await supa.getSimilarAnimeCards(animeId, genreSlugs, limit)
+  const list = await catalog.getSimilarAnimeCards(animeId, genreSlugs, limit)
   return list.map(toCacheAnime)
 }
 
-// دریافت جزئیات یک انیمه + لیست قسمت‌ها از جدول episodes (با لینک دانلود هر قسمت)
+// دریافت جزئیات یک انیمه + لیست قسمت‌ها
 const resolveAnimeBaseForDetail = async (id: number | string) => {
   const cached = allAnimeRawCache?.data
   const fromCache = cached?.find((a) => String(a.id) === String(id))
   if (fromCache) return fromCache
 
-  const card = await supa.getAnimeCardById(id)
+  const card = await catalog.getAnimeCardById(id)
   if (!card) throw new Error(`Anime with id ${id} not found`)
   return card
+}
+
+const fetchAnimeByIdFromShiori = async (
+  id: number | string,
+  options?: { includeSeries?: boolean }
+) => {
+  const includeSeries = options?.includeSeries !== false
+  const detail = await shiori.getAnimeDetailById(id)
+  const parts = shiori.mapShioriDetailParts(detail)
+
+  const subtitleMap = new Map<number, string>()
+  for (const s of detail.subtitles ?? []) {
+    const ep = typeof s.episode_number === 'number' ? s.episode_number : 0
+    const link = s.subtitle_link
+    if (typeof link === 'string' && link.trim()) subtitleMap.set(ep, link.trim())
+  }
+
+  const mergedEpisodes = parts.episodes.map((e) => {
+    const subtitle_link = subtitleMap.get(e.number)
+    return {
+      ...e,
+      subtitle_link: subtitle_link ?? undefined,
+    }
+  })
+
+  const studioLinks: UiStudioLink[] = parts.studioLinks.map((s) => ({
+    slug: s.slug,
+    name: s.name,
+  }))
+
+  return {
+    id: detail.id,
+    title: detail.title,
+    title_romaji: detail.title_romaji ?? null,
+    image: detail.image,
+    featured_image: detail.featuredImage ?? detail.image,
+    format: detail.format ?? undefined,
+    description: detail.description,
+    status: detail.status,
+    airing_status: detail.airing_status ?? undefined,
+    genres: detail.genres,
+    episodes: mergedEpisodes,
+    subtitle_packs: parts.subtitlePacks,
+    episode_pack: parts.episodePack,
+    episodes_count: typeof detail.episodes_count === 'number' ? detail.episodes_count : 0,
+    averageScore: detail.averageScore,
+    malScore: detail.malScore,
+    imdbScore: detail.imdbScore,
+    shioriScore: detail.shioriScore,
+    anilist_id: detail.anilist_id,
+    mal_id: detail.mal_id,
+    imdb_id: detail.imdb_id,
+    studios: parts.studioNames,
+    studio_links: studioLinks,
+    producers: [],
+    season: detail.season ?? '',
+    year: typeof detail.year === 'number' ? detail.year : undefined,
+    startDate: detail.startDate ?? '',
+    endDate: detail.endDate ?? '',
+    series: includeSeries ? parts.series : null,
+  }
 }
 
 export const fetchAnimeById = async (
   id: number | string,
   options?: { includeSeries?: boolean }
 ) => {
+  if (isShioriApiEnabled()) {
+    return fetchAnimeByIdFromShiori(id, options)
+  }
+
   const includeSeries = options?.includeSeries !== false
 
   const [
@@ -328,7 +396,7 @@ export const buildAnimeDetailPlaceholder = (card: UiAnimeCard): AnimeDetailShell
 })
 
 export const fetchAnimeByStudioSlug = async (slug: string): Promise<UiAnimeCard[]> => {
-  const list = await supa.getAnimeCardsByStudioSlug(slug)
+  const list = await catalog.getAnimeCardsByStudioSlug(slug)
   return list.map(toCacheAnime)
 }
 
@@ -352,7 +420,7 @@ const enrichScheduleWithLocalIds = async (payload: SchedulePayload): Promise<Sch
   const anilistIds = Object.values(payload.schedule)
     .flat()
     .map((item) => item.id)
-  const localMap = await supa.getLocalAnimeIdsByAniListIds(anilistIds)
+  const localMap = await catalog.getLocalAnimeIdsByAniListIds(anilistIds)
 
   const schedule: Record<string, ScheduleAnimeItem[]> = {}
   for (const [day, list] of Object.entries(payload.schedule)) {

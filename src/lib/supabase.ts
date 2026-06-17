@@ -1,5 +1,4 @@
 import { createClient } from '@supabase/supabase-js'
-import { getPortalRequestHeaders } from '@/lib/adminPortalSessionStorage'
 import { getTelegramRequestHeaders } from '@/lib/telegramRequestHeaders'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
@@ -30,7 +29,7 @@ const mergeRequestHeaders = (
     return init
   }
 
-  const extra = { ...getTelegramRequestHeaders(), ...getPortalRequestHeaders() }
+  const extra = { ...getTelegramRequestHeaders() }
   if (Object.keys(extra).length === 0) return init
 
   const headers = new Headers(init?.headers)

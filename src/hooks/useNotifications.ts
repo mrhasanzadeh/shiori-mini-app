@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useTelegramApp } from './useTelegramApp'
+import { useAppAuth } from './useAppAuth'
 import {
   getMyNotificationPreferences,
   getMyNotifications,
@@ -7,15 +7,15 @@ import {
   markMyNotificationRead,
   updateMyNotificationPreferences,
   type NotificationPreferences,
-} from '../services/supabaseNotifications'
+} from '../services/userDataSource'
 import { queryKeys } from './queries/keys'
 
 export const useNotifications = () => {
-  const { user, isReady } = useTelegramApp()
+  const { user, isReady, inTelegram } = useAppAuth()
   const telegramUserId = user?.id
   const queryClient = useQueryClient()
 
-  const enabled = isReady && typeof telegramUserId === 'number'
+  const enabled = isReady && typeof telegramUserId === 'number' && (inTelegram || user?.source === 'web')
 
   const notificationsQuery = useQuery({
     queryKey: queryKeys.notifications(telegramUserId ?? 0),

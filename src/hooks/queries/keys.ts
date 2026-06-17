@@ -7,7 +7,6 @@ export const queryKeys = {
   similarAnime: (id: string | number, slugs: string[]) =>
     ['anime', 'similar', String(id), slugs.join(',')] as const,
   translatorLinks: (animeId: string | number) => ['anime', 'translators', String(animeId)] as const,
-  adminAnimeList: ['admin', 'anime', 'list'] as const,
   externalScores: (ids: {
     anilist_id?: number | null
     mal_id?: number | null

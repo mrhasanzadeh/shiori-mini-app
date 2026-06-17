@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import AnimePrefetchLink from '../components/AnimePrefetchLink'
 import { BidiText } from '../components/BidiText'
-import * as supa from '../services/supabaseAnime'
-import type { GenreItem } from '../services/supabaseAnime'
+import * as catalog from '../services/catalogSource'
+import type { GenreItem, StudioPublicItem } from '../services/catalogSource'
 import { fetchAnimeByStudioSlug, type UiAnimeCard } from '../utils/api'
 
 const genreLabel = (g: GenreItem) => g.name_fa || g.name_en || g.slug
@@ -71,7 +71,7 @@ const StudioDetail = () => {
   const nameParam = searchParams.get('name')?.trim() || null
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [studio, setStudio] = useState<supa.StudioPublicItem | null>(null)
+  const [studio, setStudio] = useState<StudioPublicItem | null>(null)
   const [anime, setAnime] = useState<UiAnimeCard[]>([])
 
   useEffect(() => {
@@ -80,7 +80,7 @@ const StudioDetail = () => {
       setLoading(true)
       setError(null)
       try {
-        const s = await supa.getStudioBySlug(slug)
+        const s = await catalog.getStudioBySlug(slug)
         setStudio(s)
         const list = await fetchAnimeByStudioSlug(slug)
         setAnime(list)

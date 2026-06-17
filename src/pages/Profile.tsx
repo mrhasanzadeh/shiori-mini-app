@@ -2,9 +2,11 @@ import { useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { AlarmClockIcon, FavouriteIcon, UserIcon } from 'hugeicons-react'
 import { ChevronLeft } from 'lucide-react'
-import { useTelegramApp } from '../hooks/useTelegramApp'
+import { useAppAuth } from '../hooks/useAppAuth'
 import { useUserAnimeList } from '../hooks/useUserAnimeList'
 import { useNotifications } from '../hooks/useNotifications'
+import { ProfileAuthPanel } from '../components/ProfileAuthPanel'
+import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import logo from '../assets/images/shiori-logo.svg'
@@ -55,6 +57,12 @@ const MenuItem = ({ to, icon, label, hint, badge }: MenuItemProps) => (
   </Link>
 )
 
+const ProfileGuestSkeleton = () => (
+  <div className="flex min-h-[calc(100dvh-5rem)] items-center justify-center pb-24">
+    <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary-400/30 border-t-primary-400" />
+  </div>
+)
+
 const ProfileSkeleton = () => (
   <div className="pb-24 animate-pulse">
     <div className="relative h-44">
@@ -75,7 +83,7 @@ const ProfileSkeleton = () => (
 )
 
 const Profile = () => {
-  const { user, isReady } = useTelegramApp()
+  const { user, isReady, isAuthenticated, inTelegram, login, register, logout } = useAppAuth()
   const { stats } = useUserAnimeList()
   const {
     unreadCount,
@@ -86,24 +94,37 @@ const Profile = () => {
   } = useNotifications()
   const [avatarFailed, setAvatarFailed] = useState(false)
 
-  const displayName = useMemo(() => {
-    if (!user) return 'کاربر'
-    const parts = [user.first_name, user.last_name].filter(Boolean)
-    return parts.join(' ').trim() || 'کاربر'
-  }, [user])
+  const displayName = user?.displayName ?? 'کاربر'
 
   const initials = useMemo(() => getInitials(displayName), [displayName])
-  const username = user?.username ? `@${user.username}` : null
-  const avatarUrl = user?.photo_url && !avatarFailed ? user.photo_url : null
+  const username =
+    user?.source === 'telegram' && user.username ? `@${user.username}` : user?.email ?? null
+  const avatarUrl =
+    user?.photoUrl && !avatarFailed ? user.photoUrl : null
   const favoritesCount = stats.animeCount
   const avgRatingLabel =
     stats.averageRating != null ? toPersianNumber(stats.averageRating.toFixed(1)) : '—'
 
-  if (!isReady) return <ProfileSkeleton />
+  if (!isReady) {
+    return !inTelegram && !isAuthenticated ? <ProfileGuestSkeleton /> : <ProfileSkeleton />
+  }
+
+  const showPersonal = inTelegram || isAuthenticated
+
+  if (!showPersonal && !inTelegram) {
+    return (
+      <ProfileAuthPanel
+        layout="page"
+        login={login}
+        register={register}
+        onSuccess={() => window.location.reload()}
+      />
+    )
+  }
 
   return (
     <div className="pb-24 bg-background text-foreground">
-      {/* Hero — extends under transparent app header */}
+      {/* Hero — logged-in / Telegram */}
       <div className="relative">
         <div className="absolute inset-x-0 top-0 h-44 overflow-hidden">
           {avatarUrl ? (
@@ -152,7 +173,7 @@ const Profile = () => {
             <p className="text-sm text-muted-foreground mt-1 text-left">{username}</p>
           )}
 
-          {user?.is_premium && (
+          {user?.isPremium && (
             <span className="mt-2 inline-flex items-center rounded-full border border-primary-400/30 bg-primary-400/10 px-2.5 py-0.5 text-[11px] font-medium text-primary-400">
               Telegram Premium
             </span>
@@ -250,7 +271,24 @@ const Profile = () => {
         </div>
       </div>
 
-      {/* About */}
+      {!inTelegram && user?.canLinkTelegram && (
+        <div className="mx-4 mt-5 rounded-2xl border border-dashed border-border bg-muted/20 px-4 py-4">
+          <p className="text-sm font-medium text-foreground">ادغام با Telegram</p>
+          <p className="text-xs text-muted-foreground mt-1 leading-6">
+            به‌زودی می‌توانید حساب وب را به Telegram وصل کنید تا لیست و اعلان‌ها یکی شوند.
+          </p>
+        </div>
+      )}
+
+      {!inTelegram && isAuthenticated && (
+        <div className="mx-4 mt-4">
+          <Button type="button" variant="outline" className="w-full" onClick={() => void logout()}>
+            خروج از حساب
+          </Button>
+        </div>
+      )}
+
+      {/* About — logged-in only */}
       <div className="mx-4 mt-5 rounded-2xl border border-border bg-card overflow-hidden">
         <div className="px-4 py-3.5 border-b border-border flex items-center gap-3">
           <img src={logo} alt="" className="w-8 h-8 shrink-0" />
@@ -258,8 +296,9 @@ const Profile = () => {
         </div>
         <div className="px-4 py-4">
           <p className="text-sm text-muted-foreground leading-7">
-            شیوری یک مینی‌اپ تلگرامی برای دنبال کردن انیمه‌هاست — علاقه‌مندی‌ها، برنامه پخش هفتگی
-            و اعلان‌های جدید را یک‌جا مدیریت کن.
+            {inTelegram
+              ? 'شیوری یک مینی‌اپ تلگرامی برای دنبال کردن انیمه‌هاست — علاقه‌مندی‌ها، برنامه پخش هفتگی و اعلان‌های جدید را یک‌جا مدیریت کن.'
+              : 'حساب وب شیوری — لیست شخصی و اعلان‌ها هم‌گام با کاتالوگ انیمه.'}
           </p>
           <p className="text-xs text-muted-foreground/80 mt-4">نسخه {APP_VERSION}</p>
         </div>

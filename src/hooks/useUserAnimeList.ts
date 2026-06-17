@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useTelegramApp } from './useTelegramApp'
+import { useAppAuth } from './useAppAuth'
 import { useAnimeStore, type FavoriteProgress } from '../store/animeStore'
 import {
   computeUserListStats,
@@ -8,7 +8,7 @@ import {
   removeUserAnimeListEntry,
   upsertUserAnimeListEntry,
   type AnimeFavoriteCountMap,
-} from '../services/supabaseUserList'
+} from '../services/userDataSource'
 import { queryKeys } from './queries/keys'
 
 const toProgress = (row: {
@@ -20,7 +20,7 @@ const toProgress = (row: {
 })
 
 export const useUserAnimeList = () => {
-  const { user, isReady } = useTelegramApp()
+  const { user, isReady, inTelegram } = useAppAuth()
   const telegramUserId = user?.id
   const queryClient = useQueryClient()
   const syncedRef = useRef(false)
@@ -35,7 +35,7 @@ export const useUserAnimeList = () => {
   const { data: remoteRows = [], isLoading: remoteLoading } = useQuery({
     queryKey: queryKeys.userAnimeList(telegramUserId ?? 0),
     queryFn: () => getUserAnimeList(telegramUserId!),
-    enabled: isReady && typeof telegramUserId === 'number',
+    enabled: isReady && typeof telegramUserId === 'number' && (inTelegram || user?.source === 'web'),
     staleTime: 30_000,
   })
 
@@ -293,6 +293,8 @@ export const useUserAnimeList = () => {
     toggleFavorite,
     isFavorite,
     isSaving: saveMutation.isPending,
-    hasTelegramUser: typeof telegramUserId === 'number',
+    hasTelegramUser: inTelegram && typeof telegramUserId === 'number',
+    hasAppUser: typeof telegramUserId === 'number',
+    inTelegram,
   }
 }

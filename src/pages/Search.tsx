@@ -2,8 +2,8 @@ import { useState, useEffect, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Search01Icon } from 'hugeicons-react'
 import type { UiAnimeCard } from '../utils/api'
-import * as supa from '../services/supabaseAnime'
-import type { GenreItem } from '../services/supabaseAnime'
+import * as catalog from '../services/catalogSource'
+import type { GenreItem } from '../services/catalogSource'
 import { Button } from '@/components/ui/button'
 import AnimePrefetchLink from '../components/AnimePrefetchLink'
 import { BidiText } from '../components/BidiText'
@@ -118,7 +118,7 @@ const Search = () => {
 
     setGenreNameLoading(true)
     let cancelled = false
-    void supa.getGenreBySlug(selectedGenre).then((genre) => {
+    void catalog.getGenreBySlug(selectedGenre).then((genre) => {
       if (cancelled) return
       setGenreDisplayName(genre ? genre.name_fa || genre.name_en || genre.slug : selectedGenre)
       setGenreNameLoading(false)

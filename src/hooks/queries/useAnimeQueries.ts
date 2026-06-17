@@ -10,9 +10,9 @@ import {
   type AnimeSearchFilters,
   type UiAnimeCard,
 } from '../../utils/api'
-import * as supa from '../../services/supabaseAnime'
+import { getTranslatorLinksByAnimeId } from '../../services/catalogSource'
 import { fetchExternalScores } from '../../services/externalScores'
-import { getAnimeFavoriteCount, getAnimeFavoriteCounts } from '../../services/supabaseUserList'
+import { getAnimeFavoriteCount, getAnimeFavoriteCounts } from '../../services/userDataSource'
 import { queryClient } from '../../lib/queryClient'
 import { queryKeys } from './keys'
 
@@ -143,18 +143,8 @@ export const useTranslatorLinksQuery = (
 ) =>
   useQuery({
     queryKey: queryKeys.translatorLinks(animeId ?? ''),
-    queryFn: () => supa.getTranslatorLinksByAnimeId(animeId!),
+    queryFn: () => getTranslatorLinksByAnimeId(animeId!),
     enabled: enabled && Boolean(animeId),
-  })
-
-export const useAdminAnimeListQuery = () =>
-  useQuery({
-    queryKey: queryKeys.adminAnimeList,
-    queryFn: async () => {
-      const list = await supa.getAllAnime()
-      const animeIdsWithEpisodes = await supa.getAnimeIdsWithAnyEpisodes(list.map((x) => x.id))
-      return { list, animeIdsWithEpisodes }
-    },
   })
 
 export const useExternalScoresQuery = (

@@ -3,8 +3,8 @@ import { useParams } from 'react-router-dom'
 import AnimePrefetchLink from '../components/AnimePrefetchLink'
 import { BidiText } from '../components/BidiText'
 import { UserIcon } from 'hugeicons-react'
-import * as supa from '../services/supabaseAnime'
-import type { GenreItem } from '../services/supabaseAnime'
+import * as catalog from '../services/catalogSource'
+import type { AnimeCard, GenreItem, TranslatorItem } from '../services/catalogSource'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 
@@ -33,7 +33,7 @@ const ProfileSkeleton = () => (
   </div>
 )
 
-const AnimeGridCard = ({ anime }: { anime: supa.AnimeCard }) => {
+const AnimeGridCard = ({ anime }: { anime: AnimeCard }) => {
   const genres = (anime.genres || []).slice(0, 2)
 
   return (
@@ -77,8 +77,8 @@ const TranslatorProfile = () => {
   const { slug } = useParams<{ slug: string }>()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [translator, setTranslator] = useState<supa.TranslatorItem | null>(null)
-  const [animeList, setAnimeList] = useState<supa.AnimeCard[]>([])
+  const [translator, setTranslator] = useState<TranslatorItem | null>(null)
+  const [animeList, setAnimeList] = useState<AnimeCard[]>([])
 
   const safeSlug = useMemo(() => String(slug || '').trim(), [slug])
 
@@ -110,8 +110,8 @@ const TranslatorProfile = () => {
       setLoading(true)
       setError(null)
       const [t, list] = await Promise.all([
-        supa.getTranslatorBySlug(safeSlug),
-        supa.getAnimeCardsByTranslatorSlug(safeSlug),
+        catalog.getTranslatorBySlug(safeSlug),
+        catalog.getAnimeCardsByTranslatorSlug(safeSlug),
       ])
       setTranslator(t)
       setAnimeList(list)

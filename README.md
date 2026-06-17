@@ -7,7 +7,7 @@ Telegram Mini App for browsing and managing an anime catalog (Persian UI, RTL).
 - Catalog: home, search, anime detail, studios, translators
 - Weekly schedule (AniList API, mapped to local catalog when possible)
 - Favorites (persisted locally + Supabase-backed detail)
-- Admin panel: anime CRUD, genres, studios, translators, file download stats, file packs for bot deep-links
+- User list, notifications, weekly schedule
 
 ## Tech stack
 
@@ -51,31 +51,24 @@ See `.env.example`. Typed in `src/vite-env.d.ts`.
 | `VITE_SUPABASE_URL` | Yes | Supabase project URL |
 | `VITE_SUPABASE_ANON_KEY` | Yes | Supabase anon key |
 | `VITE_ANIME_IMAGE_COLUMN` | No | Image column on `anime` (default: `cover_image`) |
-| `VITE_ADMIN_TELEGRAM_IDS` | No | Comma-separated Telegram user IDs for admin |
-| `VITE_ADMIN_WEB_PASSWORD` | No | Browser-only admin password (dev) |
 | `VITE_TELEGRAM_BOT_USERNAME` | No | Bot username for pack deep-links |
+
+Admin panel lives in **`shiori-admin`** (separate repo).
 
 ## Project structure
 
 ```
 src/
-├── App.tsx                 # Routes (user + /admin/*)
+├── App.tsx                 # User routes
 ├── components/
-│   ├── Layout.tsx          # Shell, bottom nav, admin sidebar
-│   ├── AdminGate.tsx       # Admin auth
-│   ├── admin/              # Shared admin UI (AdminCrudUi)
+│   ├── Layout.tsx          # Shell + bottom nav
 │   └── ui/                 # shadcn-style primitives
 ├── pages/                  # Route pages
-├── services/
-│   ├── supabaseAnime.ts    # Anime, episodes, genres, studios, translators
-│   ├── supabaseFiles.ts    # File download stats
-│   └── supabasePacks.ts    # File packs for Telegram bot
+├── services/               # Supabase data layer
 ├── store/                  # Zustand stores
-├── hooks/                  # useTelegramApp, useAnime, …
+├── hooks/
 ├── utils/
-│   ├── api.ts              # App-level data (catalog, schedule)
-│   └── theme.ts
-└── lib/supabase.ts         # Supabase client
+└── lib/supabase.ts
 ```
 
 ## Database
