@@ -18,13 +18,12 @@ jobs:
 
       - run: npm ci
       - run: npm run lint
-      - run: npm run build
+      - run: npm run build:api
         env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://placeholder.supabase.co' }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'placeholder-anon-key' }}
+          VITE_SHIORI_API_URL: ${{ vars.VITE_SHIORI_API_URL || 'https://api.shiori.dev' }}
 
       - uses: actions/upload-artifact@v4
         with:
-          name: shiori-mini-app-dist
+          name: shiori-dist
           path: dist/
           retention-days: 14

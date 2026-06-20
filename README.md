@@ -1,4 +1,4 @@
-# Shiori Mini App
+# Shiori
 
 Telegram Mini App for browsing and managing an anime catalog (Persian UI, RTL). Also works as a **web profile** (email login) outside Telegram.
 
@@ -57,6 +57,15 @@ src/services/
 ```
 
 When `VITE_SHIORI_API_URL` is set at build time, `@supabase/supabase-js` is excluded from the bundle (~200KB saved). Legacy Supabase modules load only if the API URL is unset at runtime.
+
+## Deploy
+
+Self-hosted only — Docker image on GHCR (`docker-publish.yml`) or static `dist/` behind nginx. See [`docs/DEPLOY.md`](docs/DEPLOY.md).
+
+```bash
+docker pull ghcr.io/<owner>/shiori:latest
+docker run -d -p 8080:80 ghcr.io/<owner>/shiori:latest
+```
 
 ## Related
 

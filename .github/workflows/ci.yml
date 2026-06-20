@@ -18,4 +18,6 @@ jobs:
 
       - run: npm ci
       - run: npm run lint
-      - run: npm run build
+      - run: npm run build:api
+        env:
+          VITE_SHIORI_API_URL: ${{ vars.VITE_SHIORI_API_URL || 'https://api.shiori.dev' }}

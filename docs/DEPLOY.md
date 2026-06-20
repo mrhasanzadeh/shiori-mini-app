@@ -1,78 +1,74 @@
-# Deploy — Shiori Mini App
+# Deploy — Shiori
+
+Self-hosted SPA behind HTTPS (required for Telegram Mini App).
 
 ## پیش‌نیاز
 
-- Node 20+
-- `.env` production با `VITE_SUPABASE_URL` و `VITE_SUPABASE_ANON_KEY`
-- **بدون** `VITE_ADMIN_WEB_PASSWORD` در build نهایی (فقط dev)
-- `VITE_ADMIN_TELEGRAM_IDS` = IDهای ادمین واقعی
+- **shiori-api** روی همان سرور یا دامنه جدا (HTTPS)
+- `.env` production با `VITE_SHIORI_API_URL` (بدون slash انتهایی)
+- دامنه + TLS (nginx / Caddy / Cloudflare)
 
-## Build
+## گزینه ۱ — Docker (پیشنهادی)
+
+Image از GitHub Actions روی GHCR:
+
+```bash
+docker pull ghcr.io/<owner>/shiori:latest
+docker run -d --name shiori -p 8080:80 \
+  ghcr.io/<owner>/shiori:latest
+```
+
+`VITE_SHIORI_API_URL` موقع **build** داخل image bake می‌شود. برای تغییر URL، repo variable `VITE_SHIORI_API_URL` را ست کنید و workflow را دوباره اجرا کنید.
+
+## گزینه ۲ — nginx + فایل‌های استاتیک
 
 ```bash
 npm ci
-npm run lint
-npm run build
+VITE_SHIORI_API_URL=https://api.example.com npm run build:api
+# کپی dist/ به سرور
 ```
 
-خروجی در پوشه `dist/` — SPA استاتیک.
-
-## میزبانی (Telegram Mini App)
-
-Mini App به **HTTPS** نیاز دارد. گزینه‌های رایج:
-
-| سرویس | نکته |
-|--------|------|
-| Cloudflare Pages | `dist` + redirect `_redirects` یا `_routes.json` برای SPA |
-| Vercel / Netlify | Framework: Vite، build: `npm run build`، output: `dist` |
-| Vercel SPA | فایل `vercel.json` در root — همه مسیرها به `index.html` |
-| GitHub Pages | `base` در `vite.config.ts` را روی نام repo تنظیم کنید |
-| VPS + nginx | فایل‌های `dist` + `try_files $uri /index.html` |
-
-### SPA fallback
-
-همه مسیرها (`/admin`, `/anime/:id`, …) باید به `index.html` برگردند.
-
-مثال nginx:
+nginx:
 
 ```nginx
-location / {
-  try_files $uri $uri/ /index.html;
+server {
+    listen 443 ssl http2;
+    server_name app.example.com;
+
+    root /var/www/shiori;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
 }
 ```
 
 ## BotFather
 
-1. Bot → Bot Settings → Menu Button → Configure → URL مینی‌اپ
-2. URL = آدرس HTTPS deploy شده
+Bot Settings → Menu Button → URL مینی‌اپ = `https://app.example.com`
 
-## Supabase (قبل از launch)
+## Cron (API)
 
-SQLها را **به ترتیب** در [`docs/SQL_MIGRATIONS.md`](./SQL_MIGRATIONS.md) اجرا کنید.
-
-حداقل production:
-
-1. `sql/bootstrap/supabase-rls-production.sql` (یا کل bootstrap #1–#21)
-2. `sql/bootstrap/supabase-sync-external-scores-cron.sql` + deploy Edge Function
-3. `supabase-consolidated-reapply.sql`
-4. Cron (اختیاری): `sql/optional/supabase-cron-sync-external-scores.sql` (راهنما) یا قالب `sql/archive/supabase-cron-job-sync-external-scores.sql`
+امتیاز خارجی از **shiori-api** (`/api/v1/cron/sync-external-scores`) — نه Supabase Edge.
 
 ## CI
 
-- **CI** (`.github/workflows/ci.yml`): lint + build روی PR/push
-- **Artifact** (`.github/workflows/build-artifact.yml`): فایل `dist` برای دانلود دستی
+| Workflow | کار |
+|----------|-----|
+| `ci.yml` | lint + build روی PR/push |
+| `docker-publish.yml` | push image به GHCR |
+| `build-artifact.yml` | artifact `dist/` (اختیاری) |
 
 ## چک‌لیست بعد از deploy
 
 - [ ] Home و Search لود می‌شوند
-- [ ] Admin با Telegram ID یا نقش DB باز می‌شود
-- [ ] web password در production کار نمی‌کند
-- [ ] Favorite sync و popular slider درست است
-- [ ] Cron امتیاز خارجی (اختیاری) لاگ دارد
+- [ ] تصاویر کاver از API (`/api/v1/media/serve/...`) باز می‌شوند
+- [ ] لیست من و اعلان‌ها کار می‌کنند
+- [ ] link-telegram در Profile
+- [ ] Mini App در Telegram با HTTPS باز می‌شود
 
 ## Related
 
-- [admin-auth.md](./admin-auth.md)
-- [security-phase1.md](./security-phase1.md)
-- [rls.md](./rls.md)
-- [schema.md](./schema.md)
+- [shiori-api DEPLOY](https://github.com/mrhasanzadeh/shiori-api) — backend
+- [admin-auth.md](./admin-auth.md) — پنل در **shiori-admin** (repo جدا)
