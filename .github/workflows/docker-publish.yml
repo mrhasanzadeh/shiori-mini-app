@@ -8,6 +8,11 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      vite_shiori_api_url:
+        description: Public API URL baked into the mini-app SPA
+        required: false
+        type: string
 
 env:
   REGISTRY: ghcr.io
@@ -23,12 +28,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Validate build variables
+      - name: Resolve build args
+        id: buildargs
+        env:
+          INPUT_API_URL: ${{ inputs.vite_shiori_api_url }}
+          VAR_API_URL: ${{ vars.VITE_SHIORI_API_URL }}
+          VAR_BOT: ${{ vars.VITE_TELEGRAM_BOT_USERNAME }}
         run: |
-          if [ -z "${{ vars.VITE_SHIORI_API_URL }}" ]; then
-            echo "::error::Set repository variable VITE_SHIORI_API_URL (Settings → Secrets and variables → Actions → Variables)"
-            exit 1
+          if [ -n "$INPUT_API_URL" ]; then
+            API_URL="$INPUT_API_URL"
+          elif [ -n "$VAR_API_URL" ]; then
+            API_URL="$VAR_API_URL"
+          else
+            API_URL="https://api.shiori.dev"
+            echo "::warning::VITE_SHIORI_API_URL not set — using default $API_URL. Set repo variable VITE_SHIORI_API_URL to override."
           fi
+          BOT="${VAR_BOT:-ShioriUploadBot}"
+          echo "vite_shiori_api_url=$API_URL" >> "$GITHUB_OUTPUT"
+          echo "vite_telegram_bot_username=$BOT" >> "$GITHUB_OUTPUT"
+          echo "Using VITE_SHIORI_API_URL=$API_URL"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -57,7 +78,5 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            VITE_SHIORI_API_URL=${{ vars.VITE_SHIORI_API_URL }}
-            VITE_TELEGRAM_BOT_USERNAME=${{ vars.VITE_TELEGRAM_BOT_USERNAME }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            VITE_SHIORI_API_URL=${{ steps.buildargs.outputs.vite_shiori_api_url }}
+            VITE_TELEGRAM_BOT_USERNAME=${{ steps.buildargs.outputs.vite_telegram_bot_username }}
