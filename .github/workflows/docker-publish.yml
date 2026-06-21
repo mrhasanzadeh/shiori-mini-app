@@ -40,7 +40,7 @@ jobs:
           elif [ -n "$VAR_API_URL" ]; then
             API_URL="$VAR_API_URL"
           else
-            API_URL="https://api.shiori.dev"
+            API_URL="https://api.shiori.cloud"
             echo "::warning::VITE_SHIORI_API_URL not set — using default $API_URL. Set repo variable VITE_SHIORI_API_URL to override."
           fi
           BOT="${VAR_BOT:-ShioriUploadBot}"

@@ -1,0 +1,15 @@
+# /opt/shiori.cloud — static SPA (nginx). No curl healthcheck (wget only on alpine nginx).
+
+services:
+  web:
+    image: ghcr.io/mrhasanzadeh/shiori:latest
+    container_name: shiori.cloud
+    restart: unless-stopped
+    ports:
+      - '${APP_PORT:-8080}:80'
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://127.0.0.1/']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
