@@ -39,5 +39,10 @@ export async function shioriFetch<T>(path: string, init?: RequestInit): Promise<
     throw new Error(`API ${res.status}: ${text || res.statusText}`)
   }
 
-  return res.json() as Promise<T>
+  const text = await res.text()
+  if (!text.trim()) {
+    return undefined as T
+  }
+
+  return JSON.parse(text) as T
 }
