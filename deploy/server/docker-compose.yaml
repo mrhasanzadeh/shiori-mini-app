@@ -2,7 +2,7 @@
 
 services:
   web:
-    image: ghcr.io/mrhasanzadeh/shiori:latest
+    image: ghcr.io/shioricloud/shiori.cloud:latest
     container_name: shiori.cloud
     restart: unless-stopped
     ports:
