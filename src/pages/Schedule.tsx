@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import AnimePrefetchLink from '../components/AnimePrefetchLink'
 import { BidiText } from '../components/BidiText'
 import { Calendar01Icon, Alert02Icon } from 'hugeicons-react'
-import type { GenreItem } from '../services/supabaseAnime'
+import type { GenreItem } from '../types/catalog'
 import { Button } from '@/components/ui/button'
 import { useScheduleQuery } from '../hooks/queries/useAnimeQueries'
+import { animeDetailPath } from '../lib/animePaths'
 import shioriLogo from '../assets/images/shiori-logo.svg'
 
 type Anime = {
@@ -158,7 +159,7 @@ const Schedule = () => {
     e.preventDefault()
 
     if (anime.localId) {
-      navigate(`/anime/${anime.localId}`)
+      navigate(animeDetailPath({ id: anime.localId }))
       return
     }
 
@@ -261,7 +262,7 @@ const Schedule = () => {
             <AnimePrefetchLink
               key={anime.id}
               animeId={anime.localId ?? anime.id}
-              to={anime.localId ? `/anime/${anime.localId}` : '#'}
+              to={anime.localId ? animeDetailPath({ id: anime.localId }) : '#'}
               onClick={(e) => handleAnimeClick(e, anime)}
               className="group block active:scale-[0.98] transition-transform"
             >

@@ -6,6 +6,7 @@ import { UserIcon } from 'hugeicons-react'
 import * as catalog from '../services/catalogSource'
 import type { AnimeCard, GenreItem, TranslatorItem } from '../services/catalogSource'
 import { Button } from '@/components/ui/button'
+import { animeDetailPath } from '../lib/animePaths'
 import { Badge } from '@/components/ui/badge'
 
 const toPersianNumber = (num: number | string): string => {
@@ -39,7 +40,7 @@ const AnimeGridCard = ({ anime }: { anime: AnimeCard }) => {
   return (
     <AnimePrefetchLink
       animeId={anime.id}
-      to={`/anime/${anime.id}`}
+      to={animeDetailPath(anime)}
       className="group block active:scale-[0.98] transition-transform"
       aria-label={`مشاهده ${anime.title}`}
     >

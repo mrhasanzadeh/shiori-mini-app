@@ -1,5 +1,5 @@
 import { shioriFetch } from '../lib/shioriApi'
-import type { TelegramUserPayload } from './supabaseUsers'
+import type { TelegramUserPayload } from '../types/telegramUser'
 
 export const registerTelegramUserVisit = async (user: TelegramUserPayload): Promise<void> => {
   if (!user?.id) return

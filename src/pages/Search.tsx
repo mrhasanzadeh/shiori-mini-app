@@ -4,6 +4,7 @@ import { Search01Icon } from 'hugeicons-react'
 import type { UiAnimeCard } from '../utils/api'
 import * as catalog from '../services/catalogSource'
 import type { GenreItem } from '../services/catalogSource'
+import { animeDetailPath } from '../lib/animePaths'
 import { Button } from '@/components/ui/button'
 import AnimePrefetchLink from '../components/AnimePrefetchLink'
 import { BidiText } from '../components/BidiText'
@@ -47,7 +48,7 @@ const AnimeGridCard = ({ anime }: { anime: UiAnimeCard }) => {
   return (
     <AnimePrefetchLink
       animeId={anime.id}
-      to={`/anime/${anime.id}`}
+      to={animeDetailPath(anime)}
       className="group block active:scale-[0.98] transition-transform"
       aria-label={`مشاهده ${anime.title}`}
     >

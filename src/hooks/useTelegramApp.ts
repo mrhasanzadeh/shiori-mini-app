@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import WebApp from "@twa-dev/sdk";
 import { buildTelegramUserPayload } from "@/utils/telegramUser";
-import type { TelegramUserPayload } from "@/services/supabaseUsers";
+import type { TelegramUserPayload } from '@/types/telegramUser'
 import { isTelegramMiniApp } from "@/lib/platform";
 
 interface PopupButton {

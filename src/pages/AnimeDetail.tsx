@@ -28,7 +28,7 @@ import {
 import { prefetchSimilarAnime } from '../hooks/queries/prefetch'
 import { formatAnilistPercent } from '../services/externalScores'
 import { formatUserListSaveError } from '../services/userListErrors'
-import type { GenreItem } from '../services/supabaseAnime'
+import type { GenreItem } from '../types/catalog'
 import {
   buildAnilistUrl,
   buildAnimeMiniAppLink,
@@ -37,6 +37,7 @@ import {
   parseAnimeDetailTab,
 } from '../utils/externalLinks'
 import { isAnimeDetailShell } from '../utils/api'
+import { animeDetailPath, animePublicSegment } from '../lib/animePaths'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -65,6 +66,7 @@ interface EpisodePack {
 
 interface Anime {
   id: number | string
+  slug?: string | null
   title: string
   title_romaji?: string | null
   image: string
@@ -99,6 +101,7 @@ interface Anime {
     title: string
     members: Array<{
       id: string | number
+      slug?: string | null
       title: string
       image?: string
       sort_order: number
@@ -526,7 +529,7 @@ const SeriesSeasonSwitcher = ({
 }: {
   series: NonNullable<Anime['series']>
   currentAnimeId: string | number
-  onSelect: (id: string | number) => void
+  onSelect: (member: { id: string | number; slug?: string | null }) => void
 }) => {
   const currentIndex = series.members.findIndex(
     (member) => String(member.id) === String(currentAnimeId)
@@ -571,7 +574,7 @@ const SeriesSeasonSwitcher = ({
               <button
                 key={String(member.id)}
                 type="button"
-                onClick={() => !isActive && onSelect(member.id)}
+                onClick={() => !isActive && onSelect(member)}
                 aria-current={isActive ? 'true' : undefined}
                 aria-label={`${memberLabel}${member.title ? `: ${member.title}` : ''}`}
                 className={cn(
@@ -662,23 +665,19 @@ const EmptyBlock = ({
 )
 
 const SimilarPosterCard = ({
-  id,
-  title,
-  image,
+  anime,
 }: {
-  id: number | string
-  title: string
-  image: string
+  anime: { id: number | string; slug?: string | null; title: string; image: string }
 }) => (
   <AnimePrefetchLink
-    animeId={id}
-    to={`/anime/${id}`}
+    animeId={anime.id}
+    to={animeDetailPath(anime)}
     className="group block active:scale-[0.98] transition-transform"
-    aria-label={`مشاهده ${title}`}
+    aria-label={`مشاهده ${anime.title}`}
   >
     <div className="relative aspect-[2/3] rounded-xl overflow-hidden border border-border bg-muted shadow-sm">
       <img
-        src={image}
+        src={anime.image}
         alt=""
         className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
         loading="lazy"
@@ -686,7 +685,7 @@ const SimilarPosterCard = ({
       <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
       <div className="absolute inset-x-0 bottom-0 p-2 pt-10">
         <BidiText as="h3" className="text-xs font-semibold text-white line-clamp-2 leading-5">
-          {title}
+          {anime.title}
         </BidiText>
       </div>
     </div>
@@ -817,6 +816,13 @@ const AnimeDetail = () => {
   const { data: favoriteCount, isPending: favoriteCountPending } = useAnimeFavoriteCountQuery(id)
 
   const anime = (animeData ?? null) as Anime | null
+
+  useEffect(() => {
+    if (!anime || !id || isPlaceholderData) return
+    const canonical = animePublicSegment(anime)
+    if (decodeURIComponent(id) === canonical) return
+    navigate(`${animeDetailPath(anime)}${window.location.search}`, { replace: true })
+  }, [anime, id, isPlaceholderData, navigate])
 
   const externalIds = useMemo(
     () => ({
@@ -966,8 +972,8 @@ const AnimeDetail = () => {
   const imdbChipLoading = needsLiveImdb && liveScoresFetching && resolvedImdbScore === null
 
   const handleShare = () => {
-    if (!anime || !id) return
-    const link = buildAnimeMiniAppLink(id, activeTab)
+    if (!anime) return
+    const link = buildAnimeMiniAppLink(animePublicSegment(anime), activeTab)
     shareUrl(link, `${anime.title} — شیوری`)
   }
 
@@ -1197,7 +1203,7 @@ const AnimeDetail = () => {
         <SeriesSeasonSwitcher
           series={anime.series!}
           currentAnimeId={anime.id}
-          onSelect={(memberId) => navigate(`/anime/${encodeURIComponent(String(memberId))}`)}
+          onSelect={(member) => navigate(animeDetailPath(member))}
         />
       ) : null}
 
@@ -1532,12 +1538,7 @@ const AnimeDetail = () => {
             ) : similarAnime.length > 0 ? (
               <div className="grid grid-cols-3 gap-3">
                 {similarAnime.map((item) => (
-                  <SimilarPosterCard
-                    key={item.id}
-                    id={item.id}
-                    title={item.title}
-                    image={item.image}
-                  />
+                  <SimilarPosterCard key={item.id} anime={item} />
                 ))}
               </div>
             ) : (

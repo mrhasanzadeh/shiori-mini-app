@@ -2,7 +2,7 @@ import { shioriFetch } from '../lib/shioriApi'
 import type {
   NotificationPreferences,
   UserNotificationRow,
-} from './supabaseNotifications'
+} from '../types/notifications'
 
 export const getMyNotifications = async (): Promise<UserNotificationRow[]> =>
   shioriFetch<UserNotificationRow[]>('/anime-notifications')

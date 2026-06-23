@@ -129,7 +129,7 @@ Downloadable assets tracked by the bot.
 | `last_accessed`, `created_at` | Stats |
 | `is_active` | Soft enable/disable |
 
-Used by: `supabaseFiles.ts`, admin file picker in `AdminFilePacks`.
+Used by: admin file picker in `AdminFilePacks` (dash API).
 
 ### `file_packs`
 
@@ -191,19 +191,20 @@ SQL: `sql/bootstrap/supabase-anime-favorite-counts.sql`
 
 ---
 
-## Code map
+## Code map (mini app → API)
 
-| Service file | Tables |
-|--------------|--------|
-| `src/services/supabaseAnime.ts` | anime, genres, studios, episodes, subtitles, translators, joins |
-| `src/services/supabaseFiles.ts` | files |
-| `src/services/supabasePacks.ts` | file_packs, file_pack_items |
-| `src/services/supabaseUserList.ts` | user_anime_list, favorite counts |
-| `src/services/supabaseUsers.ts` | telegram_users, admin user edit |
+| Service file | API area |
+|--------------|----------|
+| `src/services/shioriCatalog.ts` | `/anime-catalog/*` |
+| `src/services/shioriUserList.ts` | `/user-anime-list`, favorite counts |
+| `src/services/shioriUsers.ts` | `/telegram-users/register` |
+| `src/services/shioriNotifications.ts` | `/anime-notifications/*` |
+| `src/services/shioriAppAuth.ts` | portal auth, Telegram link |
 
-## RLS & admin
+Legacy Supabase client code and Edge Functions live under `sql/archive/legacy-supabase-edge/`.
 
-The mini app uses **`VITE_SUPABASE_ANON_KEY`** in the browser. Admin routes are gated by `AdminGate` (Telegram ID allowlist or web password), but **data access still depends on Supabase RLS**.
+## Auth & admin
 
-- **[docs/rls.md](./rls.md)** — policy templates and manual test checklist
+The mini app talks to **`VITE_SHIORI_API_URL`** only. Admin panel is a separate app (`dash.shiori.cloud`).
+
 - **[docs/admin-auth.md](./admin-auth.md)** — admin gate behavior and production checklist

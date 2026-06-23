@@ -2,7 +2,7 @@ import { shioriFetch } from '../lib/shioriApi'
 import type {
   AnimeFavoriteCountMap,
   UserAnimeListRow,
-} from './supabaseUserList'
+} from '../utils/userListStats'
 
 export const getUserAnimeList = async (
   _telegramUserId: number

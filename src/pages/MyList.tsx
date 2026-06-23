@@ -10,13 +10,15 @@ import AnimePrefetchLink from '../components/AnimePrefetchLink'
 import { BidiText } from '../components/BidiText'
 import { useFavoriteAnimeDetailsQueries } from '../hooks/queries/useAnimeQueries'
 import emptyListImage from '../assets/images/frieren-03.webp'
-import type { GenreItem } from '../services/supabaseAnime'
+import type { GenreItem } from '../types/catalog'
 import type { FavoriteProgress } from '../store/animeStore'
+import { animeDetailPath } from '../lib/animePaths'
 import { formatUserListSaveError } from '../services/userListErrors'
 import { cn } from '@/lib/utils'
 
 type FavoriteAnime = {
   id: number | string
+  slug?: string | null
   title: string
   image: string
   episodesCount: number
@@ -139,7 +141,7 @@ const FavoriteGridCard = ({
     <div className="relative">
       <AnimePrefetchLink
         animeId={anime.id}
-        to={`/anime/${anime.id}`}
+        to={animeDetailPath(anime)}
         className="group block active:scale-[0.98] transition-transform"
         aria-label={`مشاهده ${anime.title}`}
       >
@@ -204,7 +206,7 @@ const FavoriteListRow = ({
       <div className="min-w-0 flex-1 space-y-1.5">
         <AnimePrefetchLink
           animeId={anime.id}
-          to={`/anime/${anime.id}`}
+          to={animeDetailPath(anime)}
           className="block active:scale-[0.99] transition-transform"
           aria-label={`مشاهده ${anime.title}`}
         >
@@ -216,7 +218,7 @@ const FavoriteListRow = ({
         <div className="flex items-center justify-between gap-2">
           <AnimePrefetchLink
             animeId={anime.id}
-            to={`/anime/${anime.id}`}
+            to={animeDetailPath(anime)}
             className="min-w-0 flex-1 active:scale-[0.99] transition-transform"
           >
             {genres.length > 0 ? (
@@ -257,7 +259,7 @@ const FavoriteListRow = ({
 
         <AnimePrefetchLink
           animeId={anime.id}
-          to={`/anime/${anime.id}`}
+          to={animeDetailPath(anime)}
           className="block space-y-1.5 active:scale-[0.99] transition-transform"
         >
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
@@ -314,6 +316,7 @@ const MyList = () => {
       .filter((details): details is NonNullable<typeof details> => details != null)
       .map((details) => ({
         id: details.id,
+        slug: details.slug ?? null,
         title: details.title,
         image: details.image,
         episodesCount:

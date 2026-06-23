@@ -1,11 +1,11 @@
 // App-level API wrapper
 import * as catalog from '../services/catalogSource'
 import * as shiori from '../services/shioriCatalog'
-import { isShioriApiEnabled } from '../services/catalogSource'
 
 // Lightweight card shape used across Home/Search UIs
 export type UiAnimeCard = {
   id: number | string
+  slug?: string | null
   title: string
   image: string
   featuredImage?: string
@@ -47,6 +47,7 @@ const toGenreItem = (g: any): catalog.GenreItem | null => {
 
 const toCacheAnime = (c: any): UiAnimeCard => ({
   id: c.id,
+  slug: c.slug ?? null,
   title: c.title,
   image: c.image,
   featuredImage: c.featuredImage ?? undefined,
@@ -172,17 +173,7 @@ export const fetchSimilarAnime = async (
 }
 
 // دریافت جزئیات یک انیمه + لیست قسمت‌ها
-const resolveAnimeBaseForDetail = async (id: number | string) => {
-  const cached = allAnimeRawCache?.data
-  const fromCache = cached?.find((a) => String(a.id) === String(id))
-  if (fromCache) return fromCache
-
-  const card = await catalog.getAnimeCardById(id)
-  if (!card) throw new Error(`Anime with id ${id} not found`)
-  return card
-}
-
-const fetchAnimeByIdFromShiori = async (
+export const fetchAnimeById = async (
   id: number | string,
   options?: { includeSeries?: boolean }
 ) => {
@@ -212,6 +203,7 @@ const fetchAnimeByIdFromShiori = async (
 
   return {
     id: detail.id,
+    slug: detail.slug ?? null,
     title: detail.title,
     title_romaji: detail.title_romaji ?? null,
     image: detail.image,
@@ -243,112 +235,6 @@ const fetchAnimeByIdFromShiori = async (
   }
 }
 
-export const fetchAnimeById = async (
-  id: number | string,
-  options?: { includeSeries?: boolean }
-) => {
-  if (isShioriApiEnabled()) {
-    return fetchAnimeByIdFromShiori(id, options)
-  }
-
-  const supa = await import('../services/supabaseAnime')
-  const includeSeries = options?.includeSeries !== false
-
-  const [
-    anime,
-    externalMeta,
-    episodesList,
-    subtitlesList,
-    subtitlePacksList,
-    episodePack,
-    studioNames,
-    studioLinksRaw,
-    seriesLinks,
-  ] = await Promise.all([
-    resolveAnimeBaseForDetail(id),
-    supa.getAnimeExternalMetaById(id),
-    supa.getEpisodesByAnimeId(id),
-    supa.getSubtitlesByAnimeId(id),
-    supa.getSubtitlePacksByAnimeId(id),
-    supa.getEpisodePackByAnimeId(id),
-    supa.getAnimeStudioNames(id).catch(() => [] as string[]),
-    supa.getAnimeStudiosPublic(id).catch(() => [] as Awaited<ReturnType<typeof supa.getAnimeStudiosPublic>>),
-    includeSeries
-      ? supa.getAnimeSeriesByAnimeId(id).catch(() => null)
-      : Promise.resolve(null),
-  ])
-
-  const studioLinks: UiStudioLink[] = (studioLinksRaw || []).map((s) => ({
-    slug: s.slug,
-    name: s.name,
-  }))
-
-  if (import.meta.env.DEV && subtitlesList.length === 0) {
-    console.warn(
-      '[fetchAnimeById] subtitlesList خالی برگشت. اگر در جدول subtitles داده دارید، احتمالاً RLS/Policy جلوی SELECT را گرفته. برای تست می‌توانید روی جدول subtitles یک policy خواندن عمومی مثل episodes بگذارید.'
-    )
-  }
-
-  const subtitleMap = new Map<number, string>()
-  for (const s of subtitlesList) {
-    const ep = typeof s.episode_number === 'number' ? s.episode_number : 0
-    const link = s.subtitle_link
-    if (typeof link === 'string' && link.trim().length > 0) {
-      subtitleMap.set(ep, link)
-    }
-  }
-
-  let matchedSubtitleCount = 0
-
-  const mergedEpisodes = episodesList.map((e: any) => {
-    const ep = typeof e.number === 'number' ? e.number : 0
-    const subtitle_link = subtitleMap.get(ep)
-    if (subtitle_link) matchedSubtitleCount += 1
-    return {
-      ...e,
-      subtitle_link: subtitle_link ?? undefined,
-    }
-  })
-
-  if (import.meta.env.DEV && subtitlesList.length > 0 && matchedSubtitleCount === 0) {
-    console.warn(
-      '[fetchAnimeById] subtitle rows وجود دارد اما هیچکدام با episodes match نشد. episode_number را در subtitles و episodes برای همین anime چک کنید.'
-    )
-  }
-
-  return {
-    id: anime.id,
-    title: anime.title,
-    title_romaji: anime.title_romaji ?? null,
-    image: anime.image,
-    featured_image: anime.featuredImage,
-    format: anime.format ?? undefined,
-    description: anime.description,
-    status: anime.status,
-    airing_status: anime.airing_status ?? undefined,
-    genres: anime.genres,
-    episodes: mergedEpisodes,
-    subtitle_packs: subtitlePacksList,
-    episode_pack: episodePack,
-    episodes_count: typeof anime.episodes_count === 'number' ? anime.episodes_count : 0,
-    averageScore: externalMeta.averageScore ?? anime.averageScore,
-    malScore: externalMeta.malScore ?? anime.malScore,
-    imdbScore: externalMeta.imdbScore ?? anime.imdbScore,
-    shioriScore: externalMeta.shioriScore,
-    anilist_id: externalMeta.anilist_id ?? anime.anilist_id,
-    mal_id: externalMeta.mal_id ?? anime.mal_id,
-    imdb_id: externalMeta.imdb_id ?? anime.imdb_id,
-    studios: studioNames.length > 0 ? studioNames : anime.studio ? [anime.studio] : [],
-    studio_links: studioLinks,
-    producers: [],
-    season: anime.season ?? '',
-    year: typeof anime.year === 'number' ? anime.year : undefined,
-    startDate: anime.startDate ?? '',
-    endDate: anime.endDate ?? '',
-    series: seriesLinks,
-  }
-}
-
 export type AnimeDetail = Awaited<ReturnType<typeof fetchAnimeById>>
 
 export type AnimeDetailShell = AnimeDetail & { __shell: true }
@@ -363,7 +249,8 @@ export const isAnimeDetailShell = (data: unknown): data is AnimeDetailShell =>
 
 /** اسکلت فوری از کش کارت‌ها — قبل از fetch کامل جزئیات */
 export const buildAnimeDetailPlaceholder = (card: UiAnimeCard): AnimeDetailShell => ({
-  id: card.id,
+  id: String(card.id),
+  slug: card.slug ?? null,
   title: card.title,
   title_romaji: null,
   image: card.image,

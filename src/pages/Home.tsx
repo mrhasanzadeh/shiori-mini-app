@@ -11,9 +11,10 @@ import {
   FavouriteIcon,
   SparklesIcon,
 } from 'hugeicons-react'
-import type { GenreItem } from '../services/supabaseAnime'
+import type { GenreItem } from '../types/catalog'
 import { BidiText } from '@/components/BidiText'
 import { Button } from '@/components/ui/button'
+import { animeDetailPath } from '../lib/animePaths'
 import {
   filterAnimeCardsBySection,
   useAnimeCardsQuery,
@@ -75,7 +76,7 @@ const PosterCardContent = ({
   return (
     <AnimePrefetchLink
       animeId={anime.id}
-      to={`/anime/${anime.id}`}
+      to={animeDetailPath(anime)}
       className="group block active:scale-[0.98] transition-transform"
       aria-label={`مشاهده ${anime.title}`}
     >
@@ -332,7 +333,7 @@ const Home = () => {
               <SwiperSlide key={anime.id}>
                 <AnimePrefetchLink
                   animeId={anime.id}
-                  to={`/anime/${anime.id}`}
+                  to={animeDetailPath(anime)}
                   className="block group h-52"
                 >
                   <div className="relative h-full w-full rounded-2xl overflow-hidden border border-border">

@@ -9,12 +9,13 @@ import type {
   SubtitlePackItem,
   TranslatorAnimeLink,
   TranslatorItem,
-} from './supabaseAnime'
+} from '../types/catalog'
 
 type ApiGenre = { slug: string; name_en?: string; name_fa?: string }
 
 type ApiCard = {
   id: string
+  slug?: string | null
   title: string
   title_romaji?: string | null
   image: string
@@ -83,6 +84,7 @@ type ApiDetail = ApiCard & {
     title: string
     members: Array<{
       id: string
+      slug?: string | null
       title: string
       image: string
       sort_order: number
@@ -93,6 +95,7 @@ type ApiDetail = ApiCard & {
 
 const toCard = (row: ApiCard): AnimeCard => ({
   id: row.id,
+  slug: row.slug ?? null,
   title: row.title || 'بدون عنوان',
   title_romaji: row.title_romaji ?? null,
   image: row.image,

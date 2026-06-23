@@ -1,4 +1,4 @@
-import type { TelegramUserPayload } from '@/services/supabaseUsers'
+import type { TelegramUserPayload } from '@/types/telegramUser'
 
 type UnsafeTelegramUser = {
   id?: number

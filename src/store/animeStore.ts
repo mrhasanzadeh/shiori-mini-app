@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { GenreItem } from '../services/supabaseAnime'
+import type { GenreItem } from '../types/catalog'
 
 export interface AnimeListItem {
   id: number | string
