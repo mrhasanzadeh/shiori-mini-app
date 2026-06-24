@@ -6,7 +6,7 @@ import { Calendar01Icon, Alert02Icon } from 'hugeicons-react'
 import type { GenreItem } from '../types/catalog'
 import { Button } from '@/components/ui/button'
 import { useScheduleQuery } from '../hooks/queries/useAnimeQueries'
-import { animeDetailPath } from '../lib/animePaths'
+import { animeDetailPath, animePublicSegment } from '../lib/animePaths'
 import shioriLogo from '../assets/images/shiori-logo.svg'
 
 type Anime = {
@@ -159,7 +159,7 @@ const Schedule = () => {
     e.preventDefault()
 
     if (anime.localId) {
-      navigate(animeDetailPath({ id: anime.localId }))
+      navigate(animeDetailPath({ id: anime.localId, title: anime.title }))
       return
     }
 
@@ -261,8 +261,16 @@ const Schedule = () => {
           {activeList.map((anime) => (
             <AnimePrefetchLink
               key={anime.id}
-              animeId={anime.localId ?? anime.id}
-              to={anime.localId ? animeDetailPath({ id: anime.localId }) : '#'}
+              animeId={
+                anime.localId
+                  ? animePublicSegment({ id: anime.localId, title: anime.title })
+                  : anime.id
+              }
+              to={
+                anime.localId
+                  ? animeDetailPath({ id: anime.localId, title: anime.title })
+                  : '#'
+              }
               onClick={(e) => handleAnimeClick(e, anime)}
               className="group block active:scale-[0.98] transition-transform"
             >

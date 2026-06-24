@@ -670,7 +670,7 @@ const SimilarPosterCard = ({
   anime: { id: number | string; slug?: string | null; title: string; image: string }
 }) => (
   <AnimePrefetchLink
-    animeId={anime.id}
+    animeId={animePublicSegment(anime)}
     to={animeDetailPath(anime)}
     className="group block active:scale-[0.98] transition-transform"
     aria-label={`مشاهده ${anime.title}`}

@@ -14,7 +14,7 @@ import {
 import type { GenreItem } from '../types/catalog'
 import { BidiText } from '@/components/BidiText'
 import { Button } from '@/components/ui/button'
-import { animeDetailPath } from '../lib/animePaths'
+import { animeDetailPath, animePublicSegment } from '../lib/animePaths'
 import {
   filterAnimeCardsBySection,
   useAnimeCardsQuery,
@@ -75,7 +75,7 @@ const PosterCardContent = ({
 
   return (
     <AnimePrefetchLink
-      animeId={anime.id}
+      animeId={animePublicSegment(anime)}
       to={animeDetailPath(anime)}
       className="group block active:scale-[0.98] transition-transform"
       aria-label={`مشاهده ${anime.title}`}
@@ -332,7 +332,7 @@ const Home = () => {
             {featuredAnime.slice(0, 8).map((anime) => (
               <SwiperSlide key={anime.id}>
                 <AnimePrefetchLink
-                  animeId={anime.id}
+                  animeId={animePublicSegment(anime)}
                   to={animeDetailPath(anime)}
                   className="block group h-52"
                 >

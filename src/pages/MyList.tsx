@@ -12,7 +12,7 @@ import { useFavoriteAnimeDetailsQueries } from '../hooks/queries/useAnimeQueries
 import emptyListImage from '../assets/images/frieren-03.webp'
 import type { GenreItem } from '../types/catalog'
 import type { FavoriteProgress } from '../store/animeStore'
-import { animeDetailPath } from '../lib/animePaths'
+import { animeDetailPath, animePublicSegment } from '../lib/animePaths'
 import { formatUserListSaveError } from '../services/userListErrors'
 import { cn } from '@/lib/utils'
 
@@ -140,7 +140,7 @@ const FavoriteGridCard = ({
   return (
     <div className="relative">
       <AnimePrefetchLink
-        animeId={anime.id}
+        animeId={animePublicSegment(anime)}
         to={animeDetailPath(anime)}
         className="group block active:scale-[0.98] transition-transform"
         aria-label={`مشاهده ${anime.title}`}
@@ -205,7 +205,7 @@ const FavoriteListRow = ({
 
       <div className="min-w-0 flex-1 space-y-1.5">
         <AnimePrefetchLink
-          animeId={anime.id}
+          animeId={animePublicSegment(anime)}
           to={animeDetailPath(anime)}
           className="block active:scale-[0.99] transition-transform"
           aria-label={`مشاهده ${anime.title}`}
@@ -217,7 +217,7 @@ const FavoriteListRow = ({
 
         <div className="flex items-center justify-between gap-2">
           <AnimePrefetchLink
-            animeId={anime.id}
+            animeId={animePublicSegment(anime)}
             to={animeDetailPath(anime)}
             className="min-w-0 flex-1 active:scale-[0.99] transition-transform"
           >
@@ -258,7 +258,7 @@ const FavoriteListRow = ({
         </div>
 
         <AnimePrefetchLink
-          animeId={anime.id}
+          animeId={animePublicSegment(anime)}
           to={animeDetailPath(anime)}
           className="block space-y-1.5 active:scale-[0.99] transition-transform"
         >

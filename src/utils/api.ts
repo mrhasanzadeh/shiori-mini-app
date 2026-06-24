@@ -1,6 +1,7 @@
 // App-level API wrapper
 import * as catalog from '../services/catalogSource'
 import * as shiori from '../services/shioriCatalog'
+import { deriveAnimeSlug } from '../lib/animePaths'
 import { resolveCatalogAnimeRecordId } from '../lib/resolveCatalogAnimeId'
 
 // Lightweight card shape used across Home/Search UIs
@@ -48,7 +49,7 @@ const toGenreItem = (g: any): catalog.GenreItem | null => {
 
 const toCacheAnime = (c: any): UiAnimeCard => ({
   id: c.id,
-  slug: c.slug ?? null,
+  slug: deriveAnimeSlug(c),
   title: c.title,
   image: c.image,
   featuredImage: c.featuredImage ?? undefined,
@@ -206,7 +207,7 @@ export const fetchAnimeById = async (
 
   return {
     id: detail.id,
-    slug: detail.slug ?? null,
+    slug: deriveAnimeSlug({ slug: detail.slug, title: detail.title }),
     title: detail.title,
     title_romaji: detail.title_romaji ?? null,
     image: detail.image,

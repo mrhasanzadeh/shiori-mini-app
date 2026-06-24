@@ -14,9 +14,17 @@ export const isAnimeUuid = (value: string | null | undefined): boolean =>
   UUID_RE.test(String(value ?? '').trim())
 
 export type AnimeRouteRef = {
-  id: string | number
+  id?: string | number
   slug?: string | null
   title?: string
+}
+
+/** Slug from API, or derived from title when the catalog API omits slug. */
+export const deriveAnimeSlug = (anime: AnimeRouteRef): string | null => {
+  const slug = String(anime.slug ?? '').trim()
+  if (slug) return slug
+  const derived = normalizeAnimeSlug(String(anime.title ?? ''))
+  return derived || null
 }
 
 export const animeCardMatchesRouteParam = (
@@ -36,11 +44,9 @@ export const animeCardMatchesRouteParam = (
   return derived.length > 0 && derived === normalizeAnimeSlug(raw)
 }
 
-/** Public URL segment: slug when set, otherwise id. */
-export const animePublicSegment = (anime: AnimeRouteRef): string => {
-  const slug = String(anime.slug ?? '').trim()
-  return slug || String(anime.id)
-}
+/** Public URL segment: slug when set, otherwise title-derived slug, otherwise id. */
+export const animePublicSegment = (anime: AnimeRouteRef): string =>
+  deriveAnimeSlug(anime) ?? String(anime.id ?? '')
 
 export const animeDetailPath = (anime: AnimeRouteRef): string =>
   `/anime/${encodeURIComponent(animePublicSegment(anime))}`

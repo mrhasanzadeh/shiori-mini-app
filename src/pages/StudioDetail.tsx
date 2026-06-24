@@ -4,7 +4,7 @@ import AnimePrefetchLink from '../components/AnimePrefetchLink'
 import { BidiText } from '../components/BidiText'
 import * as catalog from '../services/catalogSource'
 import type { GenreItem, StudioPublicItem } from '../services/catalogSource'
-import { animeDetailPath } from '../lib/animePaths'
+import { animeDetailPath, animePublicSegment } from '../lib/animePaths'
 import { fetchAnimeByStudioSlug, type UiAnimeCard } from '../utils/api'
 
 const genreLabel = (g: GenreItem) => g.name_fa || g.name_en || g.slug
@@ -24,7 +24,7 @@ const AnimeGridCard = ({ anime }: { anime: UiAnimeCard }) => {
 
   return (
     <AnimePrefetchLink
-      animeId={anime.id}
+      animeId={animePublicSegment(anime)}
       to={animeDetailPath(anime)}
       className="group block active:scale-[0.98] transition-transform"
       aria-label={`مشاهده ${anime.title}`}

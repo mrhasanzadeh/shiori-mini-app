@@ -76,7 +76,10 @@ export const useAnimeDetailQuery = (id: string | number | undefined) =>
     queryFn: () => fetchAnimeById(id!),
     enabled: Boolean(id),
     placeholderData: (previousData) => {
-      if (previousData && String(previousData.id) === String(id)) return previousData
+      if (previousData && id) {
+        if (String(previousData.id) === String(id)) return previousData
+        if (animeCardMatchesRouteParam(previousData, String(id))) return previousData
+      }
       if (!id) return undefined
       const card = findAnimeCardPlaceholder(id)
       return card ? buildAnimeDetailPlaceholder(card) : undefined

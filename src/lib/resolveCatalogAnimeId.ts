@@ -46,26 +46,33 @@ export const resolveCatalogAnimeRecordId = async (
   const fromPrefetched = prefetchedCards
     ? findCardByRouteParam(prefetchedCards, raw)
     : undefined
-  if (fromPrefetched) return fromPrefetched.id
+  if (fromPrefetched?.id != null) return fromPrefetched.id
 
   const cards = prefetchedCards ?? (await loadCatalogCards())
   const match = findCardByRouteParam(cards, raw)
-  if (match) return match.id
+  if (match?.id != null) return match.id
 
   const normalized = normalizeAnimeSlug(raw)
   if (normalized !== raw) {
     const alt = cards.find((card) => String(card.slug ?? '').trim() === normalized)
-    if (alt) return alt.id
+    if (alt?.id != null) return alt.id
   }
 
   const search = await catalog.searchAnimeCards({ query: raw, limit: 50 })
   const fromSearch = findCardByRouteParam(search.items ?? [], raw)
-  if (fromSearch) return fromSearch.id
+  if (fromSearch?.id != null) return fromSearch.id
+
+  const searchWords = normalized.replace(/-/g, ' ').trim()
+  if (searchWords && searchWords !== raw) {
+    const wordSearch = await catalog.searchAnimeCards({ query: searchWords, limit: 50 })
+    const fromWords = findCardByRouteParam(wordSearch.items ?? [], raw)
+    if (fromWords?.id != null) return fromWords.id
+  }
 
   if (normalized !== raw) {
     const altSearch = await catalog.searchAnimeCards({ query: normalized, limit: 50 })
     const fromAltSearch = findCardByRouteParam(altSearch.items ?? [], raw)
-    if (fromAltSearch) return fromAltSearch.id
+    if (fromAltSearch?.id != null) return fromAltSearch.id
   }
 
   throw new Error(`انیمه با اسلاگ «${raw}» پیدا نشد`)
