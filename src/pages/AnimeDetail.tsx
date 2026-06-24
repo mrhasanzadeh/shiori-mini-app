@@ -37,7 +37,7 @@ import {
   parseAnimeDetailTab,
 } from '../utils/externalLinks'
 import { isAnimeDetailShell } from '../utils/api'
-import { animeDetailPath, animePublicSegment } from '../lib/animePaths'
+import { animeCardMatchesRouteParam, animeDetailPath, animePublicSegment } from '../lib/animePaths'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -886,7 +886,7 @@ const AnimeDetail = () => {
   const loading = isLoading && !anime
   const detailPending =
     isPlaceholderData ||
-    (Boolean(anime) && Boolean(id) && String(anime?.id) !== String(id))
+    (Boolean(anime) && Boolean(id) && !animeCardMatchesRouteParam(anime!, String(id)))
   const isCardShell = isAnimeDetailShell(animeData)
   const heroPending = detailPending && !isCardShell
   const error = isError ? 'خطا در بارگذاری اطلاعات انیمه' : null
