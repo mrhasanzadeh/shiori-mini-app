@@ -1,6 +1,7 @@
 // App-level API wrapper
 import * as catalog from '../services/catalogSource'
 import * as shiori from '../services/shioriCatalog'
+import { resolveCatalogAnimeRecordId } from '../lib/resolveCatalogAnimeId'
 
 // Lightweight card shape used across Home/Search UIs
 export type UiAnimeCard = {
@@ -168,16 +169,18 @@ export const fetchSimilarAnime = async (
   genreSlugs: string[],
   limit = 12
 ): Promise<UiAnimeCard[]> => {
-  const list = await catalog.getSimilarAnimeCards(animeId, genreSlugs, limit)
+  const recordId = await resolveCatalogAnimeRecordId(animeId)
+  const list = await catalog.getSimilarAnimeCards(recordId, genreSlugs, limit)
   return list.map(toCacheAnime)
 }
 
 // دریافت جزئیات یک انیمه + لیست قسمت‌ها
 export const fetchAnimeById = async (
-  id: number | string,
+  idOrSlug: number | string,
   options?: { includeSeries?: boolean }
 ) => {
   const includeSeries = options?.includeSeries !== false
+  const id = await resolveCatalogAnimeRecordId(idOrSlug)
   const detail = await shiori.getAnimeDetailById(id)
   const parts = shiori.mapShioriDetailParts(detail)
 

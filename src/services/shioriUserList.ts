@@ -1,4 +1,5 @@
 import { shioriFetch } from '../lib/shioriApi'
+import { resolveCatalogAnimeRecordId } from '../lib/resolveCatalogAnimeId'
 import type {
   AnimeFavoriteCountMap,
   UserAnimeListRow,
@@ -43,8 +44,9 @@ export const getAnimeFavoriteCounts = async (): Promise<AnimeFavoriteCountMap> =
   shioriFetch<AnimeFavoriteCountMap>('/anime-catalog/favorite-counts')
 
 export const getAnimeFavoriteCount = async (animeId: number | string): Promise<number> => {
+  const recordId = await resolveCatalogAnimeRecordId(animeId)
   const count = await shioriFetch<number>(
-    `/anime-catalog/${encodeURIComponent(String(animeId))}/favorite-count`
+    `/anime-catalog/${encodeURIComponent(String(recordId))}/favorite-count`
   )
   return Number(count) || 0
 }

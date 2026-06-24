@@ -1,4 +1,5 @@
 import { useInfiniteQuery, useQueries, useQuery } from '@tanstack/react-query'
+import { animeCardMatchesRouteParam } from '../../lib/animePaths'
 import {
   buildAnimeDetailPlaceholder,
   fetchAllAnimeCards,
@@ -49,15 +50,20 @@ export const useAnimeFavoriteCountQuery = (animeId: string | number | undefined)
   })
 
 const findAnimeCardPlaceholder = (id: string | number): UiAnimeCard | undefined => {
+  const route = String(id)
   const cards = queryClient.getQueryData<UiAnimeCard[]>(queryKeys.animeCards)
-  const fromCards = cards?.find((c) => String(c.id) === String(id))
+  const fromCards = cards?.find(
+    (c) => String(c.id) === route || animeCardMatchesRouteParam(c, route),
+  )
   if (fromCards) return fromCards
 
   const searchQueries = queryClient.getQueriesData<{ items: UiAnimeCard[] }>({
     queryKey: ['anime', 'search'],
   })
   for (const [, data] of searchQueries) {
-    const hit = data?.items?.find((c) => String(c.id) === String(id))
+    const hit = data?.items?.find(
+      (c) => String(c.id) === route || animeCardMatchesRouteParam(c, route),
+    )
     if (hit) return hit
   }
 
