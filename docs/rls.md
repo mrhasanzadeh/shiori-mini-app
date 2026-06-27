@@ -1,6 +1,8 @@
 # Supabase RLS policies
 
-The mini app uses **`VITE_SUPABASE_ANON_KEY`** in the browser. Row Level Security (RLS) is the primary data boundary — not `AdminGate` (see [admin-auth.md](./admin-auth.md)).
+> **Legacy / archived:** Production now uses **Shiori API** with portal auth — the browser no longer uses `VITE_SUPABASE_ANON_KEY` for catalog or admin writes. Keep this doc only if you still host Postgres on Supabase or need historical RLS reference. Active schema migrations: `api.shiori.cloud/scripts/sql/`.
+
+The mini app previously used **`VITE_SUPABASE_ANON_KEY`** in the browser. Row Level Security (RLS) was the primary data boundary — not `AdminGate` (see [admin-auth.md](./admin-auth.md)).
 
 Apply policies in the Supabase SQL Editor or via migrations in your Supabase project (not stored in this repo).
 

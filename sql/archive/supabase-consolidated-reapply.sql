@@ -41,7 +41,7 @@ ALTER TABLE public.translators
 
 COMMENT ON COLUMN public.translators.is_active IS 'false = مترجم غیرفعال (نمایش در پروفایل با badge)';
 
--- عنوان Romaji
+-- عنوان روماجی
 ALTER TABLE anime ADD COLUMN IF NOT EXISTS title_romaji text;
 
 -- زنجیره فصل‌ها (legacy prev/next — اختیاری)

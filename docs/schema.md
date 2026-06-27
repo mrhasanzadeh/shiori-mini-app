@@ -1,6 +1,8 @@
 # Database schema (app contract)
 
-This document reflects **what the codebase expects** from Supabase. RLS policies and SQL migrations are not stored in this repo; configure them in the Supabase dashboard.
+> **Architecture (2026):** The mini-app and admin talk to **Shiori API** (`VITE_SHIORI_API_URL`), not Supabase PostgREST. Postgres schema below is still the source of truth; RLS in Supabase is **legacy** — see [rls.md](./rls.md). For self-hosted SQL migrations use `api.shiori.cloud/scripts/sql/production_schema_catchup.sql`.
+
+This document reflects **what the codebase expects** from the Postgres catalog. Apply schema changes via API repo SQL scripts or your migration tool — not the Supabase dashboard.
 
 > **Note:** `docs/database-simple-schema.md` is outdated (single-table design). Use this file instead.
 
@@ -36,6 +38,7 @@ Main catalog row. Image column name is configurable via `VITE_ANIME_IMAGE_COLUMN
 | Column (used in code) | Notes |
 |----------------------|--------|
 | `id` | Primary key |
+| `slug` | Unique URL segment + media file prefix (`{slug}-thumb`, `{slug}-cover`) |
 | `title` | Display title |
 | `cover_image` / env override | Poster URL |
 | `featured_image` | Hero / slider image |
