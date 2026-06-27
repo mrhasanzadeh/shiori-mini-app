@@ -14,5 +14,3 @@ export type {
   TranslatorAnimeLink,
   TranslatorItem,
 } from '../types/catalog'
-
-export { isShioriApiEnabled } from '../lib/shioriApi'

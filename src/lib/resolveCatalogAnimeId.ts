@@ -77,8 +77,3 @@ export const resolveCatalogAnimeRecordId = async (
 
   throw new Error(`انیمه با اسلاگ «${raw}» پیدا نشد`)
 }
-
-export const invalidateCatalogAnimeResolverCache = () => {
-  cachedCards = null
-  cachedCardsPromise = null
-}
