@@ -344,10 +344,10 @@ const Home = () => {
                       loading="lazy"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
-                    <div className="absolute left-0 bottom-0 p-4">
+                    <div className="absolute inset-x-0 bottom-0 p-4">
                       <BidiText
                         as="h3"
-                        className="text-base font-bold text-white text-center line-clamp-2 leading-6"
+                        className="text-base font-bold text-white text-left line-clamp-2 leading-6"
                       >
                         {anime.title}
                       </BidiText>
