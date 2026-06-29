@@ -1,8 +1,8 @@
 # Database schema (app contract)
 
-> **Architecture (2026):** The mini-app and admin talk to **Shiori API** (`VITE_SHIORI_API_URL`), not Supabase PostgREST. Postgres schema below is still the source of truth; RLS in Supabase is **legacy** — see [rls.md](./rls.md). For self-hosted SQL migrations use `api.shiori.cloud/scripts/sql/production_schema_catchup.sql`.
+> **Architecture (2026):** The mini-app and admin talk to **Shiori API** (`VITE_SHIORI_API_URL`). Postgres schema below is the source of truth. For self-hosted SQL migrations use `api.shiori.cloud/scripts/sql/production_schema_catchup.sql`.
 
-This document reflects **what the codebase expects** from the Postgres catalog. Apply schema changes via API repo SQL scripts or your migration tool — not the Supabase dashboard.
+This document reflects **what the codebase expects** from the Postgres catalog. Apply schema changes via API repo SQL scripts or your migration tool.
 
 > **Note:** `docs/database-simple-schema.md` is outdated (single-table design). Use this file instead.
 
@@ -171,7 +171,7 @@ Telegram Mini App users (registered on each app open via RPC `register_telegram_
 
 View: `telegram_users_admin` (includes `favorites_count` from join).
 
-SQL: `sql/bootstrap/supabase-telegram-users.sql`, `supabase-telegram-users-roles.sql`, `supabase-telegram-users-fix-username.sql`
+SQL: `sql/bootstrap/telegram-users.sql`, `telegram-users-roles.sql`, `telegram-users-fix-username.sql`
 
 ### `user_anime_list`
 
@@ -186,11 +186,11 @@ Per-user favorites, watch progress, and rating.
 
 Updates `anime.shiori_score` via trigger on rating changes.
 
-SQL: `sql/bootstrap/supabase-user-anime-list.sql`
+SQL: `sql/bootstrap/user-anime-list.sql`
 
 RPC: `get_anime_favorite_counts()` — favorite counts per anime for Home popular sort.
 
-SQL: `sql/bootstrap/supabase-anime-favorite-counts.sql`
+SQL: `sql/bootstrap/anime-favorite-counts.sql`
 
 ---
 
@@ -203,8 +203,6 @@ SQL: `sql/bootstrap/supabase-anime-favorite-counts.sql`
 | `src/services/shioriUsers.ts` | `/telegram-users/register` |
 | `src/services/shioriNotifications.ts` | `/anime-notifications/*` |
 | `src/services/shioriAppAuth.ts` | portal auth, Telegram link |
-
-Legacy Supabase client code and Edge Functions live under `sql/archive/legacy-supabase-edge/`.
 
 ## Auth & admin
 

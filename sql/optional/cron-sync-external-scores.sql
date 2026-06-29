@@ -1,0 +1,8 @@
+-- Optional: weekly external score sync via Shiori API cron (replaces legacy Edge Function).
+--
+-- Example (system cron on server):
+-- curl -sf -X POST \
+--   "https://api.shiori.cloud/api/v1/cron/sync-external-scores?limit=30&offset=0" \
+--   -H "x-cron-secret: $CRON_SECRET"
+--
+-- See api.shiori.cloud/DEPLOY.md for CRON_SECRET setup.

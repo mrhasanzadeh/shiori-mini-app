@@ -44,19 +44,15 @@ npm run preview
 |----------|----------|---------|
 | `VITE_SHIORI_API_URL` | **Yes** | REST API base (no trailing slash) |
 | `VITE_TELEGRAM_BOT_USERNAME` | No | Bot username for deep-links / link-telegram |
-| `VITE_SUPABASE_URL` | No | Legacy fallback only |
-| `VITE_SUPABASE_ANON_KEY` | No | Legacy fallback only |
 
 ## Architecture
 
 ```
 src/services/
-├── catalogSource.ts      # → shioriCatalog (API) or supabaseAnime
-├── userDataSource.ts     # → shiori* (API) or supabase*
-└── shioriAppAuth.ts      # web login + link-telegram
+├── shioriCatalog.ts      # catalog via API
+├── shioriUserList.ts     # favorites / progress via API
+└── shioriAppAuth.ts      # Telegram initData auth
 ```
-
-When `VITE_SHIORI_API_URL` is set at build time, `@supabase/supabase-js` is excluded from the bundle (~200KB saved). Legacy Supabase modules load only if the API URL is unset at runtime.
 
 ## Deploy
 
@@ -71,7 +67,7 @@ docker run -d -p 8080:80 ghcr.io/<owner>/shiori:latest
 
 - `shiori-api` — backend + cron
 - `shiori-admin` — staff panel
-- Legacy SQL docs in `docs/` (schema migrated to Postgres, not Supabase-specific)
+- SQL migrations in `sql/` and `api.shiori.cloud/scripts/sql/`
 
 ## License
 

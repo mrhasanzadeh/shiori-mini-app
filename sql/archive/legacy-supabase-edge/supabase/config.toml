@@ -1,5 +1,0 @@
-# Supabase local config (Edge Functions)
-# https://supabase.com/docs/guides/functions
-
-[functions.sync-external-scores]
-verify_jwt = false

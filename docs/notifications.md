@@ -11,9 +11,8 @@
 
 ## نصب (یک‌بار)
 
-1. SQL: [`sql/supabase-notifications.sql`](../sql/supabase-notifications.sql)
-2. Edge: `npx supabase functions deploy notify-episode-release --project-ref YOUR_REF`
-3. Secret `TELEGRAM_BOT_TOKEN` (همان bot مینی‌اپ)
+1. SQL: [`sql/notifications.sql`](../sql/notifications.sql)
+2. در API: `TELEGRAM_BOT_TOKEN` و `MINI_APP_URL` در `.env` تنظیم شود
 
 ## ارسال از پنل ادمین
 
@@ -27,5 +26,4 @@
 
 ## Related
 
-- [telegram-user-list-edge.md](./telegram-user-list-edge.md)
 - [SQL_MIGRATIONS.md](./SQL_MIGRATIONS.md)

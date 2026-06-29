@@ -50,7 +50,7 @@ Bot Settings → Menu Button → URL مینی‌اپ = `https://app.example.com`
 
 ## Cron (API)
 
-امتیاز خارجی از **shiori-api** (`/api/v1/cron/sync-external-scores`) — نه Supabase Edge.
+امتیاز خارجی از **shiori-api** (`/api/v1/cron/sync-external-scores`) — نه Postgres Edge.
 
 ## CI
 

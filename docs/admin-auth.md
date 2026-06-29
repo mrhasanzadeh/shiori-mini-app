@@ -14,9 +14,9 @@ See **[users-and-roles.md](./users-and-roles.md)** for the table map (`telegram_
 
 ### 1. SQL
 
-Run **`sql/bootstrap/supabase-admin-portal-auth.sql`**.
+Run **`sql/bootstrap/admin-portal-auth.sql`**.
 
-If you previously created `admin_portal_accounts`, also run **`sql/archive/supabase-unify-portal-users.sql`** (one-time legacy migration).
+If you previously created `admin_portal_accounts`, also run **`sql/archive/unify-portal-users.sql`** (one-time legacy migration).
 
 Set web login on an existing Telegram user:
 
@@ -35,12 +35,10 @@ INSERT INTO telegram_users (telegram_user_id, first_name, email, password_hash, 
 VALUES (-1000001, 'مدیر وب', 'admin@shiori.app', crypt('YOUR_PASSWORD', gen_salt('bf')), 'admin');
 ```
 
-### 2. Vercel env
+### 2. Environment
 
 ```env
-VITE_SUPABASE_URL=...
-VITE_SUPABASE_ANON_KEY=...
-VITE_ADMIN_WEB_ONLY=true
+VITE_SHIORI_API_URL=https://api.shiori.cloud
 ```
 
 Redeploy after changes.
