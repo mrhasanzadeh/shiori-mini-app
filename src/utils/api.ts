@@ -218,6 +218,9 @@ export const fetchAnimeById = async (
     airing_status: detail.airing_status ?? undefined,
     genres: detail.genres,
     episodes: mergedEpisodes,
+    subtitles: (detail.subtitles ?? []).map((s) => ({
+      subtitle_link: s.subtitle_link ?? undefined,
+    })),
     subtitle_packs: parts.subtitlePacks,
     episode_pack: parts.episodePack,
     episodes_count: typeof detail.episodes_count === 'number' ? detail.episodes_count : 0,

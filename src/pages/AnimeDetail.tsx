@@ -38,6 +38,8 @@ import {
 } from '../utils/externalLinks'
 import { isAnimeDetailShell } from '../utils/api'
 import { animeCardMatchesRouteParam, animeDetailPath, animePublicSegment } from '../lib/animePaths'
+import { MediaSpecTags } from '../components/anime/MediaSpecTags'
+import { resolveHardsubLanguage, type HardsubLanguage } from '../utils/animeMediaTags'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -77,6 +79,7 @@ interface Anime {
   airing_status?: string
   genres: GenreItem[]
   episodes: Episode[]
+  subtitles?: Array<{ subtitle_link?: string }>
   subtitle_packs?: SubtitlePack[]
   episode_pack?: EpisodePack | null
   episodes_count: number
@@ -701,24 +704,24 @@ const EPISODE_DOWNLOAD_QUALITIES = [
 const EpisodeDownloadCard = ({
   episode,
   showSubtitleButton,
+  hardsubLanguage,
   onDownload1080,
   onSubtitle,
   onLockedQuality,
 }: {
   episode: Episode
   showSubtitleButton: boolean
+  hardsubLanguage: HardsubLanguage
   onDownload1080: () => void
   onSubtitle: () => void
   onLockedQuality: (quality: string) => void
 }) => (
   <div className="overflow-hidden rounded-xl border border-border bg-card/60">
-    <div className="flex items-start justify-between gap-3 px-3 py-3">
-      <div className="min-w-0">
-        <p className="text-sm font-semibold text-foreground">
-          قسمت {toPersianNumber(episode.number)}
-        </p>
-        <p className="text-muted-foreground mt-0.5 text-[11px]">زیرنویس چسبیده · x265</p>
-      </div>
+    <div className="flex items-center gap-2 px-3 py-3">
+      <p className="shrink-0 text-sm font-semibold text-foreground">
+        قسمت {toPersianNumber(episode.number)}
+      </p>
+      <MediaSpecTags hardsubLanguage={hardsubLanguage}  />
       {showSubtitleButton ? (
         <Button
           type="button"
@@ -775,21 +778,19 @@ const EpisodeDownloadCard = ({
 
 const EpisodePackDownloadCard = ({
   pack,
+  hardsubLanguage,
   onDownload,
 }: {
   pack: EpisodePack
+  hardsubLanguage: HardsubLanguage
   onDownload: () => void
 }) => (
   <div className="episode-pack-card-wrap">
-    <div className="episode-pack-card-inner flex items-center justify-between gap-3 bg-card p-3">
-      <div className="min-w-0">
-        <p className="text-sm font-semibold text-foreground line-clamp-1">
-          {pack.title?.trim() || 'دانلود تمام قسمت‌ها'}
-        </p>
-        <p className="text-[11px] text-muted-foreground mt-0.5">
-          پک یک‌جا · زیرنویس چسبیده · 1080p x265
-        </p>
-      </div>
+    <div className="episode-pack-card-inner flex items-center gap-2 bg-card p-3">
+      <p className="min-w-0 shrink-0 text-sm font-semibold text-foreground line-clamp-1 max-w-[42%]">
+        {pack.title?.trim() || 'دانلود تمام قسمت‌ها'}
+      </p>
+      <MediaSpecTags hardsubLanguage={hardsubLanguage}/>
       <Button type="button" size="sm" className="shrink-0 gap-1 font-semibold" onClick={onDownload}>
         <Download01Icon className="w-3.5 h-3.5" />
         دانلود
@@ -1027,6 +1028,16 @@ const AnimeDetail = () => {
   const episodePackLink = useMemo(
     () => anime?.episode_pack?.download_link?.trim() || null,
     [anime?.episode_pack?.download_link]
+  )
+
+  const hardsubLanguage = useMemo(
+    () =>
+      resolveHardsubLanguage({
+        episodes: anime?.episodes,
+        subtitle_packs: anime?.subtitle_packs,
+        subtitles: anime?.subtitles,
+      }),
+    [anime?.episodes, anime?.subtitle_packs, anime?.subtitles]
   )
 
   const downloadTabs = useMemo(() => {
@@ -1397,6 +1408,7 @@ const AnimeDetail = () => {
                   {episodePackLink && anime.episode_pack ? (
                     <EpisodePackDownloadCard
                       pack={anime.episode_pack}
+                      hardsubLanguage={hardsubLanguage}
                       onDownload={() => window.open(episodePackLink, '_blank')}
                     />
                   ) : null}
@@ -1409,6 +1421,7 @@ const AnimeDetail = () => {
                     <EpisodeDownloadCard
                       key={episode.id}
                       episode={episode}
+                      hardsubLanguage={hardsubLanguage}
                       showSubtitleButton={!isFinished || isMovie}
                       onDownload1080={() => {
                         const link =
