@@ -268,6 +268,7 @@ export const buildAnimeDetailPlaceholder = (card: UiAnimeCard): AnimeDetailShell
   airing_status: undefined,
   genres: card.genres ?? [],
   episodes: [],
+  subtitles: [],
   subtitle_packs: [],
   episode_pack: null,
   episodes_count: 0,
